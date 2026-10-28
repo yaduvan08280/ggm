@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delegation System</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Material+Icons&display=block" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  
+  <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" integrity="sha512-mSYUmp1HYZDFaVKK//63EcZq4iFWFjxSL+Z3T/aCt4IO9Cejm03q3NKKYN6pFQzY0SBOr8h+eCIAZHPXcpZaNw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    :root { --mdc-theme-primary: #1976d2; --mdc-theme-secondary: #424242; --mdc-theme-background: #ffffff; --mdc-theme-surface: #ffffff; --mdc-theme-error: #b00020; --mdc-theme-on-primary: #ffffff; --mdc-theme-on-secondary: #ffffff; --mdc-theme-on-surface: #212121; --mdc-theme-on-error: #ffffff; --mdc-typography-font-family: 'Roboto', sans-serif; }
+    body { font-family: var(--mdc-typography-font-family); background-color: #f5f5f5; color: var(--mdc-theme-on-surface); line-height: 1.5; margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
+    .app-container { max-width: 960px; width: 100%; margin: 0 auto; padding: 16px; flex: 1; }
+    .mdc-top-app-bar { position: sticky; top: 0; z-index: 7; }
+    .app-content { padding: 24px 0; }
+    .mdc-tab-bar { margin-bottom: 24px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .mdc-tab { flex-grow: 1; height: 56px; }
+    .mdc-tab__icon { margin-right: 8px; }
+    #loading { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; background-color: rgba(255, 255, 255, 0.92); display: flex; justify-content: center; align-items: center; }
+    .spinner-container { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .mdc-circular-progress { width: 48px; height: 48px; }
+    .loading-text { margin-top: 16px; font-size: 16px; color: var(--mdc-theme-primary); }
+    .invisible { visibility: hidden; }
+    .mdc-card { margin-bottom: 16px; border-radius: 8px; overflow: hidden; }
+    .app-card__content { padding: 16px; }
+    @media (max-width: 600px) { .app-container { padding: 8px; } .app-content { padding: 16px 0; } .mdc-tab .mdc-tab__text-label { display: none; } .mdc-tab .mdc-tab__icon { margin-right: 0; } }
+  </style>
+</head>
+
+<body class="mdc-typography">
+  <header class="mdc-top-app-bar">
+    <div class="mdc-top-app-bar__row">
+      <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start"><span class="mdc-top-app-bar__title">Delegation System</span></section>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <div class="app-content">
+      <div class="mdc-tab-bar" role="tablist">
+        <div class="mdc-tab-scroller">
+          <div class="mdc-tab-scroller__scroll-area">
+            <div class="mdc-tab-scroller__scroll-content">
+              <button class="mdc-tab mdc-tab--active" id="add-new-task-link" role="tab" aria-selected="true" tabindex="0">
+                <span class="mdc-tab__content"><span class="material-icons mdc-tab__icon">add_task</span><span class="mdc-tab__text-label">Add New Task</span></span>
+                <span class="mdc-tab-indicator mdc-tab-indicator--active"><span class="mdc-tab-indicator__content mdc-tab-indicator__content--underline"></span></span><span class="mdc-tab__ripple"></span>
+              </button>
+              <button class="mdc-tab" id="follow-up-link" role="tab" aria-selected="false" tabindex="-1">
+                <span class="mdc-tab__content"><span class="material-icons mdc-tab__icon">update</span><span class="mdc-tab__text-label">Follow Up</span></span>
+                <span class="mdc-tab-indicator"><span class="mdc-tab-indicator__content mdc-tab-indicator__content--underline"></span></span><span class="mdc-tab__ripple"></span>
+              </button>
+              <button class="mdc-tab" id="all-pending-tasks" role="tab" aria-selected="false" tabindex="-1">
+                <span class="mdc-tab__content"><span class="material-icons mdc-tab__icon">pending_actions</span><span class="mdc-tab__text-label">All Pending Tasks</span></span>
+                <span class="mdc-tab-indicator"><span class="mdc-tab-indicator__content mdc-tab-indicator__content--underline"></span></span><span class="mdc-tab__ripple"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="app"></div>
+    </div>
+  </div>
+
+  <div id="loading" class="invisible">
+    <div class="spinner-container">
+      <div class="mdc-circular-progress" role="progressbar" aria-label="Loading..." aria-valuemin="0" aria-valuemax="1">
+        <div class="mdc-circular-progress__determinate-container">
+          <svg class="mdc-circular-progress__determinate-circle-graphic" viewBox="0 0 48 48">
+            <circle class="mdc-circular-progress__determinate-track" cx="24" cy="24" r="18" stroke-width="4"/>
+            <circle class="mdc-circular-progress__determinate-circle" cx="24" cy="24" r="18" stroke-dasharray="113.097" stroke-dashoffset="113.097" stroke-width="4"/>
+          </svg>
+        </div>
+        <div class="mdc-circular-progress__indeterminate-container">
+          <div class="mdc-circular-progress__spinner-layer">
+            <div class="mdc-circular-progress__circle-clipper mdc-circular-progress__circle-left"><svg class="mdc-circular-progress__indeterminate-circle-graphic" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke-dasharray="113.097" stroke-dashoffset="56.549" stroke-width="4"/></svg></div>
+            <div class="mdc-circular-progress__gap-patch"><svg class="mdc-circular-progress__indeterminate-circle-graphic" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke-dasharray="113.097" stroke-dashoffset="56.549" stroke-width="3.2"/></svg></div>
+            <div class="mdc-circular-progress__circle-clipper mdc-circular-progress__circle-right"><svg class="mdc-circular-progress__indeterminate-circle-graphic" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" stroke-dasharray="113.097" stroke-dashoffset="56.549" stroke-width="4"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <p class="loading-text">Loading...</p>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      mdc.autoInit();
+      const circularProgress = document.querySelector('.mdc-circular-progress');
+      if (circularProgress) { const circularProgressComponent = new mdc.circularProgress.MDCCircularProgress(circularProgress); circularProgressComponent.determinate = false; }
+      
+      const tabBar = document.querySelector('.mdc-tab-bar');
+      if (tabBar) {
+        const tabBarComponent = new mdc.tabBar.MDCTabBar(tabBar);
+        tabBarComponent.listen('MDCTabBar:activated', function(event) {
+          const index = event.detail.index;
+          if (index === 0) { loadAddView(); } 
+          else if (index === 1) { loadFView(); } 
+          else if (index === 2) { loadAllPendingView(); }
+        });
+      }
+      preloadInitialData();
+      loadFView(); 
+    });
+
+    var data;
+    var preloadedDoerNames = null; 
+
+    function onFailure(error) { console.log(error.message); }
+
+    function removeActiveClasses() {
+      ["follow-up-link", "add-new-task-link", "all-pending-tasks"].forEach(id => {
+        const el = document.getElementById(id);
+        el.setAttribute("aria-selected", "false");
+        el.classList.remove("mdc-tab--active");
+        el.querySelector(".mdc-tab-indicator").classList.remove("mdc-tab-indicator--active");
+      });
+    }
+
+    function loadFView(){
+      removeActiveClasses();
+      loadView({ func : "loadFollowUpView", callback: function() { injectBuddyColumnUI(); setDataForSearch(); } });
+      const el = document.getElementById("follow-up-link");
+      el.classList.add("mdc-tab--active"); el.setAttribute("aria-selected", "true");
+      el.querySelector(".mdc-tab-indicator").classList.add("mdc-tab-indicator--active");
+    }
+
+    function loadAddView(){
+      removeActiveClasses();
+      loadView({func : "loadAddNewView", callback:setDoerNames});
+      const el = document.getElementById("add-new-task-link");
+      el.classList.add("mdc-tab--active"); el.setAttribute("aria-selected", "true");
+      el.querySelector(".mdc-tab-indicator").classList.add("mdc-tab-indicator--active");
+    }
+
+    function loadAllPendingView() {
+      removeActiveClasses();
+      loadView({ func : "loadPendingTasksView", callback: function() { injectBuddyColumnUI(); setSearchDataforAllPending(); } });
+      const el = document.getElementById("all-pending-tasks");
+      el.classList.add("mdc-tab--active"); el.setAttribute("aria-selected", "true");
+      el.querySelector(".mdc-tab-indicator").classList.add("mdc-tab-indicator--active");
+    }
+
+    function setDoerNames() {
+      if (preloadedDoerNames) populateDoerDropdown(preloadedDoerNames);
+      else google.script.run.withSuccessHandler(populateDoerDropdown).withFailureHandler(onFailure).getAllDoers();
+    }
+
+    function populateDoerDropdown(doersData) {
+      var dropdown = document.getElementById("name");
+      if (!dropdown) return;
+      while (dropdown.options.length > 1) dropdown.remove(1);
+      doersData.forEach(function(doer) {
+        const displayText = `${doer[0]} - ${doer[1] || 'N/A'}`;
+        var option = document.createElement("option"); option.textContent = displayText; option.value = doer[0]; dropdown.appendChild(option);
+      });
+      if (typeof mdc !== 'undefined') {
+          const textFieldElement = dropdown.closest('.mdc-text-field');
+          if (textFieldElement) { try { mdc.textField.MDCTextField.attachTo(textFieldElement); } catch (e) {} }
+      }
+    }
+
+    function preloadInitialData() {
+      google.script.run.withSuccessHandler(function(doers) { preloadedDoerNames = doers; }).withFailureHandler(onFailure).getAllDoers(); 
+    }
+
+    function loadView(options){
+      var id = options.id || "app";
+      var cb = options.callback || function(){};
+      loadingStart(); 
+      google.script.run.withSuccessHandler(function(html){
+        document.getElementById(id).innerHTML = html;
+        if (typeof mdc !== 'undefined') {
+          mdc.autoInit();
+          document.querySelectorAll('.mdc-text-field').forEach(textField => new mdc.textField.MDCTextField(textField));
+          document.querySelectorAll('.mdc-button').forEach(button => new mdc.ripple.MDCRipple(button));
+          document.querySelectorAll('.mdc-snackbar').forEach(snackbar => new mdc.snackbar.MDCSnackbar(snackbar));
+        }
+        var datepickerInput = document.querySelector('.datepicker-input');
+        if (datepickerInput) {
+          $(datepickerInput).datepicker({ container: 'body', orientation: 'bottom auto', format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true })
+          .on('show', function() {
+             setTimeout(function() {
+               $('.datepicker').addClass('mdc-menu-surface mdc-menu-surface--open');
+               $('.datepicker-days th.dow').addClass('mdc-typography--subtitle2');
+               $('.datepicker .day').addClass('mdc-ripple-surface');
+               $('.datepicker .day.active').addClass('mdc-theme--primary-bg mdc-theme--on-primary');
+             }, 0);
+          });
+          var dateIcon = document.querySelector('.mdc-text-field__icon--trailing[role="button"]');
+          if (dateIcon && !dateIcon.dataset.listenerAttached) { 
+             dateIcon.addEventListener('click', function() { $(datepickerInput).datepicker('show'); });
+             dateIcon.dataset.listenerAttached = 'true'; 
+          }
+        }
+        if (options.func === "loadAddNewView") {
+          options.params === undefined ? cb() : cb(options.params); loadingEnd(); 
+        } else {
+          options.params === undefined ? cb() : cb(options.params);
+        }
+      }).withFailureHandler(function(error) { onFailure(error); loadingEnd(); })[options.func]();
+    }
+
+    function loadingStart() { document.getElementById("loading").classList.remove("invisible"); }
+    function loadingEnd() { document.getElementById("loading").classList.add("invisible"); }
+
+    function injectBuddyColumnUI() {
+      var theads = document.querySelectorAll('table thead tr');
+      theads.forEach(function(tr) {
+          if (!tr.querySelector('.buddy-header')) {
+              var th = document.createElement('th'); th.className = 'buddy-header'; th.textContent = 'Assign Buddy'; th.style.textAlign = 'center'; tr.appendChild(th);
+          }
+      });
+      var template = document.getElementById('rowTemplate');
+      if (template) {
+          var tr = template.content.querySelector('tr');
+          if (tr && !tr.querySelector('.buddy-cell')) {
+              var td = document.createElement('td'); td.className = 'buddy-cell'; td.style.textAlign = 'center'; td.style.verticalAlign = 'middle';
+              td.innerHTML = `<button class="mdc-button mdc-button--outlined assign-buddy-button" style="height: 36px; padding: 0 16px; border-color: #ff9800; color: #ff9800;"><span class="mdc-button__label">Assign Buddy</span></button>`;
+              tr.appendChild(td);
+          }
+      }
+    }
+
+    function setSearchDataforAllPending(){
+      google.script.run.withSuccessHandler(function(dataReturned){
+        data = dataReturned.slice(); populateTableData(data);
+      }).withFailureHandler(function(error) { onFailure(error); loadingEnd(); }).fetchAllPendingData();
+    }
+
+    function setDataForSearch(){
+      google.script.run.withSuccessHandler(function(dataReturned){
+        data = dataReturned.slice(); populateTableData(data);
+      }).withFailureHandler(function(error) { onFailure(error); loadingEnd(); }).fetchRelevantData();
+    }
+
+    function populateTableData(dataArray) {
+        var searchResultsBox = document.getElementById("searchResults");
+        var templateBox = document.getElementById("rowTemplate");
+        var noResultsMessage = document.getElementById('no-results-message');
+        if (!searchResultsBox || !templateBox || !noResultsMessage) { loadingEnd(); return; }
+        
+        var template = templateBox.content;
+        searchResultsBox.innerHTML = ""; 
+        if (dataArray.length < 1) noResultsMessage.classList.remove("invisible"); else noResultsMessage.classList.add("invisible");
+
+        dataArray.forEach(function(r){
+          var tr = template.cloneNode(true);
+          var revise = tr.querySelector(".revise-button");
+          var doneButtonContainer = tr.querySelector(".button-container");
+          var assignBtn = tr.querySelector(".assign-buddy-button");
+          
+          tr.querySelector(".taskID").textContent = r[0]; tr.querySelector(".doerName").textContent = r[1]; tr.querySelector(".number").textContent = r[4] || ''; tr.querySelector(".task").textContent = r[2]; tr.querySelector(".planned_date").textContent = r[3];
+          
+          if (revise) revise.dataset.taskid = r[0];
+          if (doneButtonContainer) {
+            const initialDoneButton = doneButtonContainer.querySelector(".done-button");
+            if (initialDoneButton) initialDoneButton.dataset.taskid = r[0];
+          }
+          if (assignBtn) assignBtn.dataset.taskid = r[0];
+          searchResultsBox.appendChild(tr);
+        });
+        searchResultsBox.querySelectorAll('.mdc-button').forEach(button => mdc.ripple.MDCRipple.attachTo(button));
+        loadingEnd();
+    }
+
+    function search(){
+      var searchInput = document.getElementById("searchName")?.value.toString().toLowerCase() || ""; 
+      var taskInput = document.getElementById("searchTask")?.value.toString().toLowerCase() || "";
+      var resultsArray = data.filter(function(r){
+        var dataName = r[1]?.toString().toLowerCase() || ""; var dataTask = r[2]?.toString().toLowerCase() || ""; var dataNumber = r[4]?.toString().toLowerCase() || ""; var dataEmail = r[5]?.toString().toLowerCase() || ""; 
+        return (searchInput === "" || dataName.includes(searchInput) || dataNumber.includes(searchInput) || dataEmail.includes(searchInput)) && (taskInput === "" || dataTask.includes(taskInput));
+      });
+      populateTableData(resultsArray);
+    }
+
+    function addTask(button){
+      var taskInfo = {}
+      var nameElement = document.getElementById("name"); var taskElement = document.getElementById("task"); var dateElement = document.getElementById("planned_date"); var formElement = document.getElementById("task-form"); var successMessage = document.getElementById("success-message");
+      if (!nameElement || !taskElement || !dateElement || !formElement || !successMessage) { alert("Error."); if(button) button.disabled = false; return; }
+      taskInfo.name = nameElement.value; taskInfo.task = taskElement.value; taskInfo.fdate = dateElement.value;
+
+      if (!taskInfo.name || !taskInfo.task || !taskInfo.fdate){ alert("Fill all details."); if(button) button.disabled = false; } else {
+          loadingStart(); 
+          google.script.run.withSuccessHandler(function(){
+              formElement.reset();
+              formElement.querySelectorAll('.mdc-text-field').forEach(function(textField) {
+                 try { const mdcTextFieldInstance = mdc.textField.MDCTextField.attachTo(textField); if (mdcTextFieldInstance && mdcTextFieldInstance.value === '') { const label = mdcTextFieldInstance.root.querySelector('.mdc-floating-label'); if (label) label.classList.remove('mdc-floating-label--float-above'); } } catch (e) {}
+              });
+              try { const snackbar = mdc.snackbar.MDCSnackbar.attachTo(successMessage); if (snackbar) snackbar.open(); } catch(e) {}
+              loadingEnd(); if(button) button.disabled = false; 
+          }).withFailureHandler(function(error){ onFailure(error); loadingEnd(); if(button) button.disabled = false; }).addNew(taskInfo);
+      }
+    }
+
+    function displayBuddyConfirmation(button) {
+      var taskID = button.dataset.taskid; var container = button.parentElement; button.classList.add("d-none");
+      if (!document.getElementById('buddy-list-options')) {
+          var dl = document.createElement('datalist'); dl.id = 'buddy-list-options';
+          google.script.run.withSuccessHandler(function(buddies) { buddies.forEach(function(bName) { var option = document.createElement('option'); option.value = bName; dl.appendChild(option); }); }).getBuddyList();
+          document.body.appendChild(dl);
+      }
+      var isAllPending = document.getElementById("all-pending-tasks").classList.contains("mdc-tab--active"); var returnTo = isAllPending ? "loadAllPendingView" : "loadFView";
+      var inputHtml = `<input list="buddy-list-options" class="buddy-input" placeholder="Select Buddy..." style="width: 140px; padding: 6px; margin-bottom: 4px; border: 1px solid #ccc; border-radius: 4px; outline: none; font-family: Roboto; text-transform: uppercase; display: block; margin: 0 auto 4px auto;">`;
+      var btnHtml = `<div style="display: flex; justify-content: center; gap: 4px;"><button class="mdc-button mdc-button--raised confirm-buddy-btn" data-taskid="${taskID}" data-returnto="${returnTo}" style="background-color: #ff9800; height: 32px; padding: 0 8px; min-width: 60px;"><span class="mdc-button__label">Assign</span></button><button class="mdc-button mdc-button--outlined cancel-buddy-btn" style="height: 32px; padding: 0 8px; border-color: #757575; color: #757575; min-width: 60px;"><span class="mdc-button__label">Cancel</span></button></div>`;
+      var actionWrapper = document.createElement("div"); actionWrapper.className = "buddy-action-wrapper"; actionWrapper.style.textAlign = "center"; actionWrapper.innerHTML = inputHtml + btnHtml; container.appendChild(actionWrapper);
+    }
+
+    function completeTask(id, returnTo, doneBy) {
+      loadingStart(); google.script.run.withSuccessHandler(function(r){ if (returnTo === "loadAllPendingView") loadAllPendingView(); else loadFView(); }).withFailureHandler(function(error) { onFailure(error); loadingEnd(); }).taskComplete(id, doneBy); 
+    }
+
+    function displayConfirmation(button){
+      var taskID = button.dataset.taskid; var container = button.parentElement; button.classList.add("d-none");
+      if (!document.getElementById('done-by-list')) {
+          var dl = document.createElement('datalist'); dl.id = 'done-by-list';
+          var exactOptions = ["NAKUL GOYAL", "NEERAJ GOYAL", "AAKASH GOYAL", "VIPIN GOYAL", "UMESH SHARMA"];
+          exactOptions.forEach(function(optName) { var option = document.createElement('option'); option.value = optName; dl.appendChild(option); });
+          document.body.appendChild(dl);
+      }
+      var isAllPending = document.getElementById("all-pending-tasks").classList.contains("mdc-tab--active"); var confirmClass = isAllPending ? "confirm-button2-new" : "confirm-button-new";
+      var inputHtml = `<input list="done-by-list" class="done-by-input" placeholder="Done (verified by)" style="width: 175px; padding: 6px; margin-bottom: 4px; border: 1px solid #ccc; border-radius: 4px; outline: none; font-family: Roboto; text-transform: uppercase; display: block; margin: 0 auto 4px auto;">`;
+      var btnHtml = `<div style="display: flex; justify-content: center; gap: 4px;"><button class="mdc-button mdc-button--raised ${confirmClass}" data-taskid="${taskID}" style="background-color: #4caf50; height: 32px; padding: 0 8px;"><span class="mdc-button__label">Confirm</span></button><button class="mdc-button mdc-button--outlined cancel-done-btn" style="height: 32px; padding: 0 8px; border-color: #757575; color: #757575;"><span class="mdc-button__label">Cancel</span></button></div>`;
+      var actionWrapper = document.createElement("div"); actionWrapper.className = "done-action-wrapper"; actionWrapper.style.textAlign = "center"; actionWrapper.innerHTML = inputHtml + btnHtml; container.appendChild(actionWrapper);
+    }
+
+    document.getElementById("follow-up-link").addEventListener("click",loadFView);
+    document.getElementById("add-new-task-link").addEventListener("click",loadAddView);
+    document.getElementById("all-pending-tasks").addEventListener("click",loadAllPendingView);
+    
+    function clickEventHandler(e){
+      
+      // Add Task logic
+      if (e.target.matches("#add-task-button") || e.target.closest("#add-task-button")){
+          e.preventDefault(); const addButton = e.target.closest("#add-task-button"); if (addButton) { addButton.disabled = true; addTask(addButton); }
+      }
+      
+      // -------------------------------------------------------------
+      // NAYA: INLINE REVISE CALENDAR
+      // -------------------------------------------------------------
+      if (e.target.matches(".revise-button") || e.target.closest(".revise-button")){
+        e.preventDefault();
+        const reviseButton = e.target.closest(".revise-button");
+        if (!reviseButton || !reviseButton.dataset.taskid) return;
+
+        var taskID = reviseButton.dataset.taskid;
+        var container = reviseButton.parentElement;
+
+        // Agar user ek bar click kar chuka hai toh double open na ho
+        if (container.querySelector(".revise-action-wrapper")) return;
+
+        // REVISE button ko chhupa do
+        reviseButton.classList.add("d-none");
+
+        var isAllPending = document.getElementById("all-pending-tasks").classList.contains("mdc-tab--active");
+        var returnTo = isAllPending ? "loadAllPendingView" : "loadFView";
+
+        // Date Input aur Update/Cancel button banayein
+        var inputHtml = `<input type="text" class="inline-date-input" placeholder="Select Date" style="width: 140px; padding: 6px; margin-bottom: 4px; border: 1px solid #ccc; border-radius: 4px; outline: none; font-family: Roboto; text-align: center; display: block; margin: 0 auto 4px auto;" readonly>`;
+        var btnHtml = `<div style="display: flex; justify-content: center; gap: 4px;">
+                         <button class="mdc-button mdc-button--raised confirm-revise-btn" data-taskid="${taskID}" data-returnto="${returnTo}" style="background-color: #1976d2; height: 32px; padding: 0 8px; min-width: 60px;">
+                            <span class="mdc-button__label">Update</span>
+                         </button>
+                         <button class="mdc-button mdc-button--outlined cancel-revise-btn" style="height: 32px; padding: 0 8px; border-color: #757575; color: #757575; min-width: 60px;">
+                            <span class="mdc-button__label">Cancel</span>
+                         </button>
+                       </div>`;
+
+        var actionWrapper = document.createElement("div");
+        actionWrapper.className = "revise-action-wrapper";
+        actionWrapper.style.textAlign = "center";
+        actionWrapper.innerHTML = inputHtml + btnHtml;
+        container.appendChild(actionWrapper);
+
+        var dateInput = actionWrapper.querySelector(".inline-date-input");
+
+        // Calendar Activate karein
+        $(dateInput).datepicker({
+            container: 'body',
+            format: 'dd/mm/yyyy',
+            autoclose: true,
+            todayHighlight: true,
+            startDate: '-0d' // Purani date block
+        });
+
+        // Apne aap calendar show karo
+        $(dateInput).datepicker('show');
+      }
+
+      // Revise Update Submit (OK) button
+      if (e.target.matches(".confirm-revise-btn") || e.target.closest(".confirm-revise-btn")){
+        var btn = e.target.closest(".confirm-revise-btn");
+        var inputEl = btn.parentElement.parentElement.querySelector(".inline-date-input");
+        var selectedDate = inputEl ? inputEl.value.trim() : "";
+        
+        if(!selectedDate) { alert("Please click on the input box and select a date."); return; }
+        
+        loadingStart();
+        var taskDetails = { id: btn.dataset.taskid, pl: selectedDate };
+        
+        google.script.run.withSuccessHandler(function(){ 
+            if (btn.dataset.returnto === "loadAllPendingView") loadAllPendingView();
+            else loadFView();
+        }).withFailureHandler(function(error) {
+            onFailure(error); loadingEnd();
+        }).addNext(taskDetails);
+      }
+
+      // Revise Cancel (X) button
+      if (e.target.matches(".cancel-revise-btn") || e.target.closest(".cancel-revise-btn")){
+         var wrapper = e.target.closest(".revise-action-wrapper");
+         var container = wrapper.parentElement;
+         
+         var inputEl = wrapper.querySelector(".inline-date-input");
+         if (inputEl) $(inputEl).datepicker('destroy'); // Calendar hata do
+         
+         wrapper.remove(); // Box hata do
+         container.querySelector(".revise-button").classList.remove("d-none"); // REVISE button wapas dikhao
+      }
+      
+      // -------------------------------------------------------------
+      // Baki saare features same hain
+      // -------------------------------------------------------------
+      if (e.target.matches(".assign-buddy-button") || e.target.closest(".assign-buddy-button")){ displayBuddyConfirmation(e.target.closest(".assign-buddy-button")); }
+      if (e.target.matches(".confirm-buddy-btn") || e.target.closest(".confirm-buddy-btn")){
+        var btn = e.target.closest(".confirm-buddy-btn"); var inputEl = btn.parentElement.parentElement.querySelector(".buddy-input"); var buddyName = inputEl ? inputEl.value.trim().toUpperCase() : "";
+        if(!buddyName) { alert("Please select a Buddy."); return; } loadingStart(); google.script.run.withSuccessHandler(function(){ (btn.dataset.returnto === "loadAllPendingView") ? loadAllPendingView() : loadFView(); }).assignBuddyInSheet(btn.dataset.taskid, buddyName);
+      }
+      if (e.target.matches(".cancel-buddy-btn") || e.target.closest(".cancel-buddy-btn")){
+         var container = e.target.closest(".buddy-cell"); e.target.closest(".buddy-action-wrapper").remove(); container.querySelector(".assign-buddy-button").classList.remove("d-none");
+      }
+
+      if (e.target.matches(".done-button") || e.target.closest(".done-button")){ displayConfirmation(e.target.closest(".done-button")); }
+      if (e.target.matches(".confirm-button-new") || e.target.closest(".confirm-button-new")){
+        const confirmButton = e.target.closest(".confirm-button-new");
+        if (confirmButton && confirmButton.dataset.taskid) { const inputEl = confirmButton.parentElement.parentElement.querySelector(".done-by-input"); const doneByVal = inputEl ? inputEl.value.trim().toUpperCase() : ""; if(!doneByVal) { alert("Please enter or select a name for 'Done (verified by whom)'."); return; } completeTask(confirmButton.dataset.taskid, "loadFView", doneByVal); }
+      }
+      if (e.target.matches(".confirm-button2-new") || e.target.closest(".confirm-button2-new")){
+        const confirmButton2 = e.target.closest(".confirm-button2-new");
+         if (confirmButton2 && confirmButton2.dataset.taskid) { const inputEl = confirmButton2.parentElement.parentElement.querySelector(".done-by-input"); const doneByVal = inputEl ? inputEl.value.trim().toUpperCase() : ""; if(!doneByVal) { alert("Please enter or select a name for 'Done (verified by whom)'."); return; } completeTask(confirmButton2.dataset.taskid, "loadAllPendingView", doneByVal); }
+      }
+      if (e.target.matches(".cancel-done-btn") || e.target.closest(".cancel-done-btn")){
+         var container = e.target.closest(".button-container"); e.target.closest(".done-action-wrapper").remove(); container.querySelector(".done-button").classList.remove("d-none");
+      }
+    }
+
+    function inputEventHandler(e){ if (e.target.matches("#searchName") || e.target.matches("#searchTask")){ search(); } }
+    document.getElementById("app").addEventListener("input",inputEventHandler); document.getElementById("app").addEventListener("click",clickEventHandler);
+    
+    document.getElementById("app").addEventListener("submit", function(e) {
+      e.preventDefault(); 
+      if (e.target.id === "task-form") { var btn = document.getElementById("add-task-button"); if (btn && !btn.disabled) { btn.disabled = true; addTask(btn); } }
+    });
+
+  </script>
+</body>
+</html>

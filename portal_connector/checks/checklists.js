@@ -1,0 +1,26 @@
+const vm = require('vm'), fs = require('fs');
+const rows = [['Ramesh Kumar','Store','r@x.com','+91 98290 11111'],['Mohan Lal','Dumper Driver','m@x.com',9829044444],['Sita Devi','Office','s@x.com','9829055555']];
+const sheet = { getLastRow: () => rows.length + 1, getRange: (r, c, nr, nc) => ({ getValues: () => rows.map(x => x.slice(c - 1, c - 1 + nc)) }) };
+const delUsers = [[9829044444, 'pw', 'KHA-Mohan Lal (Driver)', '']];
+const ss = { getSheetByName: n => n === 'Doer List' ? sheet : null };
+const U_SH = {}, D_SH = {}; const del = { getSheetByName: n => n === 'Users' ? U_SH : n === 'Doer List' ? D_SH : null };
+const SpreadsheetApp = { getActiveSpreadsheet: () => ss, openById: id => id === 'DEL' ? del : ss };
+const ctx = vm.createContext({ SpreadsheetApp, ROUTINE_SHEET_ID: 'ROU', DELEGATED_SHEET_ID: 'DEL', String, Number, Object, Array, JSON, Math,
+  _readBlock: (sh, r, c, n) => sh === del.getSheetByName('Users') ? delUsers : [] });
+vm.runInContext(fs.readFileSync(require('path').join(__dirname, '..', '..', 'newai_checklist/PortalApp.js'), 'utf8').replace(/function doPost[\s\S]*?\n}\n/, ''), ctx);
+const r = c => vm.runInContext(c, ctx);
+let ok = 0, bad = 0; const t = (n, c) => { c ? ok++ : bad++; console.log((c ? 'PASS ' : 'FAIL ') + n); };
+t('newai: exact name', r(`ckFindDoer_('Ramesh Kumar','').mobile === '+91 98290 11111'`));
+t('newai: mobile with +91/spaces matches', r(`ckFindDoer_('', '9829011111').name === 'Ramesh Kumar'`));
+t('newai: numeric mobile cell matches', r(`ckFindDoer_('nobody', '9829044444').name === 'Mohan Lal'`));
+t('newai: unknown person -> null', r(`ckFindDoer_('Ghost', '1234') === null`));
+t('newai: meta lists doers sorted', r(`JSON.stringify(portalAdapter_().meta().doers) === JSON.stringify(['Mohan Lal','Ramesh Kumar','Sita Devi'])`));
+const ctx2 = vm.createContext(Object.assign({}, ctx));
+vm.runInContext(fs.readFileSync(require('path').join(__dirname, '..', '..', 'tonk_checklist/PortalApp.js'), 'utf8'), ctx2);
+const r2 = c => vm.runInContext(c, ctx2);
+t('tonk: driver from department', r2(`tkResolve_('Mohan Lal','','').role === 'driver'`));
+t('tonk: delegated full name by mobile', r2(`tkResolve_('Mohan Lal','','').fullName === 'KHA-Mohan Lal (Driver)'`));
+t('tonk: portal role overrides department', r2(`tkResolve_('Mohan Lal','','STAFF').role === 'staff'`));
+t('tonk: staff default', r2(`tkResolve_('Sita Devi','','').role === 'staff' && tkResolve_('Sita Devi','','').fullName === 'Sita Devi'`));
+t('tonk: meta roles', r2(`portalAdapter_().meta().roles.join() === 'DRIVER,STAFF'`));
+console.log(ok + ' passed, ' + bad + ' failed');

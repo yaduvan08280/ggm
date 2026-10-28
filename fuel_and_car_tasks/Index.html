@@ -1,0 +1,3437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+  <title>JPR FUEL | Ultimate Fleet Manager</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  
+  <style>
+    /* =========================================
+       PREMIUM TOKENS & VARIABLES
+    ========================================= */
+    :root {
+      --bg: #F4F7FB; 
+      --surface: #FFFFFF; 
+      --surface2: #F8FAFC; 
+      --border: #E2E8F0; 
+      --text-main: #0F172A; 
+      --text-muted: #64748B; 
+      --primary: #4338CA; 
+      --primary-bg: #EEF2FF; 
+      --icon-purple: #F3F0FF; 
+      --text-purple: #6B46C1; 
+      --icon-green: #ECFDF5; 
+      --text-green: #059669; 
+      --icon-blue: #F0F9FF; 
+      --text-blue: #0284C7; 
+      --icon-red: #FEF2F2; 
+      --text-red: #DC2626; 
+      --danger: #EF4444; 
+      --danger-bg: #FEF2F2; 
+      --shadow-sm: 0 4px 15px rgba(0,0,0,0.03); 
+      --shadow-md: 0 10px 30px rgba(0,0,0,0.08); 
+      --glass-bg: rgba(255, 255, 255, 0.85); 
+      --radius-md: 12px; 
+      --radius-lg: 20px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { height: 100vh; width: 100vw; overflow: hidden; background: var(--bg); color: var(--text-main); font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; } 
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+
+    /* GLOBAL ANIMATIONS */
+    .animate-in { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; transform: translateY(20px) scale(0.95); }
+    @keyframes popIn { to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes fadeInSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* =========================================
+       LAYOUT & SCROLLING
+    ========================================= */
+    .app-layout { display: flex; height: 100%; width: 100%; } 
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; } 
+    .content-scroll { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px; scroll-behavior: smooth; position: relative; } 
+    .container { max-width: 1400px; margin: 0 auto; width: 100%; }
+
+    .scroll-top-btn { position: fixed; bottom: 85px; right: 20px; width: 44px; height: 44px; background: var(--text-main); color: #fff; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; z-index: 90; opacity: 0; visibility: hidden; transform: translateY(20px); transition: all 0.3s ease; } 
+    .scroll-top-btn.show { opacity: 1; visibility: visible; transform: translateY(0); }
+    @media (min-width: 1024px) { .scroll-top-btn { bottom: 30px; right: 30px; width: 50px; height: 50px; font-size: 20px; } }
+
+    /* =========================================
+       HEADERS, TRANSLATE BTN & BRANDING
+    ========================================= */
+    .top-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: var(--glass-bg); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,0.4); z-index: 100; gap: 10px; box-shadow: var(--shadow-sm); } 
+    .brand { display: flex; align-items: center; gap: 12px; } 
+    .brand-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 10px rgba(67,56,202,0.3); flex-shrink:0; } 
+    .brand-text { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--text-main); white-space: nowrap; letter-spacing: -0.5px;} 
+    
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .live-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--text-green); background: var(--icon-green); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(5,150,105,0.2); white-space: nowrap; } 
+    .pulse-dot { width: 8px; height: 8px; background: var(--text-green); border-radius: 50%; animation: pulse 2s infinite; } 
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(5,150,105,0.4); } 70% { box-shadow: 0 0 0 6px rgba(5,150,105,0); } 100% { box-shadow: 0 0 0 0 rgba(5,150,105,0); } }
+
+    .btn-lang { background: var(--surface2); color: var(--text-main); border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); white-space: nowrap; }
+    .btn-lang:hover { background: var(--border); transform: translateY(-2px); }
+    .btn-lang:active { transform: scale(0.95); }
+
+    /* =========================================
+       NAVIGATION
+    ========================================= */
+    .bottom-nav { display: flex; justify-content: space-around; align-items: center; background: var(--glass-bg); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,0.4); padding: 10px 16px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: absolute; bottom: 0; width: 100%; z-index: 100; box-shadow: 0 -4px 15px rgba(0,0,0,0.04); } 
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--text-muted); cursor: pointer; width: 60px; transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); } 
+    .nav-item.active { color: var(--primary); } 
+    .nav-item i { font-size: 18px; margin-bottom: 2px; transition: 0.3s; } 
+    .nav-item.active i { transform: translateY(-3px) scale(1.1); }
+
+    .sidebar { display: none; width: 260px; background: var(--surface); border-right: 1px solid var(--border); flex-direction: column; padding: 24px 20px; z-index: 100; height: 100%; } 
+    .side-links { display: flex; flex-direction: column; gap: 8px; margin-top: 32px; } 
+    .side-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius-md); color: var(--text-muted); font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s; font-family:'Outfit', sans-serif;} 
+    .side-item:hover { background: var(--surface2); color: var(--text-main); } 
+    .side-item.active { background: var(--primary-bg); color: var(--primary); } 
+    .side-item i { font-size: 18px; width: 24px; text-align: center; }
+
+    @media (min-width: 1024px) { .top-header, .bottom-nav { display: none !important; } .sidebar { display: flex !important; } .content-scroll { padding: 32px 40px; padding-bottom: 40px; } }
+
+    /* =========================================
+       PREMIUM ACTION BUTTONS
+    ========================================= */
+    .action-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; } 
+    @media (min-width: 768px) { .action-cards { gap: 24px; } } 
+    .action-card { padding: 18px; border-radius: var(--radius-lg); border: none; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); position: relative; overflow: hidden; z-index: 1; box-shadow: var(--shadow-sm); } 
+    .action-card::after { content: ''; position: absolute; right: -20px; bottom: -20px; width: 80px; height: 80px; background: rgba(255,255,255,0.15); border-radius: 50%; pointer-events: none; }
+    .action-card::before { content: ''; position: absolute; left: -10px; top: -20px; width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none; }
+    .action-card.fuel { background: linear-gradient(135deg, #4F46E5, #3B82F6); color: #fff; } 
+    .action-card.service { background: linear-gradient(135deg, #E11D48, #F43F5E); color: #fff; } 
+    .action-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 25px rgba(0,0,0,0.15); } 
+    .action-card:active { transform: scale(0.95); transition: 0.1s; } 
+    .ac-icon { font-size: 22px; } 
+    .ac-text { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 0.5px;}
+
+    /* =========================================
+       STICKY FILTERS & INPUTS
+    ========================================= */
+    .sticky-filter-container { position: sticky; top: -20px; z-index: 50; padding: 10px 0 20px 0; background: var(--bg); } 
+    @media (min-width: 1024px) { .sticky-filter-container { top: -32px; } } 
+    .filter-bar { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.5); border-radius: var(--radius-lg); padding: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: var(--shadow-sm); } 
+    .select-wrapper { flex: 1; min-width: 180px; position: relative; } 
+    .select-input { width: 100%; appearance: none; background: var(--surface2); border: 1px solid var(--border); padding: 10px 40px 10px 16px; border-radius: 10px; font-family:'Poppins', sans-serif; font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; outline: none; transition: 0.2s; } 
+    .select-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg); background: var(--surface); } 
+    .select-wrapper i { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; } 
+    .btn-icon { background: var(--surface2); color: var(--text-main); border: 1px solid var(--border); width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); } 
+    .btn-icon:hover { transform: translateY(-2px); background:var(--border); }
+    .btn-icon:active { transform: scale(0.92); } 
+    .data-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; background: var(--surface); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border); margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+
+    /* =========================================
+       SECTIONS
+    ========================================= */
+    .sec { display: none; } 
+    .sec.active { display: block; animation: fadeInSlide 0.4s ease forwards; } 
+
+    .sec-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; } 
+    .sec-title-group { display: flex; align-items: center; gap: 12px; } 
+    .sec-title { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; color: var(--text-main); } 
+    .badge { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; } 
+    .clear-btn { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; display: none; align-items: center; gap: 6px; }
+
+    .dashboard-grid { display: flex; flex-direction: column; gap: 24px; } 
+    @media (min-width: 1024px) { .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; align-items: start; gap: 32px; } .dash-side { position: sticky; top: 80px; } }
+
+    /* =========================================
+       VEHICLE STRIP (Premium Typography Cards)
+    ========================================= */
+    .vehicle-strip { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 20px; margin-bottom: 10px; scroll-snap-type: x mandatory; padding-top: 5px; } 
+    .vehicle-strip::-webkit-scrollbar { display: none; } 
+    
+    .v-card { min-width: 150px; background: var(--surface); border: 1px solid rgba(255,255,255,0.5); border-radius: 20px; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); scroll-snap-align: start; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; } 
+    .v-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+    
+    .v-card.active { background: var(--primary); transform: translateY(-8px); box-shadow: 0 12px 25px rgba(67,56,202,0.3); border-color:var(--primary); } 
+
+    .v-card-icon { font-size: 24px; margin-bottom: 12px; color: var(--primary); opacity: 0.8; transition: 0.3s; z-index: 1; }
+    .v-card.active .v-card-icon { color: #ffffff; opacity: 1; }
+
+    .v-name { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; z-index:1; text-align: center; line-height: 1.1; } 
+    .v-driver { background: var(--surface2); color: var(--text-muted); padding: 5px 12px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; z-index:1; text-align: center; } 
+    
+    .v-card.active .v-name { color: #ffffff; } 
+    .v-card.active .v-driver { background: rgba(255,255,255,0.2); color: #ffffff; }
+    .v-km { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; color: var(--primary); margin: -2px 0 8px; z-index: 1; letter-spacing: 0.02em; white-space: nowrap; }
+    .v-card.active .v-km { color: #ffffff; }
+
+    /* =========================================
+       DRIVER TILES + DRIVER HISTORY
+    ========================================= */
+    .d-card { padding: 18px 16px; }
+    .d-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--primary-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 16px; margin-bottom: 10px; z-index: 1; }
+    .d-name { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 800; color: var(--text-main); text-align: center; line-height: 1.15; margin-bottom: 8px; max-width: 140px; z-index: 1; }
+    .d-count { font-family: 'Outfit', sans-serif; font-size: 30px; font-weight: 800; color: var(--text-main); line-height: 1; z-index: 1; }
+    .d-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-top: 5px; text-align: center; z-index: 1; }
+    .dh-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .dh-head .d-avatar { margin: 0; flex-shrink: 0; }
+    .dh-name { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; line-height: 1.1; }
+    .dh-sub { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+    .dh-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+    @media (max-width: 480px) { .dh-stats { grid-template-columns: repeat(2, 1fr); } }
+    .dh-stat { background: var(--surface2); border-radius: 14px; padding: 10px 6px; text-align: center; }
+    .dh-stat b { display: block; font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; color: var(--text-main); }
+    .dh-stat span { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+    .dh-sec { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 800; margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+    .dh-sec .badge { margin-left: auto; }
+    .dh-day { border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+    .dh-day-h { background: var(--surface2); padding: 8px 12px; font-size: 12px; font-weight: 800; display: flex; justify-content: space-between; color: var(--text-main); }
+    .dh-day-h span { color: var(--text-muted); font-weight: 700; }
+    .dh-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+    .dh-car { font-size: 10px; font-weight: 800; background: var(--primary-bg); color: var(--primary); padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
+    .dh-task { flex: 1; font-weight: 600; color: var(--text-main); min-width: 0; }
+    .dh-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; font-weight: 600; }
+    .dh-late { font-size: 10px; font-weight: 800; color: #B45309; background: #FEF3C7; padding: 2px 6px; border-radius: 6px; white-space: nowrap; }
+    .dh-srv { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13px; }
+    .dh-srv-amt { font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--danger); text-align: right; }
+    .dh-srv-meta { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .dh-empty { font-size: 13px; color: var(--text-muted); padding: 12px; border: 1px dashed var(--border); border-radius: 14px; text-align: center; }
+    .dh-more { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface2); font-weight: 700; cursor: pointer; color: var(--text-main); font-family: inherit; }
+
+    /* =========================================
+       SMART SERVICE ALERTS
+    ========================================= */
+    .alert-card { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px; position: relative; overflow: hidden; border: 1px solid transparent; box-shadow: var(--shadow-sm); animation: popIn 0.4s ease forwards; }
+    .alert-card.due { background: var(--danger-bg); border-color: rgba(239, 68, 68, 0.3); color: var(--danger); }
+    .alert-card.warning { background: #FFFBEB; border-color: #FDE68A; color: #D97706; }
+    .alert-icon { font-size: 24px; flex-shrink: 0; }
+    .alert-content { flex: 1; }
+    .alert-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .alert-desc { font-size: 12px; font-weight: 600; color: var(--text-main); opacity: 0.8; line-height:1.4; }
+    .alert-btn { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; font-family:'Poppins', sans-serif;}
+    .alert-btn:active { transform: scale(0.95); }
+    .alert-progress-bg { width: 100%; height: 6px; background: rgba(217, 119, 6, 0.2); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+    .alert-progress-fill { height: 100%; background: #D97706; border-radius: 4px; }
+
+    /* =========================================
+       PREMIUM GRADIENT KPI GRID
+    ========================================= */
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; } 
+    @media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(4, 1fr); } } 
+    
+    .kpi-card { border: none; border-radius: 24px; padding: 22px; display: flex; flex-direction: column; cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); position: relative; overflow: hidden; color: #fff; } 
+    .kpi-card:hover { transform: translateY(-6px) scale(1.02); }
+    
+    .kpi-card.c-fuel { background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); box-shadow: 0 10px 20px rgba(118, 75, 162, 0.2); }
+    .kpi-card.c-route { background: linear-gradient(135deg, #2AFADF 0%, #4C83FF 100%); box-shadow: 0 10px 20px rgba(76, 131, 255, 0.2); }
+    .kpi-card.c-money { background: linear-gradient(135deg, #13547A 0%, #80D0C7 100%); box-shadow: 0 10px 20px rgba(19, 84, 122, 0.2); }
+    .kpi-card.c-service { background: linear-gradient(135deg, #FF0844 0%, #FFB199 100%); box-shadow: 0 10px 20px rgba(255, 8, 68, 0.2); }
+    
+    .kpi-card::after { content: ''; position: absolute; right: -20px; bottom: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none; }
+    .kpi-card::before { content: ''; position: absolute; right: 40px; top: -20px; width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none; }
+    
+    .k-icon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 18px; background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3); z-index: 1;} 
+    
+    .k-val { font-family: 'Outfit', sans-serif; font-size: clamp(22px, 5vw, 28px); font-weight: 800; margin-bottom: 4px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1; position: relative;} 
+    .k-lbl { font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.9); text-transform: uppercase; letter-spacing: 0.5px; z-index: 1; position: relative;}
+
+    /* =========================================
+       LOG CARDS
+    ========================================= */
+    .log-list { display: grid; grid-template-columns: 1fr; gap: 16px; } 
+    @media (min-width: 768px) { .log-list { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); } } 
+    .log-card { background: var(--surface); border: 1px solid rgba(255,255,255,0.6); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 16px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm); transition: 0.3s; } 
+    .log-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+    .log-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; } 
+    .log-card.f-type::before { background: var(--text-purple); } 
+    .log-card.s-type::before { background: var(--text-red); } 
+    
+    .lc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; } 
+    .lc-title-group { display: flex; gap: 12px; align-items: center; flex: 1; } 
+    .lc-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; } 
+    .lc-icon.fuel { background: var(--icon-purple); color: var(--text-purple); } 
+    .lc-icon.srvc { background: var(--icon-red); color: var(--text-red); } 
+    .lc-car { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 17px; color: var(--text-main); margin-bottom: 4px; } 
+    .lc-date { font-size: 11px; color: var(--text-muted); font-weight: 600; } 
+    .lc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; text-align: right; } 
+    .lc-amt { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; } 
+    .lc-amt.fuel { color: var(--text-main); } 
+    .lc-amt.srvc { color: var(--text-red); } 
+    
+    .pill { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; } 
+    .p-red { background: var(--icon-red); color: var(--text-red); } 
+    .p-blue { background: var(--icon-blue); color: var(--text-blue); } 
+    .p-green { background: var(--icon-green); color: var(--text-green); } 
+    .p-gray { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); } 
+    
+    .lc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: var(--surface2); padding: 14px; border-radius: var(--radius-md); } 
+    .lg-item { display: flex; flex-direction: column; gap: 4px; } 
+    .lg-lbl { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; } 
+    .lg-val { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--text-main); }
+
+    /* =========================================
+       DATA TABLE 
+    ========================================= */
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow-x: auto; box-shadow: var(--shadow-sm); } 
+    .premium-table { width: 100%; border-collapse: collapse; min-width: 900px; text-align: left; } 
+    .premium-table th { background: var(--surface2); padding: 16px 20px; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); } 
+    .premium-table td { padding: 16px 20px; font-size: 14px; font-weight: 600; color: var(--text-main); border-bottom: 1px solid var(--border); } 
+    .td-type { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; } 
+    .td-type.fuel { background: var(--icon-purple); color: var(--text-purple); } 
+    .td-type.service { background: var(--icon-red); color: var(--text-red); }
+
+    /* =========================================
+       MODALS & FORMS
+    ========================================= */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(8px); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; opacity: 0; transition: 0.3s; } 
+    .modal-overlay.open { display: flex; opacity: 1; } 
+    .modal-content { background: var(--surface); width: 100%; max-width: 500px; border-radius: var(--radius-lg); padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); transform: translateY(20px) scale(0.95); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; } 
+    .modal-overlay.open .modal-content { transform: translateY(0) scale(1); } 
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; } 
+    .modal-title { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; } 
+    .modal-close { background: var(--surface2); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--text-muted); transition: 0.2s;} 
+    .modal-close:hover { background: var(--danger-bg); color: var(--danger); } 
+    
+    .form-group { margin-bottom: 16px; } 
+    .form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; } 
+    .form-input, .form-select { width: 100%; background: var(--surface2); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-md); font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600; color: var(--text-main); outline: none; transition: 0.2s; } 
+    .form-input:focus, .form-select:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px var(--primary-bg); } 
+    
+    .file-upload { position: relative; overflow: hidden; display: inline-block; width: 100%; } 
+    .file-btn { border: 2px dashed var(--primary); background: var(--primary-bg); color: var(--primary); padding: 16px; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; justify-content: center; transition: 0.2s; } 
+    .file-upload input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; } 
+    .file-name { font-size: 13px; font-weight: 600; color: var(--text-green); margin-top: 8px; text-align: center; display: none;} 
+    .file-name.show { display: block; } 
+    
+    .btn-submit { width: 100%; background: var(--primary); color: #fff; border: none; padding: 16px; border-radius: var(--radius-md); font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); margin-top: 10px; } 
+    .btn-submit:hover { transform:translateY(-2px); box-shadow: 0 8px 15px rgba(67,56,202,0.3); }
+    .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; transform:none; box-shadow:none;} 
+    
+    .empty { padding: 60px 20px; text-align: center; color: var(--text-muted); font-weight: 600; } 
+    .empty i { font-size: 40px; margin-bottom: 16px; opacity: 0.3; } 
+    .skel { background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite linear; border-radius: var(--radius-md); } 
+    @keyframes shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } } 
+    .spin { animation: spin 1s linear infinite; } 
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* =========================================
+       SWEET SUCCESS ANIMATION
+    ========================================= */
+    .success-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s ease; }
+    .success-overlay.show { opacity: 1; pointer-events: all; }
+    .success-circle { width: 90px; height: 90px; background: var(--text-green); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 45px; transform: scale(0.3) translateY(50px); opacity: 0; transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .success-overlay.show .success-circle { transform: scale(1) translateY(0); opacity: 1; }
+    .success-text { font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: var(--text-main); margin-top: 24px; transform: translateY(20px); opacity: 0; transition: 0.5s ease 0.1s; }
+    .success-overlay.show .success-text { transform: translateY(0); opacity: 1; }
+
+    /* =========================================
+       ULTRA-PREMIUM TASKS CSS (TEXT + TYPOGRAPHY)
+    ========================================= */
+    .task-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    
+    .task-v-card { border: none; border-radius: 24px; padding: 35px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; overflow: hidden; color: #fff; text-align: center; }
+    .task-v-card:hover { transform: translateY(-6px); box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
+    
+    .t-grad-0 { background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); box-shadow: 0 10px 20px rgba(118, 75, 162, 0.2); }
+    .t-grad-1 { background: linear-gradient(135deg, #2AFADF 0%, #4C83FF 100%); box-shadow: 0 10px 20px rgba(76, 131, 255, 0.2); }
+    .t-grad-2 { background: linear-gradient(135deg, #13547A 0%, #80D0C7 100%); box-shadow: 0 10px 20px rgba(19, 84, 122, 0.2); }
+    .t-grad-3 { background: linear-gradient(135deg, #FF0844 0%, #FFB199 100%); box-shadow: 0 10px 20px rgba(255, 8, 68, 0.2); }
+    .t-grad-4 { background: linear-gradient(135deg, #F093FB 0%, #F5576C 100%); box-shadow: 0 10px 20px rgba(245, 87, 108, 0.2); }
+    .t-grad-5 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); box-shadow: 0 10px 20px rgba(0, 242, 254, 0.2); }
+
+    .task-v-card::after { content: ''; position: absolute; right: -20px; bottom: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none; z-index: 0; }
+    .task-v-card::before { content: ''; position: absolute; left: -20px; top: -20px; width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none; z-index: 0; }
+    
+    .task-v-icon { font-size: 32px; margin-bottom: 15px; color: rgba(255,255,255,0.8); z-index: 1; transition: 0.3s; }
+    .task-v-card:hover .task-v-icon { transform: scale(1.1); color: #ffffff; }
+
+    .task-v-name { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin-bottom: 0; text-align: center; z-index: 1; text-shadow: 0 3px 6px rgba(0,0,0,0.2); letter-spacing: 0.5px; line-height: 1.2; }
+    
+    .task-badge { position: absolute; top: 12px; right: 12px; background: #ffffff; color: var(--danger); font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 20px; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    .task-badge.zero { color: var(--text-green); }
+    
+    .task-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap:12px; }
+    .task-car-title { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--text-main); text-transform: uppercase; display: flex; align-items: center; gap: 8px;}
+    
+    .btn-back { background: var(--surface); color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px; border-radius: var(--radius-md); font-family:'Poppins', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; box-shadow: var(--shadow-sm); }
+    .btn-back:hover { background: var(--surface2); border-color: var(--text-muted); transform:translateY(-2px); }
+
+    .task-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 30px;}
+    .task-item { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--danger); border-radius: var(--radius-lg); padding: 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px; box-shadow: var(--shadow-sm); transition: 0.3s cubic-bezier(0.25,0.8,0.25,1); }
+    .task-item:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+    
+    .task-info { flex: 1; }
+    .task-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; line-height: 1.3;}
+    .task-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+    
+    .t-pill { padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tp-daily { background: #FEE2E2; color: #B91C1C; }
+    .tp-weekly { background: #DBEAFE; color: #1D4ED8; }
+    .tp-monthly { background: #F3E8FF; color: #6D28D9; }
+    
+    .t-date { display: flex; align-items: center; gap: 5px; color: var(--danger); font-weight:700;}
+    
+    .btn-done { background: #10B981; color: #ffffff; border: none; padding: 10px 20px; border-radius: 12px; font-family:'Poppins', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: 0.3s cubic-bezier(0.25,0.8,0.25,1); white-space: nowrap; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(16,185,129,0.3);}
+    .btn-done:hover { background: #059669; transform:translateY(-2px); box-shadow: 0 6px 15px rgba(16,185,129,0.4);}
+    .btn-done:active { transform: scale(0.95); box-shadow:none;}
+
+    /* =========================================
+       v4.0 — AUTH SCREEN
+    ========================================= */
+    .auth-screen { position: fixed; inset: 0; z-index: 4000; display: none; align-items: center; justify-content: center;
+      padding: 20px; background: linear-gradient(160deg, #1E1B4B 0%, #312E81 45%, #4338CA 100%); overflow-y: auto; }
+    .auth-screen.show { display: flex; }
+    .auth-screen::before { content: ''; position: absolute; width: 420px; height: 420px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.14), transparent 70%); top: -140px; right: -120px; pointer-events: none; }
+    .auth-screen::after { content: ''; position: absolute; width: 320px; height: 320px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(56,189,248,0.18), transparent 70%); bottom: -110px; left: -90px; pointer-events: none; }
+
+    .auth-card { position: relative; z-index: 2; width: 100%; max-width: 400px; background: var(--surface);
+      border-radius: 24px; padding: 32px 26px; box-shadow: 0 30px 70px rgba(0,0,0,0.35); animation: popIn .5s cubic-bezier(0.175,0.885,0.32,1.275) forwards; opacity: 0; }
+    .auth-logo { width: 58px; height: 58px; border-radius: 18px; background: linear-gradient(135deg,#4F46E5,#3B82F6); color:#fff;
+      display:flex; align-items:center; justify-content:center; font-size:26px; margin: 0 auto 18px; box-shadow: 0 10px 24px rgba(67,56,202,0.35); }
+    .auth-title { font-family:'Outfit',sans-serif; font-size: 25px; font-weight: 800; text-align:center; color: var(--text-main); letter-spacing:-0.5px; }
+    .auth-sub { text-align:center; font-size: 13.5px; color: var(--text-muted); font-weight: 600; margin-top: 6px; margin-bottom: 26px; line-height:1.5; }
+
+    .auth-field { margin-bottom: 16px; }
+    .auth-label { display:block; font-size: 11px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 8px; font-family:'Outfit',sans-serif; }
+    .auth-input-wrap { position: relative; }
+    .auth-input-wrap > i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; pointer-events:none; }
+    .auth-input { width: 100%; padding: 15px 15px 15px 42px; border: 1.5px solid var(--border); border-radius: 14px;
+      font-size: 15px; font-weight: 600; font-family:'Poppins',sans-serif; background: var(--surface2); color: var(--text-main);
+      transition: all .2s; outline: none; }
+    .auth-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(67,56,202,0.10); }
+    .auth-eye { position:absolute; right: 6px; top: 50%; transform: translateY(-50%); background:none; border:none;
+      color: var(--text-muted); font-size: 15px; cursor:pointer; padding: 10px; }
+
+    .auth-btn { width: 100%; padding: 16px; border: none; border-radius: 14px; background: linear-gradient(135deg,#4F46E5,#3B82F6);
+      color:#fff; font-family:'Outfit',sans-serif; font-size: 15.5px; font-weight: 800; letter-spacing: 0.3px; cursor: pointer;
+      display:flex; align-items:center; justify-content:center; gap:10px; box-shadow: 0 10px 24px rgba(67,56,202,0.32); transition: all .25s; margin-top: 6px; }
+    .auth-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(67,56,202,0.42); }
+    .auth-btn:active:not(:disabled) { transform: scale(0.97); }
+    .auth-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .auth-btn.ghost { background: var(--surface2); color: var(--text-main); border: 1.5px solid var(--border); box-shadow:none; }
+
+    .auth-link { display:block; width:100%; text-align:center; margin-top: 18px; background:none; border:none;
+      color: var(--primary); font-size: 13.5px; font-weight: 700; font-family:'Outfit',sans-serif; cursor:pointer; padding: 6px; }
+    .auth-link:hover { text-decoration: underline; }
+
+    .auth-msg { margin-top: 16px; padding: 13px 15px; border-radius: 12px; font-size: 13px; font-weight: 600;
+      display:none; align-items:flex-start; gap:10px; line-height:1.5; }
+    .auth-msg.show { display:flex; }
+    .auth-msg.err { background: var(--danger-bg); color: var(--text-red); border: 1px solid rgba(220,38,38,0.2); }
+    .auth-msg.ok  { background: var(--icon-green); color: var(--text-green); border: 1px solid rgba(5,150,105,0.2); }
+    .auth-msg.info{ background: var(--primary-bg); color: var(--primary); border: 1px solid rgba(67,56,202,0.2); }
+
+    .otp-boxes { display:flex; gap: 9px; justify-content:center; margin: 4px 0 6px; }
+    .otp-boxes input { width: 46px; height: 56px; text-align:center; font-size: 22px; font-weight: 800;
+      font-family:'Outfit',sans-serif; border: 1.5px solid var(--border); border-radius: 13px; background: var(--surface2);
+      color: var(--text-main); outline:none; transition: all .2s; }
+    .otp-boxes input:focus { border-color: var(--primary); background:#fff; box-shadow: 0 0 0 4px rgba(67,56,202,0.10); }
+
+    .auth-foot { text-align:center; font-size: 11.5px; color: var(--text-muted); font-weight:600; margin-top: 22px; line-height:1.6; }
+    .auth-step { display:none; }
+    .auth-step.active { display:block; }
+
+    /* Header user chip */
+    .user-chip { display:flex; align-items:center; gap:8px; background: var(--surface2); border: 1px solid var(--border);
+      padding: 5px 6px 5px 5px; border-radius: 24px; cursor: pointer; transition: all .2s; }
+    .user-chip:hover { background: var(--border); }
+    .user-av { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#4F46E5,#3B82F6); color:#fff;
+      display:flex; align-items:center; justify-content:center; font-size: 11.5px; font-weight: 800; font-family:'Outfit',sans-serif; flex-shrink:0; }
+    .user-chip-name { font-size: 12px; font-weight: 700; font-family:'Outfit',sans-serif; color: var(--text-main);
+      max-width: 90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    @media (max-width: 420px) { .user-chip-name { display:none; } }
+
+    .side-user { margin-top:auto; padding-top: 18px; border-top: 1px solid var(--border); }
+
+    /* =========================================
+       v4.0 — SIMPLIFIED CAR TASK VIEW
+    ========================================= */
+    .tv-wrap { animation: fadeInSlide .35s ease forwards; }
+
+    .tv-top { display:flex; align-items:center; gap: 12px; margin-bottom: 18px; }
+    .tv-back { width: 42px; height: 42px; flex-shrink:0; border-radius: 14px; background: var(--surface);
+      border: 1px solid var(--border); color: var(--text-main); font-size: 16px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-sm); transition: all .2s; }
+    .tv-back:hover { background: var(--surface2); transform: translateX(-2px); }
+    .tv-greet-lbl { font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+      color: var(--text-muted); font-family:'Outfit',sans-serif; }
+    .tv-greet-name { font-family:'Outfit',sans-serif; font-size: 26px; font-weight: 800; color: var(--text-main);
+      line-height: 1.1; letter-spacing: -0.8px; text-transform: uppercase; }
+    .tv-sync { display:flex; align-items:center; gap:6px; font-size: 11.5px; font-weight: 700; color: var(--text-green); margin-top: 5px; }
+    .tv-sync .pulse-dot { width: 7px; height: 7px; }
+
+    .tv-title-row { display:flex; align-items:center; gap: 10px; margin: 22px 0 14px; }
+    .tv-bar { width: 4px; height: 22px; border-radius: 4px; background: var(--primary); }
+    .tv-title { font-family:'Outfit',sans-serif; font-size: 21px; font-weight: 800; color: var(--text-main); letter-spacing:-0.4px; }
+
+    .tv-segs { display:flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px; scrollbar-width:none; }
+    .tv-segs::-webkit-scrollbar { display:none; }
+    .tv-seg { flex: 1 1 0; min-width: 118px; display:flex; align-items:center; justify-content:center; gap: 8px;
+      padding: 14px 12px; border-radius: 16px; background: var(--surface); border: 1.5px solid var(--border);
+      font-family:'Outfit',sans-serif; font-size: 13.5px; font-weight: 800; color: var(--text-muted);
+      cursor:pointer; transition: all .22s cubic-bezier(0.25,0.8,0.25,1); white-space:nowrap; box-shadow: var(--shadow-sm); }
+    .tv-seg i { font-size: 13px; }
+    .tv-seg:hover { transform: translateY(-2px); }
+    .tv-seg.active { background: linear-gradient(135deg,#4F46E5,#3B82F6); color:#fff; border-color: transparent;
+      box-shadow: 0 8px 20px rgba(67,56,202,0.30); }
+    .tv-seg.late { color: var(--text-red); border-color: rgba(220,38,38,0.25); }
+    .tv-seg.late.active { background: linear-gradient(135deg,#DC2626,#F43F5E); color:#fff; border-color:transparent;
+      box-shadow: 0 8px 20px rgba(220,38,38,0.30); }
+    .tv-seg-count { background: rgba(0,0,0,0.07); padding: 1px 8px; border-radius: 10px; font-size: 11.5px; min-width: 22px; }
+    .tv-seg.active .tv-seg-count { background: rgba(255,255,255,0.25); }
+
+    .tv-list { display:flex; flex-direction:column; gap: 12px; }
+
+    .tv-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+      padding: 16px 16px 16px 20px; box-shadow: var(--shadow-sm); overflow:hidden;
+      animation: popIn .45s cubic-bezier(0.175,0.885,0.32,1.275) forwards; opacity: 0; transition: box-shadow .25s, transform .25s; }
+    .tv-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .tv-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width: 5px; background: var(--primary); }
+    .tv-card.is-late::before { background: linear-gradient(180deg,#DC2626,#F43F5E); }
+    .tv-card.is-due::before  { background: linear-gradient(180deg,#4F46E5,#3B82F6); }
+    .tv-card.is-soon::before { background: linear-gradient(180deg,#F59E0B,#FBBF24); }
+    .tv-card.is-done::before { background: linear-gradient(180deg,#059669,#10B981); }
+    .tv-card.is-done { background: linear-gradient(135deg, #F6FFFB 0%, var(--surface) 55%); }
+
+    .tv-title-line { display:flex; align-items:flex-start; justify-content:space-between; gap: 12px; }
+    .tv-status-ic { font-size: 22px; flex-shrink: 0; line-height: 1.25; }
+    .tv-task-name { font-family:'Outfit',sans-serif; font-size: 16px; font-weight: 800; color: var(--text-main);
+      line-height: 1.35; letter-spacing:-0.2px; overflow-wrap: anywhere; }
+    .tv-meta { display:flex; align-items:center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+    .tv-pill { font-size: 10.5px; font-weight: 800; padding: 4px 10px; border-radius: 20px;
+      font-family:'Outfit',sans-serif; letter-spacing:0.4px; text-transform: uppercase; }
+    .tv-pill.d { background: var(--icon-blue);  color: var(--text-blue); }
+    .tv-pill.w { background: var(--icon-purple);color: var(--text-purple); }
+    .tv-pill.m { background: #FFF7ED;           color: #C2410C; }
+    .tv-pill.x { background: var(--danger-bg);  color: var(--text-red); }
+
+    /* ── Tasks nav badge ── */
+    .nav-badge { display:inline-flex; align-items:center; justify-content:center;
+      min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
+      font-family:'Outfit',sans-serif; font-size: 11px; font-weight: 800; line-height:1;
+      background: var(--danger); color:#fff; box-shadow: 0 2px 8px rgba(239,68,68,0.45);
+      animation: badgePop .35s cubic-bezier(0.175,0.885,0.32,1.275); }
+    .nav-badge.clear { background: var(--text-green); box-shadow: 0 2px 8px rgba(5,150,105,0.4); font-size: 11px; }
+    .nav-badge.hide { display:none; }
+    @keyframes badgePop { from { transform: scale(0); } to { transform: scale(1); } }
+
+    .side-item { position: relative; }
+    .side-item .nav-badge { margin-left: auto; }
+    .nav-item  { position: relative; }
+    .nav-item .nav-badge { position: absolute; top: -3px; left: 50%; margin-left: 4px;
+      min-width: 18px; height: 18px; font-size: 10px; border: 2px solid var(--surface); }
+
+    /* ── Task remarks ── */
+    .tv-note-btn { background: var(--primary-bg); color: var(--primary); border: 1.5px solid rgba(67,56,202,0.22);
+      border-radius: 13px; padding: 10px 13px; font-family:'Outfit',sans-serif; font-size: 12.5px;
+      font-weight: 800; cursor:pointer; display:flex; align-items:center; gap:6px; transition: all .2s;
+      white-space:nowrap; position: relative; }
+    .tv-note-btn:hover { background: #E0E7FF; transform: translateY(-2px); }
+    .tv-note-btn:active { transform: scale(0.94); }
+    .tv-note-count { background: var(--primary); color:#fff; border-radius: 9px; padding: 1px 6px;
+      font-size: 10.5px; font-weight: 800; }
+
+    .tv-notes { margin-top: 13px; display:flex; flex-direction:column; gap: 8px; }
+    .tv-note { display:flex; gap: 10px; padding: 11px 13px; background: var(--surface2);
+      border: 1px solid var(--border); border-left: 3px solid var(--primary);
+      border-radius: 11px; }
+    .tv-note > i { color: var(--primary); font-size: 13px; margin-top: 2px; }
+    .tv-note-body { min-width:0; }
+    .tv-note-txt { font-size: 13px; font-weight: 600; color: var(--text-main); line-height: 1.45;
+      word-break: break-word; white-space: pre-wrap; }
+    .tv-note-meta { font-size: 10.5px; font-weight: 800; color: var(--text-muted); margin-top: 5px;
+      font-family:'Outfit',sans-serif; letter-spacing:0.3px; text-transform: uppercase; }
+
+    .note-list { display:flex; flex-direction:column; gap: 10px; max-height: 220px; overflow-y:auto;
+      margin-bottom: 18px; }
+    .note-empty { text-align:center; padding: 22px; color: var(--text-muted); font-size: 13px; font-weight:600; }
+    .note-locked { display:flex; align-items:center; gap: 8px; font-size: 11.5px; font-weight: 700;
+      color: var(--text-muted); margin-top: 10px; }
+    .form-textarea { width:100%; background: var(--surface2); border: 1px solid var(--border);
+      padding: 13px 14px; border-radius: var(--radius-md); font-family:'Poppins',sans-serif;
+      font-size: 14px; font-weight: 600; color: var(--text-main); outline:none; transition:.2s;
+      resize: vertical; min-height: 92px; }
+    .form-textarea:focus { border-color: var(--primary); background: var(--surface);
+      box-shadow: 0 0 0 3px var(--primary-bg); }
+    .note-counter { text-align:right; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 6px; }
+    .tv-missed { display:inline-flex; align-items:center; gap:5px; font-size: 10.5px; font-weight: 800;
+      padding: 4px 9px; border-radius: 20px; background: var(--danger-bg); color: var(--text-red);
+      font-family:'Outfit',sans-serif; letter-spacing:0.3px; }
+    .tv-card.is-broken::before { background: linear-gradient(180deg,#DC2626,#991B1B); }
+    .tv-card.is-broken { background: linear-gradient(135deg,#FFF5F5 0%, var(--surface) 55%); }
+    .tv-fixnote { margin-top: 12px; padding: 11px 14px; background: var(--danger-bg);
+      border: 1px solid rgba(220,38,38,0.2); border-radius: 13px; font-size: 12px;
+      font-weight: 700; color: var(--text-red); line-height: 1.5; }
+    .tv-when { display:inline-flex; align-items:center; gap:5px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
+    .tv-when.late { color: var(--text-red); }
+    .tv-when.soon { color: #C2410C; }
+
+    /* Buttons get a row of their own, under the title — never beside it.
+       flex:1 1 0 makes them equal columns that share whatever width there is,
+       so the row can never wrap into a ragged 2+1 no matter how wide the
+       font renders. */
+    .tv-actions { display:flex; align-items:stretch; gap: 8px; margin-top: 14px; }
+    .tv-actions:empty { display:none; margin-top: 0; }
+    .tv-actions > button { flex: 1 1 0; min-width: 0; justify-content: center; overflow: hidden; }
+    @media (min-width: 768px) {
+      .tv-actions { justify-content: flex-start; }
+      .tv-actions > button { flex: 0 1 auto; min-width: 104px; }
+    }
+    @media (max-width: 430px) {
+      .tv-done-btn, .tv-shift-btn, .tv-note-btn { padding-left: 8px; padding-right: 8px; font-size: 12px; gap: 5px; }
+      .tv-card { padding-left: 16px; padding-right: 13px; }
+    }
+    .tv-done-btn { background: linear-gradient(135deg,#059669,#10B981); color:#fff; border:none; border-radius: 13px;
+      padding: 11px 16px; font-family:'Outfit',sans-serif; font-size: 13px; font-weight: 800; cursor:pointer;
+      display:flex; align-items:center; gap:7px; box-shadow: 0 6px 16px rgba(5,150,105,0.28); transition: all .2s; white-space:nowrap; }
+    .tv-done-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(5,150,105,0.36); }
+    .tv-done-btn:active { transform: scale(0.94); }
+    .tv-shift-btn { background: #FFFBEB; color:#B45309; border: 1.5px solid #FDE68A; border-radius: 13px;
+      padding: 10px 13px; font-family:'Outfit',sans-serif; font-size: 12.5px; font-weight: 800; cursor:pointer;
+      display:flex; align-items:center; gap:6px; transition: all .2s; white-space:nowrap; }
+    .tv-shift-btn:hover { background:#FEF3C7; transform: translateY(-2px); }
+    .tv-shift-btn:active { transform: scale(0.94); }
+
+    .tv-donechip { display:flex; align-items:center; gap: 9px; margin-top: 13px; padding: 11px 14px;
+      background: var(--icon-green); border: 1px solid rgba(5,150,105,0.22); border-radius: 13px; }
+    .tv-donechip i { color: var(--text-green); font-size: 15px; }
+    .tv-donechip-txt { font-size: 12.5px; font-weight: 700; color: #065F46; line-height: 1.4; }
+    .tv-donechip-txt b { font-weight: 800; font-family:'Outfit',sans-serif; }
+
+    .tv-shift-note { margin-top: 10px; font-size: 11px; font-weight: 700; color: #B45309;
+      display:flex; align-items:center; gap: 6px; }
+
+    .tv-empty { background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 48px 24px; text-align:center; box-shadow: var(--shadow-sm); animation: popIn .45s cubic-bezier(0.175,0.885,0.32,1.275) forwards; opacity:0; }
+    .tv-empty-ic { width: 76px; height: 76px; border-radius: 50%; background: var(--primary-bg); color: var(--primary);
+      display:flex; align-items:center; justify-content:center; font-size: 30px; margin: 0 auto 18px; }
+    .tv-empty-ic.green { background: var(--icon-green); color: var(--text-green); }
+    .tv-empty-txt { font-family:'Outfit',sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--text-muted); }
+    .tv-empty-sub { font-size: 13px; font-weight: 600; color: var(--text-muted); opacity:.75; margin-top: 8px; }
+
+    /* Shift modal chooser */
+    .shift-opts { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 4px; }
+    .shift-opt { padding: 20px 12px; border-radius: 16px; border: 1.5px solid var(--border); background: var(--surface2);
+      cursor:pointer; text-align:center; transition: all .2s; }
+    .shift-opt:hover:not(.disabled) { border-color: var(--primary); background: var(--primary-bg); transform: translateY(-2px); }
+    .shift-opt.selected { border-color: var(--primary); background: var(--primary-bg); box-shadow: 0 0 0 3px rgba(67,56,202,0.12); }
+    .shift-opt.disabled { opacity: .38; cursor: not-allowed; }
+    .shift-opt-n { font-family:'Outfit',sans-serif; font-size: 27px; font-weight: 800; color: var(--text-main); line-height:1; }
+    .shift-opt-l { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 7px; text-transform:uppercase; letter-spacing:0.5px; }
+    .shift-opt-d { font-size: 11.5px; font-weight: 700; color: var(--primary); margin-top: 8px; }
+
+    .info-strip { display:flex; align-items:flex-start; gap: 10px; padding: 13px 15px; background: var(--primary-bg);
+      border: 1px solid rgba(67,56,202,0.16); border-radius: 13px; font-size: 12.5px; font-weight: 600;
+      color: var(--primary); line-height: 1.5; margin-bottom: 18px; }
+    .info-strip i { margin-top: 2px; }
+
+    .warn-strip { display:flex; align-items:center; gap:10px; padding: 12px 15px; background: #FFFBEB;
+      border: 1px solid #FDE68A; border-radius: 13px; font-size: 12.5px; font-weight: 700; color: #92400E; margin-bottom: 16px; }
+    .warn-strip button { margin-left:auto; background:#B45309; color:#fff; border:none; border-radius: 9px;
+      padding: 7px 12px; font-size: 11.5px; font-weight: 800; font-family:'Outfit',sans-serif; cursor:pointer; white-space:nowrap; }
+
+    .task-v-card .task-v-sub { font-size: 11px; font-weight: 700; opacity: .85; margin-top: 4px; }
+
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN / RESET SCREEN ══════════════ -->
+<div class="auth-screen show" id="authScreen">
+  <div class="auth-card">
+
+    <!-- STEP 0: CHECKING SAVED SESSION -->
+    <div class="auth-step active" id="stepChecking">
+      <div class="auth-logo"><i class="fa-solid fa-bolt"></i></div>
+      <div class="auth-title">JPR Fleet</div>
+      <div class="auth-sub" style="margin-bottom:10px;">Checking your session…</div>
+      <div style="text-align:center; padding:18px 0 6px; color:var(--primary); font-size:26px;">
+        <i class="fa-solid fa-spinner spin"></i>
+      </div>
+    </div>
+
+    <!-- STEP 1: LOGIN -->
+    <div class="auth-step" id="stepLogin">
+      <div class="auth-logo"><i class="fa-solid fa-bolt"></i></div>
+      <div class="auth-title">JPR Fleet</div>
+      <div class="auth-sub">Sign in to see your vehicle checklist</div>
+
+      <form onsubmit="doLogin(event)" autocomplete="on">
+        <div class="auth-field">
+          <label class="auth-label">Email</label>
+          <div class="auth-input-wrap">
+            <i class="fa-regular fa-envelope"></i>
+            <input type="email" class="auth-input" id="lgEmail" placeholder="you@company.com"
+                   autocomplete="username" required>
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label class="auth-label">Password</label>
+          <div class="auth-input-wrap">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" class="auth-input" id="lgPass" placeholder="Default is 1234"
+                   autocomplete="current-password" required style="padding-right:46px;">
+            <button type="button" class="auth-eye" onclick="togglePw('lgPass', this)" tabindex="-1">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-btn" id="lgBtn">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+        </button>
+      </form>
+
+      <button class="auth-link" onclick="gotoStep('stepForgot')">Forgot password?</button>
+      <div class="auth-msg" id="lgMsg"></div>
+      <div class="auth-foot">You stay signed in on this device until you log out.</div>
+    </div>
+
+    <!-- STEP 2: REQUEST OTP -->
+    <div class="auth-step" id="stepForgot">
+      <div class="auth-logo" style="background:linear-gradient(135deg,#F59E0B,#F43F5E);"><i class="fa-solid fa-key"></i></div>
+      <div class="auth-title">Reset password</div>
+      <div class="auth-sub">We'll email you a 6-digit code</div>
+
+      <form onsubmit="doSendOtp(event)">
+        <div class="auth-field">
+          <label class="auth-label">Your registered email</label>
+          <div class="auth-input-wrap">
+            <i class="fa-regular fa-envelope"></i>
+            <input type="email" class="auth-input" id="fgEmail" placeholder="you@company.com" required>
+          </div>
+        </div>
+        <button type="submit" class="auth-btn" id="fgBtn">
+          <i class="fa-solid fa-paper-plane"></i> Send code
+        </button>
+      </form>
+
+      <button class="auth-link" onclick="gotoStep('stepLogin')">
+        <i class="fa-solid fa-arrow-left"></i> Back to sign in
+      </button>
+      <div class="auth-msg" id="fgMsg"></div>
+    </div>
+
+    <!-- STEP 3: VERIFY OTP + NEW PASSWORD -->
+    <div class="auth-step" id="stepVerify">
+      <div class="auth-logo" style="background:linear-gradient(135deg,#059669,#10B981);"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="auth-title">Enter the code</div>
+      <div class="auth-sub" id="vfSubtitle">Check your inbox</div>
+
+      <form onsubmit="doResetPassword(event)">
+        <div class="auth-field">
+          <label class="auth-label" style="text-align:center;">6-digit code</label>
+          <div class="otp-boxes" id="otpBoxes">
+            <input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+            <input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+            <input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+            <input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+            <input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+            <input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label class="auth-label">New password</label>
+          <div class="auth-input-wrap">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" class="auth-input" id="vfPass" placeholder="At least 4 characters"
+                   minlength="4" required style="padding-right:46px;">
+            <button type="button" class="auth-eye" onclick="togglePw('vfPass', this)" tabindex="-1">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-btn" id="vfBtn">
+          <i class="fa-solid fa-check"></i> Set new password
+        </button>
+      </form>
+
+      <button class="auth-link" onclick="doSendOtp(null, true)">Resend code</button>
+      <div class="auth-msg" id="vfMsg"></div>
+    </div>
+
+  </div>
+</div>
+
+
+<div class="app-layout">
+  
+  <aside class="sidebar">
+    <div class="brand" style="margin-bottom:32px;">
+      <div class="brand-icon"><i class="fa-solid fa-bolt"></i></div>
+      <div class="brand-text">JPR FUEL</div>
+    </div>
+    <nav class="side-links">
+      <div class="side-item active" data-tab="home" onclick="switchTab('home')"><i class="fa-solid fa-chart-pie"></i> <span data-i18n="Dashboard">Dashboard</span></div>
+      <div class="side-item" data-tab="tasks" onclick="switchTab('tasks')"><i class="fa-solid fa-list-check"></i> <span data-i18n="Tasks">Tasks</span><span class="nav-badge hide js-task-badge"></span></div>
+      <div class="side-item" data-tab="fuel" onclick="switchTab('fuel')"><i class="fa-solid fa-gas-pump"></i> <span data-i18n="Fuel Logs">Fuel Logs</span></div>
+      <div class="side-item" data-tab="service" onclick="switchTab('service')"><i class="fa-solid fa-wrench"></i> <span data-i18n="Maintenance">Maintenance</span></div>
+      <div class="side-item" data-tab="data" onclick="switchTab('data')"><i class="fa-solid fa-table"></i> <span data-i18n="Data (Excel)">Data (Excel)</span></div>
+    </nav>
+    <div class="side-user">
+      <div class="user-chip" onclick="openAccount()" style="width:100%; justify-content:flex-start;">
+        <div class="user-av js-user-av">—</div>
+        <div style="min-width:0; flex:1;">
+          <div class="user-chip-name js-user-name" style="display:block; max-width:none; font-size:13px;">—</div>
+          <div style="font-size:10.5px; font-weight:700; color:var(--text-muted);">Tap for account</div>
+        </div>
+        <i class="fa-solid fa-gear" style="color:var(--text-muted); font-size:13px; margin-right:6px;"></i>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="top-header">
+      <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-bolt"></i></div>
+        <div class="brand-text">JPR FUEL</div>
+      </div>
+      <div class="header-right">
+        <button class="btn-lang" onclick="toggleLanguage()">
+          <i class="fa-solid fa-language" style="font-size:16px;"></i> <span id="langText">HI</span>
+        </button>
+        <div class="live-badge"><div class="pulse-dot"></div> Live</div>
+        <div class="user-chip" onclick="openAccount()" title="Account">
+          <div class="user-av js-user-av">—</div>
+          <div class="user-chip-name js-user-name">—</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-scroll" id="mainScroll">
+      <div class="container">
+        
+        <div class="action-cards">
+          <button class="action-card fuel" onclick="openModal('fuelModal')">
+            <i class="fa-solid fa-gas-pump ac-icon"></i>
+            <span class="ac-text" data-i18n="Fuel">Fuel</span>
+          </button>
+          <button class="action-card service" onclick="openModal('serviceModal')">
+            <i class="fa-solid fa-wrench ac-icon"></i>
+            <span class="ac-text" data-i18n="Service">Service</span>
+          </button>
+        </div>
+
+        <div class="sticky-filter-container">
+          <div class="filter-bar">
+            <div class="select-wrapper">
+              <select class="select-input" id="driverSel" onchange="applyFilters()">
+                <option value="ALL" data-i18n="All Drivers — Global Fleet">All Drivers — Global Fleet</option>
+              </select>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <button class="btn-icon" onclick="fetchData()" id="refreshBtn">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="loadingState">
+          <div class="skel" style="height:100px; margin-bottom:20px;"></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+            <div class="skel" style="height:120px;"></div>
+            <div class="skel" style="height:120px;"></div>
+          </div>
+        </div>
+
+        <section id="sec-home" class="sec active">
+          <div class="dashboard-grid">
+            <div class="dash-main">
+              <div class="sec-header">
+                <div class="sec-title-group">
+                  <h2 class="sec-title" data-i18n="Fleet Status">Fleet Status</h2>
+                  <span class="badge" id="activeBadge" data-i18n="All Vehicles">All Vehicles</span>
+                </div>
+                <button class="clear-btn" id="clearBtn" onclick="clearCar()">
+                  <i class="fa-solid fa-xmark"></i> <span data-i18n="Clear">Clear</span>
+                </button>
+              </div>
+              
+              <!-- Premium Floating Vehicle Cards without Photos -->
+              <div class="vehicle-strip" id="vehicleStrip"></div>
+
+              <!-- Drivers: tasks marked done this month; tap for the full history -->
+              <div id="driverBlock" style="display:none;">
+                <div class="sec-header" style="margin-top:0;">
+                  <div class="sec-title-group">
+                    <h2 class="sec-title" data-i18n="Drivers">Drivers</h2>
+                    <span class="badge" id="driverMonthBadge"></span>
+                  </div>
+                </div>
+                <div class="vehicle-strip" id="driverStrip"></div>
+              </div>
+              
+              <div id="serviceAlertsContainer"></div>
+
+              <!-- Ultra Premium Gradient KPI Grid -->
+              <div class="kpi-grid">
+                <div class="kpi-card c-fuel animate-in" style="animation-delay: 0.1s;" onclick="switchTab('fuel')">
+                  <div class="k-icon"><i class="fa-solid fa-gas-pump"></i></div>
+                  <div><div class="k-val" id="kFuel">—</div><div class="k-lbl" data-i18n="Total Fuel">Total Fuel</div></div>
+                </div>
+                <div class="kpi-card c-route animate-in" style="animation-delay: 0.2s;" onclick="switchTab('home')">
+                  <div class="k-icon"><i class="fa-solid fa-route"></i></div>
+                  <div><div class="k-val" id="kKm">—</div><div class="k-lbl" data-i18n="Distance (KM)">Distance (KM)</div></div>
+                </div>
+                <div class="kpi-card c-money animate-in" style="animation-delay: 0.3s;" onclick="switchTab('fuel')">
+                  <div class="k-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+                  <div><div class="k-val" id="kFuelCost">—</div><div class="k-lbl" data-i18n="Fuel Cost">Fuel Cost</div></div>
+                </div>
+                <div class="kpi-card c-service animate-in" style="animation-delay: 0.4s;" onclick="switchTab('service')">
+                  <div class="k-icon"><i class="fa-solid fa-wrench"></i></div>
+                  <div><div class="k-val" id="kService">—</div><div class="k-lbl" data-i18n="Maintenance">Maintenance</div></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="dash-side">
+              <div class="sec-header" style="margin-top:0;">
+                <h2 class="sec-title" data-i18n="Recent Activity">Recent Activity</h2>
+              </div>
+              <div class="log-list" id="recentLogs"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PREMIUM TASKS SECTION -->
+        <section id="sec-tasks" class="sec">
+          <div class="sec-header">
+            <h2 class="sec-title" data-i18n="Fleet Tasks Checklist">Fleet Tasks Checklist</h2>
+          </div>
+          <div id="taskViewsContainer">
+             <!-- Dynamic content here -->
+          </div>
+        </section>
+
+        <section id="sec-fuel" class="sec">
+          <div class="sec-header">
+            <div class="sec-title-group">
+              <h2 class="sec-title" data-i18n="Fuel Records">Fuel Records</h2>
+              <span class="badge" id="fuelCount">0</span>
+            </div>
+          </div>
+          <div class="data-controls">
+            <div class="select-wrapper" style="min-width:150px;">
+              <select class="select-input" id="fuelFilterVehicle" onchange="renderFuelLogs()">
+                <option value="ALL" data-i18n="All Vehicles">All Vehicles</option>
+              </select>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="select-wrapper" style="min-width:150px;">
+              <select class="select-input" id="fuelFilterDriver" onchange="renderFuelLogs()">
+                <option value="ALL" data-i18n="All Drivers">All Drivers</option>
+              </select>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="select-wrapper" style="min-width:150px; max-width:180px;">
+              <input type="date" id="fuelFilterDate" class="select-input" onchange="renderFuelLogs()">
+            </div>
+            <button class="btn-icon" onclick="clearFuelFilters()">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+          <div class="log-list" id="fuelCont"></div>
+        </section>
+
+        <section id="sec-service" class="sec">
+          <div class="sec-header">
+            <h2 class="sec-title" data-i18n="Maintenance">Maintenance</h2>
+            <span class="badge" id="serviceCount">0</span>
+          </div>
+          <div class="log-list" id="serviceCont"></div>
+        </section>
+
+        <section id="sec-data" class="sec">
+          <div class="sec-header">
+            <div class="sec-title-group">
+              <h2 class="sec-title" data-i18n="Data Records">Data Records</h2>
+              <span class="badge" id="dataCount">0</span>
+            </div>
+          </div>
+          <div class="data-controls">
+            <div class="select-wrapper" style="min-width:130px;">
+              <select class="select-input" id="tblType" onchange="renderDataTable()">
+                <option value="ALL" data-i18n="All Types">All Types</option>
+                <option value="FUEL" data-i18n="Fuel">Fuel</option>
+                <option value="SERVICE" data-i18n="Service">Service</option>
+              </select>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="select-wrapper" style="min-width:150px;">
+              <select class="select-input" id="tblVehicle" onchange="renderDataTable()">
+                <option value="ALL" data-i18n="All Vehicles">All Vehicles</option>
+              </select>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="select-wrapper" style="min-width:150px;">
+              <select class="select-input" id="tblDriverData" onchange="renderDataTable()">
+                <option value="ALL" data-i18n="All Drivers">All Drivers</option>
+              </select>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="select-wrapper" style="min-width:150px; max-width:180px;">
+              <input type="date" id="tblDate" class="select-input" onchange="renderDataTable()">
+            </div>
+            <button class="btn-icon" onclick="clearTblFilters()">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table class="premium-table">
+              <thead>
+                <tr>
+                  <th data-i18n="Date">Date</th>
+                  <th data-i18n="Type">Type</th>
+                  <th data-i18n="Vehicle">Vehicle</th>
+                  <th data-i18n="Driver">Driver</th>
+                  <th style="text-align:right;" data-i18n="Total KM">Total KM</th>
+                  <th data-i18n="Details / Issue">Details / Issue</th>
+                  <th style="text-align:right;" data-i18n="Amount">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="dataTbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </div>
+    
+    <nav class="bottom-nav">
+      <div class="nav-item active" data-tab="home" onclick="switchTab('home')">
+        <i class="fa-solid fa-chart-pie"></i><span data-i18n="HOME">HOME</span>
+      </div>
+      <div class="nav-item" data-tab="tasks" onclick="switchTab('tasks')">
+        <span class="nav-badge hide js-task-badge"></span>
+        <i class="fa-solid fa-list-check"></i><span data-i18n="TASKS">TASKS</span>
+      </div>
+      <div class="nav-item" data-tab="fuel" onclick="switchTab('fuel')">
+        <i class="fa-solid fa-gas-pump"></i><span data-i18n="FUEL">FUEL</span>
+      </div>
+      <div class="nav-item" data-tab="service" onclick="switchTab('service')">
+        <i class="fa-solid fa-wrench"></i><span data-i18n="SERVICE">SERVICE</span>
+      </div>
+      <div class="nav-item" data-tab="data" onclick="switchTab('data')">
+        <i class="fa-solid fa-table"></i><span data-i18n="DATA">DATA</span>
+      </div>
+    </nav>
+
+    <button class="scroll-top-btn" id="scrollTopBtn" onclick="scrollToTop()">
+      <i class="fa-solid fa-arrow-up"></i>
+    </button>
+  </main>
+
+  <!-- MODAL: ADD FUEL -->
+  <div class="modal-overlay" id="fuelModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="Log Fuel Entry">Log Fuel Entry</h3>
+        <button class="modal-close" type="button" onclick="closeModal('fuelModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="fuelForm" onsubmit="submitFuel(event)">
+        
+        <div class="form-group">
+          <label class="form-label">Filled by</label>
+          <input class="form-select js-filled-by" id="f_driver" readonly tabindex="-1" style="background:var(--surface-2, #f1f5f9); font-weight:600;">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Vehicle Number *">Vehicle Number *</label>
+          <select class="form-select dyn-vehicle" id="f_vehicle" required></select>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" data-i18n="Fuel Type *">Fuel Type *</label>
+            <select class="form-select" id="f_type">
+              <option>DIESEL</option>
+              <option>PETROL</option>
+              <option>CNG</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="Quantity (Ltr) *">Quantity (Ltr) *</label>
+            <input type="text" inputmode="decimal" class="form-input" id="f_qty" oninput="this.value = this.value.replace(/[^0-9.]/g, '')" required>
+          </div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" data-i18n="Amount (₹) *">Amount (₹) *</label>
+            <input type="text" inputmode="decimal" class="form-input" id="f_amount" oninput="this.value = this.value.replace(/[^0-9.]/g, '')" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="Odometer (KM) *">Odometer (KM) *</label>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" class="form-input" id="f_odo" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Pump Name">Pump Name</label>
+          <input type="text" class="form-input" id="f_pump">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Payment Mode">Payment Mode</label>
+          <select class="form-select" id="f_pay">
+            <option>Cash</option>
+            <option>Card</option>
+            <option>UPI</option>
+            <option>Credit</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Remark / Extra Detail">Remark / Extra Detail</label>
+          <input type="text" class="form-input" id="f_remark">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Upload Bill Photo(s) (Max 4) *">Upload Bill Photo(s) (Max 4) *</label>
+          <div class="file-upload">
+            <div class="file-btn" id="f_dropzone">
+              <i class="fa-solid fa-images"></i> <span data-i18n="Select Image(s)">Select Image(s)</span>
+            </div>
+            <input type="file" accept="image/*" multiple id="f_photo" required onchange="handleFile(this, 'f_filename', 'f_dropzone')">
+          </div>
+          <div class="file-name" id="f_filename">
+            <i class="fa-solid fa-check-circle"></i> File attached
+          </div>
+        </div>
+        
+        <button type="submit" class="btn-submit" id="f_btn">
+          <i class="fa-solid fa-paper-plane"></i> <span data-i18n="Save Entry">Save Entry</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD SERVICE -->
+  <div class="modal-overlay" id="serviceModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="Log Maintenance">Log Maintenance</h3>
+        <button class="modal-close" type="button" onclick="closeModal('serviceModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="serviceForm" onsubmit="submitService(event)">
+        
+        <div class="form-group">
+          <label class="form-label">Filled by</label>
+          <input class="form-select js-filled-by" id="s_driver" readonly tabindex="-1" style="background:var(--surface-2, #f1f5f9); font-weight:600;">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Vehicle Number *">Vehicle Number *</label>
+          <select class="form-select dyn-vehicle" id="s_vehicle" required></select>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" data-i18n="Odometer (KM) *">Odometer (KM) *</label>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" class="form-input" id="s_odo" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="Bill Amount (₹) *">Bill Amount (₹) *</label>
+            <input type="text" inputmode="decimal" class="form-input" id="s_amount" oninput="this.value = this.value.replace(/[^0-9.]/g, '')" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Issue Details *">Issue Details *</label>
+          <textarea class="form-input" id="s_issue" rows="3" required></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" data-i18n="Upload Invoice Photo(s) (Max 4) *">Upload Invoice Photo(s) (Max 4) *</label>
+          <div class="file-upload">
+            <div class="file-btn" id="s_dropzone">
+              <i class="fa-solid fa-images"></i> <span data-i18n="Select Image(s)">Select Image(s)</span>
+            </div>
+            <input type="file" accept="image/*" multiple id="s_photo" required onchange="handleFile(this, 's_filename', 's_dropzone')">
+          </div>
+          <div class="file-name" id="s_filename">
+            <i class="fa-solid fa-check-circle"></i> File attached
+          </div>
+        </div>
+        
+        <button type="submit" class="btn-submit" id="s_btn">
+          <i class="fa-solid fa-paper-plane"></i> <span data-i18n="Save Entry">Save Entry</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRM TASK DONE -->
+  <div class="modal-overlay" id="taskModal">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="Complete Task">Complete Task</h3>
+        <button class="modal-close" type="button" onclick="closeModal('taskModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="taskForm" onsubmit="submitTask(event)">
+        <input type="hidden" id="t_rowIdx">
+        <input type="hidden" id="t_car">
+        <input type="hidden" id="t_taskName">
+        <input type="hidden" id="t_freq">
+        <input type="hidden" id="t_plannedStr">
+
+        <div style="margin-bottom: 20px; padding: 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md);">
+           <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+               <i class="fa-solid fa-car-side" style="color:var(--primary);"></i>
+               <div style="font-size: 11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; font-family:'Outfit';" id="t_displayCar"></div>
+           </div>
+           <div style="font-size: 17px; font-weight:800; color:var(--text-main); line-height: 1.4; font-family:'Outfit';" id="t_displayTask"></div>
+           <div style="margin-top:10px; font-size:12px; font-weight:700; color:var(--text-muted);" id="t_displayDue"></div>
+        </div>
+
+        <div class="tv-donechip" style="margin-top:0; margin-bottom:20px;">
+          <i class="fa-solid fa-user-check"></i>
+          <div class="tv-donechip-txt">
+            <span data-i18n="Will be recorded as">Will be recorded as</span>
+            <b id="t_displayUser">—</b>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="t_btn" style="background:linear-gradient(135deg,#059669,#10B981); margin-top:0;">
+          <i class="fa-solid fa-check-double"></i> <span data-i18n="Confirm & Mark Done">Confirm &amp; Mark Done</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SHIFT / POSTPONE TASK -->
+  <div class="modal-overlay" id="shiftModal">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="Postpone Task">Postpone Task</h3>
+        <button class="modal-close" type="button" onclick="closeModal('shiftModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="shiftForm" onsubmit="submitShift(event)">
+        <input type="hidden" id="sh_rowIdx">
+        <input type="hidden" id="sh_days" value="1">
+
+        <div style="margin-bottom: 18px; padding: 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md);">
+           <div style="font-size: 11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; font-family:'Outfit'; margin-bottom:6px;" id="sh_displayCar"></div>
+           <div style="font-size: 16px; font-weight:800; color:var(--text-main); line-height:1.4; font-family:'Outfit';" id="sh_displayTask"></div>
+        </div>
+
+        <div class="info-strip">
+          <i class="fa-solid fa-circle-info"></i>
+          <span data-i18n="A task can be postponed by 2 days in total. The allowance resets once the task is completed.">A task can be postponed by 2 days in total. The allowance resets once the task is completed.</span>
+        </div>
+
+        <div class="shift-opts">
+          <div class="shift-opt selected" id="shiftOpt1" onclick="pickShift(1)">
+            <div class="shift-opt-n">+1</div>
+            <div class="shift-opt-l" data-i18n="Day">Day</div>
+            <div class="shift-opt-d" id="shiftDate1">—</div>
+          </div>
+          <div class="shift-opt" id="shiftOpt2" onclick="pickShift(2)">
+            <div class="shift-opt-n">+2</div>
+            <div class="shift-opt-l" data-i18n="Days">Days</div>
+            <div class="shift-opt-d" id="shiftDate2">—</div>
+          </div>
+        </div>
+
+        <div style="font-size:12px; font-weight:700; color:var(--text-muted); text-align:center; margin-top:14px;" id="sh_left"></div>
+        <div style="font-size:11.5px; font-weight:700; color:var(--text-green); text-align:center; margin-top:8px;">
+          <i class="fa-solid fa-rotate"></i>
+          <span data-i18n="Schedule stays">Schedule stays</span>: <span id="sh_keeps">—</span>
+        </div>
+
+        <button type="submit" class="btn-submit" id="sh_btn" style="background:linear-gradient(135deg,#F59E0B,#F43F5E); margin-top:18px;">
+          <i class="fa-solid fa-calendar-plus"></i> <span data-i18n="Confirm Postpone">Confirm Postpone</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TASK REMARKS -->
+  <div class="modal-overlay" id="noteModal">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="Remarks">Remarks</h3>
+        <button class="modal-close" type="button" onclick="closeModal('noteModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div style="margin-bottom: 18px; padding: 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md);">
+        <div style="font-size: 11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; font-family:'Outfit'; margin-bottom:6px;" id="nt_displayCar"></div>
+        <div style="font-size: 16px; font-weight:800; color:var(--text-main); line-height:1.4; font-family:'Outfit';" id="nt_displayTask"></div>
+      </div>
+
+      <div class="note-list" id="nt_list"></div>
+
+      <form onsubmit="submitNote(event)">
+        <input type="hidden" id="nt_rowIdx">
+        <input type="hidden" id="nt_taskName">
+        <div class="form-group" style="margin-bottom:6px;">
+          <label class="form-label" data-i18n="Add a remark">Add a remark</label>
+          <textarea class="form-textarea" id="nt_text" maxlength="300"
+                    placeholder="e.g. Rear left tyre losing pressure" oninput="noteCount()"></textarea>
+          <div class="note-counter"><span id="nt_count">0</span>/300</div>
+        </div>
+
+        <div class="note-locked">
+          <i class="fa-solid fa-lock"></i>
+          <span data-i18n="Once saved a remark cannot be edited or deleted.">Once saved a remark cannot be edited or deleted.</span>
+        </div>
+
+        <button type="submit" class="btn-submit" id="nt_btn" style="margin-top:16px;">
+          <i class="fa-solid fa-paper-plane"></i> <span data-i18n="Save Remark">Save Remark</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ACCOUNT -->
+  <div class="modal-overlay" id="driverModal">
+    <div class="modal-content" style="max-width: 640px;">
+      <div class="modal-header">
+        <div class="dh-head" id="dhHead"></div>
+        <button class="modal-close" type="button" onclick="closeModal('driverModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="dhBody"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="accountModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="Your Account">Your Account</h3>
+        <button class="modal-close" type="button" onclick="closeModal('accountModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:14px; padding:18px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-md); margin-bottom:20px;">
+        <div class="user-av" style="width:48px; height:48px; font-size:17px;" id="acInitials">—</div>
+        <div style="min-width:0;">
+          <div style="font-family:'Outfit'; font-size:16px; font-weight:800; color:var(--text-main);" id="acName">—</div>
+          <div style="font-size:12px; font-weight:600; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis;" id="acEmail">—</div>
+        </div>
+      </div>
+
+      <form onsubmit="doChangePassword(event)">
+        <div class="form-group">
+          <label class="form-label" data-i18n="Current password">Current password</label>
+          <input type="password" class="form-input" id="cpOld" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="New password">New password</label>
+          <input type="password" class="form-input" id="cpNew" minlength="4" required>
+        </div>
+        <button type="submit" class="btn-submit" id="cpBtn" style="margin-top:6px;">
+          <i class="fa-solid fa-key"></i> <span data-i18n="Change Password">Change Password</span>
+        </button>
+        <div class="auth-msg" id="cpMsg"></div>
+      </form>
+
+      <div style="text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); margin-top:18px;">
+        JPR Fleet <span id="acVersion">—</span>
+      </div>
+
+      <button class="auth-btn ghost" style="margin-top:12px;" onclick="doLogout()">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span data-i18n="Log Out">Log Out</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SUCCESS ANIMATION -->
+  <div class="success-overlay" id="successAnim">
+    <div class="success-circle">
+      <i class="fa-solid fa-check"></i>
+    </div>
+    <div class="success-text" data-i18n="Action Saved!">Action Saved!</div>
+  </div>
+
+</div>
+
+<script>
+  // =====================================
+  // TRANSLATION DICTIONARY (EN to HI)
+  // =====================================
+  const translations = {
+    "Dashboard": "डैशबोर्ड",
+    "Tasks": "टास्क",
+    "Fuel Logs": "ईंधन रिकॉर्ड",
+    "Maintenance": "रखरखाव",
+    "Data (Excel)": "डेटा (Excel)",
+    "HOME": "होम",
+    "TASKS": "टास्क",
+    "FUEL": "ईंधन",
+    "SERVICE": "सर्विस",
+    "DATA": "डेटा",
+    "Fleet Status": "फ्लीट स्टेटस",
+    "All Vehicles": "सभी गाड़ियां",
+    "Clear": "हटाएं",
+    "Total Fuel": "कुल ईंधन",
+    "Distance (KM)": "दूरी (KM)",
+    "Fuel Cost": "ईंधन लागत",
+    "Recent Activity": "हाल की गतिविधि",
+    "Fleet Tasks Checklist": "फ्लीट टास्क चेकलिस्ट",
+    "Fuel Records": "ईंधन रिकॉर्ड",
+    "All Drivers": "सभी ड्राइवर",
+    "All Drivers — Global Fleet": "सभी ड्राइवर — ग्लोबल फ्लीट",
+    "Data Records": "डेटा रिकॉर्ड",
+    "All Types": "सभी प्रकार",
+    "Date": "तारीख",
+    "Type": "प्रकार",
+    "Vehicle": "गाड़ी",
+    "Driver": "ड्राइवर",
+    "Details / Issue": "विवरण / समस्या",
+    "Amount": "रकम",
+    "Fuel": "ईंधन",
+    "Service": "सर्विस",
+    "Log Fuel Entry": "ईंधन एंट्री भरें",
+    "Log Maintenance": "सर्विस एंट्री भरें",
+    "Driver Name *": "ड्राइवर का नाम *",
+    "Vehicle Number *": "गाड़ी का नंबर *",
+    "Fuel Type *": "ईंधन का प्रकार *",
+    "Quantity (Ltr) *": "मात्रा (लीटर) *",
+    "Amount (₹) *": "रकम (₹) *",
+    "Odometer (KM) *": "किलोमीटर (KM) *",
+    "Pump Name": "पेट्रोल पंप का नाम",
+    "Payment Mode": "पेमेंट का तरीका",
+    "Remark / Extra Detail": "टिप्पणी / एक्स्ट्रा डिटेल",
+    "Upload Bill Photo(s) (Max 4) *": "बिल की फोटो डालें (अधिकतम 4) *",
+    "Select Image(s)": "फोटो चुनें",
+    "Save Entry": "सेव करें",
+    "Bill Amount (₹) *": "बिल की रकम (₹) *",
+    "Issue Details *": "समस्या / काम का विवरण *",
+    "Upload Invoice Photo(s) (Max 4) *": "रसीद की फोटो डालें (अधिकतम 4) *",
+    "Complete Task": "टास्क पूरा करें",
+    "Who is completing this? *": "यह टास्क कौन कर रहा है? *",
+    "Confirm & Mark Done": "कन्फर्म करें और पूरा करें",
+    "Action Saved!": "सेव हो गया!",
+    "Pending": "बाकी",
+    "All Clear": "सब पूरा",
+    "All Clear!": "सब पूरा हो गया!",
+    "No due tasks for": "के लिए कोई काम बाकी नहीं है",
+    "Back to Grid": "वापस जाएं",
+    "Due": "बाकी",
+    "Done": "पूरा हुआ",
+    "Daily": "रोज़ाना",
+    "Weekly": "साप्ताहिक",
+    "Monthly": "मासिक",
+    "Completing schedule for:": "शेड्यूल पूरा किया जा रहा है:",
+    "Fills": "बार भरा",
+    "Drivers": "ड्राइवर",
+    "Tasks done this month": "इस महीने पूरे टास्क",
+    "Driver History": "ड्राइवर का रिकॉर्ड",
+    "This month": "इस महीने",
+    "Tasks (all)": "कुल टास्क",
+    "Fuel entries": "ईंधन एंट्री",
+    "Services": "सर्विस",
+    "All time": "पूरा समय",
+    "Latest Fuel Entry": "आखिरी ईंधन एंट्री",
+    "No fuel entries": "कोई ईंधन एंट्री नहीं",
+    "Service Forms": "सर्विस फॉर्म",
+    "No service forms": "कोई सर्विस फॉर्म नहीं",
+    "Log Book": "लॉग बुक",
+    "No tasks marked done": "कोई टास्क पूरा नहीं",
+    "task": "टास्क",
+    "tasks": "टास्क",
+    "Late": "देर से",
+    "Show more": "और दिखाएं",
+    "Loading older months...": "पुराने महीने लोड हो रहे हैं...",
+    "Total KM": "कुल KM",
+    
+    // TASK NAMES FROM MASTER SHEET
+    "INTERIOR CLEANING": "इंटीरियर सफाई",
+    "EXTERIOR CLEANING": "बाहरी सफाई",
+    "FILL WATER BOTTLES": "पानी की बोतलें भरें",
+    "FUEL CHECKING": "ईंधन चेक करें",
+    "TYRE PRESSURE CHECKING / SPARE TYRES": "टायर प्रेशर / स्पेयर टायर चेक",
+    "DEEP INTERIOR CLEANING": "डीप इंटीरियर सफाई",
+    "FULL CAR WASHING": "पूरी कार वाशिंग",
+    "WIPER LIQUID CHECK": "वाइपर लिक्विड चेक",
+    "ENGINE OIL CONDITION AND LEVEL CHECK": "इंजन ऑयल लेवल चेक",
+    "COOLANT CONDITION": "कूलेंट लेवल चेक",
+    "BRAKE OIL CONDITION CHECK": "ब्रेक ऑयल चेक",
+    "BATTERY HEALTH": "बैटरी कंडीशन चेक",
+    "AC / CABIN FILTER": "AC / केबिन फिल्टर",
+    "WHEEL ALLIGNMENT": "व्हील अलाइनमेंट",
+    "SUSPENSION CHECK": "सस्पेंशन चेक",
+    "STEERING CHECK": "स्टीयरिंग चेक",
+    "UNDERBODY COMPLETE INSPECTION": "अंडरबॉडी पूरी चेकिंग",
+    "INSURANCE / PUC/ RC VALIDITY": "इंश्योरेंस / PUC / RC चेक",
+    "SERVICE DUE DATE / KM": "सर्विस ड्यू डेट / KM"
+  };
+
+  let currentLang = 'en';
+
+  function t(text) {
+    if (currentLang === 'en') return text;
+    const upperText = String(text).toUpperCase();
+    if (translations[upperText]) return translations[upperText];
+    if (translations[text]) return translations[text];
+    return text;
+  }
+
+  function updateStaticText() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+         el.placeholder = t(key);
+      } else {
+         el.textContent = t(key);
+      }
+    });
+  }
+
+  function toggleLanguage() {
+    currentLang = currentLang === 'en' ? 'hi' : 'en';
+    document.getElementById('langText').innerText = currentLang === 'en' ? 'HI' : 'EN';
+    
+    updateStaticText();
+    buildDriverStrip();
+    applyFilters();
+
+    repaintTasks(true);
+  }
+
+  // =====================================
+  // STATE MANAGEMENT
+  // =====================================
+  const inputFields = [
+    'f_vehicle', 'f_type', 'f_qty', 'f_amount', 'f_odo', 
+    'f_pump', 'f_pay', 'f_remark', 's_vehicle', 's_odo', 's_amount', 's_issue'
+  ];
+  
+  document.addEventListener('input', (e) => {
+    if (inputFields.includes(e.target.id)) {
+      sessionStorage.setItem(e.target.id, e.target.value);
+    }
+  });
+  
+  function restoreState() {
+    inputFields.forEach(id => {
+      let val = sessionStorage.getItem(id);
+      if (val && document.getElementById(id)) {
+        document.getElementById(id).value = val;
+      }
+    });
+  }
+  
+  function clearState() {
+    inputFields.forEach(id => sessionStorage.removeItem(id));
+  }
+
+  // GLOBAL VARIABLES
+  let RAW_FUEL = [];
+  let RAW_SERVICE = [];
+  let FUEL = [];
+  let SERVICE = [];
+  let TASKS = []; 
+  let SERVICE_CONFIG = {}; 
+  let activeCar = null;
+  let ACTIVE_TAB = 'home';
+  let SERVER_DATE = '';
+  let APP_VER = '';
+  let TASK_LOG = [];       // this month's completions in the Checklist: [dd/MM/yyyy, time, car, task, doneBy, late]
+  let FULL_LOG = null;     // every completion, fetched when a driver's history is opened
+  let FULL_LOG_AT = 0;
+  let PEOPLE = [];         // sign-in accounts: { name, username, role, active }
+  let FORM_DRIVERS = [];   // Users sheet column A (the driver list)
+
+  function getVName(v) { 
+    const p = String(v).trim().split(/\s+/); 
+    return p.length > 1 ? p.slice(1).join(' ') : String(v); 
+  }
+
+  // SCROLL LOGIC
+  const scrollContainer = document.getElementById('mainScroll'); 
+  const scrollTopBtn = document.getElementById('scrollTopBtn');
+  
+  scrollContainer.addEventListener('scroll', () => { 
+    if (scrollContainer.scrollTop > 300) { 
+      scrollTopBtn.classList.add('show'); 
+    } else { 
+      scrollTopBtn.classList.remove('show'); 
+    } 
+  });
+  
+  function scrollToTop() { 
+    scrollContainer.scrollTo({ top: 0, behavior: 'smooth' }); 
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    updateStaticText();
+    wireOtpBoxes();
+    bootAuth();
+    setInterval(fetchDataBg, 60000);
+  });
+
+  // INITIAL DATA FETCH
+  function fetchData() {
+    if (!TOKEN) { showAuth(); return; }
+    const btn = document.getElementById('refreshBtn');
+    if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i>`;
+
+    document.getElementById('loadingState').style.display = 'block';
+    document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+
+    google.script.run
+      .withSuccessHandler(onData)
+      .withFailureHandler(err => {
+        alert('Connection Error: ' + err.message);
+        document.getElementById('loadingState').style.display = 'none';
+        if (btn) btn.innerHTML = `<i class="fa-solid fa-rotate-right"></i>`;
+        document.getElementById('sec-' + ACTIVE_TAB).classList.add('active');
+      })
+      .getLiveFleetData(TOKEN);
+  }
+
+  /** Background poll — never touches the layout or the scroll position. */
+  function fetchDataBg() {
+    if (!TOKEN) return;
+    if (document.querySelector('.modal-overlay.open')) return;   // don't yank a form out from under them
+    google.script.run.withSuccessHandler(onDataSilent).getLiveFleetData(TOKEN);
+  }
+
+  /** Same as fetchDataBg but used straight after a write. */
+  function silentRefresh() {
+    if (!TOKEN) return;
+    google.script.run.withSuccessHandler(onDataSilent).getLiveFleetData(TOKEN);
+  }
+
+  function onDataSilent(res) {
+    try {
+      const data = JSON.parse(res);
+      if (!data.success) return;
+      if (!data.authed) { onSessionExpired(); return; }
+      RAW_FUEL = data.fuel || [];
+      RAW_SERVICE = data.service || [];
+      TASKS = data.tasks || [];
+      SERVICE_CONFIG = data.serviceConfig || {};
+      TASK_LOG = data.taskLog || [];
+      PEOPLE = data.people || [];
+      FORM_DRIVERS = data.formDrivers || FORM_DRIVERS;
+      SERVER_DATE = data.serverDate || SERVER_DATE;
+      APP_VER = data.version || APP_VER;
+      if (data.user) { USER = data.user; paintUser(); }
+      const keepScroll = scrollContainer.scrollTop;
+      buildVehicleStrip();
+      buildDriverStrip();
+      applyFilters();
+      repaintTasks(true);
+      scrollContainer.scrollTop = keepScroll;
+    } catch (e) { console.error('Silent refresh failed:', e); }
+  }
+
+  function onData(res) {
+    const btn = document.getElementById('refreshBtn'); 
+    if(btn) btn.innerHTML = `<i class="fa-solid fa-rotate-right"></i>`;
+    document.getElementById('loadingState').style.display = 'none';
+    
+    try {
+      const data = JSON.parse(res);
+      if (!data.success) {
+        alert("Data Fetch Error: " + data.message);
+        document.getElementById('sec-' + ACTIVE_TAB).classList.add('active');
+        return;
+      }
+      if (!data.authed) { onSessionExpired(); return; }
+      SERVER_DATE = data.serverDate || SERVER_DATE;
+      APP_VER = data.version || APP_VER;
+      if (data.user) { USER = data.user; paintUser(); }
+      
+      RAW_FUEL = data.fuel || []; 
+      RAW_SERVICE = data.service || [];
+      TASKS = data.tasks || []; 
+      SERVICE_CONFIG = data.serviceConfig || {};
+      TASK_LOG = data.taskLog || [];
+      PEOPLE = data.people || [];
+      FORM_DRIVERS = data.formDrivers || [];
+      
+      const sel = document.getElementById('driverSel'); 
+      const currSel = sel.value; 
+      
+      let dOpts = `<option value="ALL">${t('All Drivers — Global Fleet')}</option>`; 
+      let dTblOpts = `<option value="ALL">${t('All Drivers')}</option>`;
+      
+      if (data.drivers) { 
+        data.drivers.forEach(d => { 
+          dOpts += `<option value="${d}">${d}</option>`; 
+          dTblOpts += `<option value="${d}">${d}</option>`; 
+        }); 
+      }
+      
+      sel.innerHTML = dOpts; 
+      if(data.drivers.includes(currSel)) sel.value = currSel; 
+      
+      document.getElementById('tblDriverData').innerHTML = dTblOpts; 
+      document.getElementById('fuelFilterDriver').innerHTML = dTblOpts;
+      
+      let formDOpts = '<option value="" disabled selected>...Select...</option>';
+      if (data.formDrivers && data.formDrivers.length > 0) {
+        data.formDrivers.forEach(d => { 
+          formDOpts += `<option value="${d}">${d}</option>`; 
+        });
+      }
+      // `.dyn-driver` class fuel/service modals me hai.
+      document.querySelectorAll('.dyn-driver').forEach(el => el.innerHTML = formDOpts);
+      
+      let vOptsTbl = `<option value="ALL">${t('All Vehicles')}</option>`; 
+      let formVOpts = '<option value="" disabled selected>...Select...</option>';
+      
+      if(data.vehicles){ 
+        data.vehicles.forEach(v => { 
+          vOptsTbl += `<option value="${v}">${getVName(v)}</option>`; 
+        }); 
+      }
+      
+      if (data.formVehicles && data.formVehicles.length > 0) {
+        data.formVehicles.forEach(v => { 
+          formVOpts += `<option value="${v}">${v}</option>`; 
+        });
+      }
+      
+      document.getElementById('tblVehicle').innerHTML = vOptsTbl; 
+      document.getElementById('fuelFilterVehicle').innerHTML = vOptsTbl; 
+      document.querySelectorAll('.dyn-vehicle').forEach(el => el.innerHTML = formVOpts);
+      
+      buildVehicleStrip();
+      buildDriverStrip();
+      applyFilters();
+
+      repaintTasks(false);
+      restoreState();
+
+      // Stay exactly where the user was — never bounce back to Home.
+      const target = document.getElementById('sec-' + ACTIVE_TAB) || document.getElementById('sec-home');
+      target.classList.add('active');
+      
+    } catch(e) { 
+      console.error("Parse Error: ", e); 
+    }
+  }
+
+
+  // =====================================
+  // v4.0 — AUTHENTICATION
+  // =====================================
+  let TOKEN = null;
+  let USER  = null;
+  const TOKEN_KEY = 'jpr_fleet_token';
+
+  function saveToken(t) {
+    TOKEN = t;
+    try { localStorage.setItem(TOKEN_KEY, t); } catch (e) {}
+    try { sessionStorage.setItem(TOKEN_KEY, t); } catch (e) {}
+  }
+  function readToken() {
+    try { const v = localStorage.getItem(TOKEN_KEY); if (v) return v; } catch (e) {}
+    try { return sessionStorage.getItem(TOKEN_KEY); } catch (e) {}
+    return null;
+  }
+  function dropToken() {
+    TOKEN = null; USER = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+  }
+
+  function showMsg(id, text, kind) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'auth-msg show ' + (kind || 'info');
+    const icon = kind === 'err' ? 'circle-exclamation' : (kind === 'ok' ? 'circle-check' : 'circle-info');
+    el.innerHTML = `<i class="fa-solid fa-${icon}" style="margin-top:2px;"></i><span>${text}</span>`;
+  }
+  function hideMsg(id) {
+    const el = document.getElementById(id);
+    if (el) el.className = 'auth-msg';
+  }
+
+  function togglePw(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    const on = inp.type === 'password';
+    inp.type = on ? 'text' : 'password';
+    btn.innerHTML = on ? '<i class="fa-regular fa-eye-slash"></i>' : '<i class="fa-regular fa-eye"></i>';
+  }
+
+  function gotoStep(stepId) {
+    document.querySelectorAll('.auth-step').forEach(s => s.classList.remove('active'));
+    document.getElementById(stepId).classList.add('active');
+    if (stepId !== 'stepChecking') ['lgMsg', 'fgMsg', 'vfMsg'].forEach(hideMsg);
+    if (stepId === 'stepForgot') {
+      const typed = document.getElementById('lgEmail').value.trim();
+      if (typed) document.getElementById('fgEmail').value = typed;
+    }
+  }
+
+  function showAuth() {
+    document.getElementById('authScreen').classList.add('show');
+    const ls = document.getElementById('loadingState');
+    if (ls) ls.style.display = 'none';
+    gotoStep('stepLogin');
+    setTimeout(() => { const f = document.getElementById('lgEmail'); if (f && !f.value) f.focus(); }, 120);
+  }
+  function hideAuth() {
+    document.getElementById('authScreen').classList.remove('show');
+  }
+
+  // ── Boot: silent session check ──
+  function bootAuth() {
+    const P = window.PORTAL || {};
+    portalLoginLabels(P.info || {});
+    if (P.boot && P.boot.token) {
+      // Opened from GGM Portal: already signed in.
+      saveToken(P.boot.token);
+      USER = { name: P.boot.name, email: P.boot.email, role: P.boot.role, username: P.boot.username };
+      hideAuth(); paintUser(); fetchData();
+      return;
+    }
+    const saved = readToken();
+    if (!saved) { showAuth(); return; }
+    gotoStep('stepChecking');
+    TOKEN = saved;
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.success) {
+          USER = { name: res.name, email: res.email, role: res.role, username: res.username };
+          hideAuth();
+          paintUser();
+          fetchData();
+        } else {
+          dropToken();
+          showAuth();
+        }
+      })
+      .withFailureHandler(() => { showAuth(); })
+      .apiValidateSession(saved);
+  }
+
+  /** GGM Portal connected: sign in with the portal username/phone + password. */
+  function portalLoginLabels(info) {
+    if (!info.enabled) return;
+    if (!info.portalOnly) {
+      // Portal-only OFF: the old email + password works as well as the portal username + password.
+      const em = document.getElementById('lgEmail');
+      if (em) { em.type = 'text'; em.placeholder = 'Email, or GGM Portal username'; em.setAttribute('autocapitalize', 'none'); }
+      const pw = document.getElementById('lgPass'); if (pw) pw.placeholder = 'Password';
+      const ft = document.querySelector('.auth-foot');
+      if (ft) ft.textContent = 'Your usual email and password, or your GGM Portal username and password.';
+      return;
+    }
+    const email = document.getElementById('lgEmail');
+    if (email) {
+      email.type = 'text'; email.placeholder = 'Username or phone';
+      email.setAttribute('autocapitalize', 'none');
+      const lbl = email.closest('.auth-field') && email.closest('.auth-field').querySelector('.auth-label');
+      if (lbl) lbl.textContent = 'GGM Portal username or phone';
+    }
+    const pass = document.getElementById('lgPass'); if (pass) pass.placeholder = 'GGM Portal password';
+    document.querySelectorAll('.auth-link').forEach(b => {
+      if (/forgot/i.test(b.textContent)) {
+        b.textContent = 'Forgot password? Reset it in GGM Portal';
+        b.onclick = () => { if (info.hubLink) window.open(info.hubLink, '_top'); };
+      }
+    });
+    const foot = document.querySelector('.auth-foot');
+    if (foot) foot.textContent = 'Same username and password as GGM Portal.';
+  }
+
+  function initials(name) {
+    const p = String(name || '?').trim().split(/\s+/);
+    return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+  }
+
+  function paintUser() {
+    if (!USER) return;
+    document.querySelectorAll('.js-user-name').forEach(e => e.textContent = USER.name);
+    document.querySelectorAll('.js-user-av').forEach(e => {
+      e.textContent = initials(USER.name);
+      e.setAttribute('data-ggm-photo', USER.username || USER.name);   // profile photo from GGM Portal
+      e.setAttribute('data-ggm-zoom', 'off');                          // the chip opens the account panel
+    });
+    const ac = document.getElementById('acName');   if (ac) ac.textContent = USER.name;
+    const ae = document.getElementById('acEmail');  if (ae) ae.textContent = USER.email;
+    const ai = document.getElementById('acInitials'); if (ai) { ai.textContent = initials(USER.name); ai.setAttribute('data-ggm-photo', USER.username || USER.name); }
+    const av = document.getElementById('acVersion'); if (av) av.textContent = 'v' + (APP_VER || '?');
+    const td = document.getElementById('t_displayUser'); if (td) td.textContent = USER.name;
+    fillFilledBy();
+  }
+
+  /** Fuel / service entries are always filled by the signed-in user. */
+  function fillFilledBy() {
+    const who = USER ? (USER.username || USER.name || '') : '';
+    document.querySelectorAll('.js-filled-by').forEach(el => el.value = who);
+  }
+
+  // ── Login ──
+  function doLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('lgBtn');
+    const email = document.getElementById('lgEmail').value.trim();
+    const pass  = document.getElementById('lgPass').value;
+    hideMsg('lgMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner spin"></i> Signing in…';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In';
+        if (res && res.success) {
+          saveToken(res.token);
+          USER = { name: res.name, email: res.email, role: res.role, username: res.username };
+          document.getElementById('lgPass').value = '';
+          hideAuth();
+          paintUser();
+          fetchData();
+        } else {
+          showMsg('lgMsg', (res && res.message) || 'Could not sign in.', 'err');
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In';
+        showMsg('lgMsg', 'Network error: ' + (err.message || err), 'err');
+      })
+      .apiLogin(email, pass);
+  }
+
+  function doLogout() {
+    const t = TOKEN;
+    dropToken();
+    closeModal('accountModal');
+    try { google.script.run.apiLogout(t); } catch (e) {}
+    TASKS = []; RAW_FUEL = []; RAW_SERVICE = [];
+    TASK_LOG = []; FULL_LOG = null; PEOPLE = []; closeModal('driverModal');
+    document.getElementById('lgEmail').value = '';
+    document.getElementById('lgPass').value = '';
+    showAuth();
+  }
+
+  function onSessionExpired() {
+    dropToken();
+    showAuth();
+    showMsg('lgMsg', 'Your session ended. Please sign in again.', 'err');
+  }
+
+  // ── OTP reset ──
+  function doSendOtp(e, resend) {
+    if (e) e.preventDefault();
+    const email = document.getElementById('fgEmail').value.trim();
+    if (!email) { showMsg('fgMsg', 'Enter your email first.', 'err'); return; }
+
+    const btn = document.getElementById('fgBtn');
+    const msgId = resend ? 'vfMsg' : 'fgMsg';
+    hideMsg(msgId);
+    if (!resend) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner spin"></i> Sending…';
+    } else {
+      showMsg('vfMsg', 'Sending a new code…', 'info');
+    }
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send code';
+        if (res && res.success) {
+          document.getElementById('vfSubtitle').textContent = 'Sent to ' + email;
+          if (!resend) gotoStep('stepVerify');
+          showMsg('vfMsg', 'Code sent. It expires in 10 minutes.', 'ok');
+          clearOtpBoxes();
+        } else {
+          showMsg(msgId, (res && res.message) || 'Could not send the code.', 'err');
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send code';
+        showMsg(msgId, 'Network error: ' + (err.message || err), 'err');
+      })
+      .apiSendResetOtp(email);
+  }
+
+  function otpValue() {
+    return Array.from(document.querySelectorAll('#otpBoxes input')).map(i => i.value.trim()).join('');
+  }
+  function clearOtpBoxes() {
+    document.querySelectorAll('#otpBoxes input').forEach(i => i.value = '');
+    const first = document.querySelector('#otpBoxes input');
+    if (first) first.focus();
+  }
+
+  function wireOtpBoxes() {
+    const boxes = Array.from(document.querySelectorAll('#otpBoxes input'));
+    boxes.forEach((box, idx) => {
+      box.addEventListener('input', () => {
+        box.value = box.value.replace(/\D/g, '').slice(0, 1);
+        if (box.value && idx < boxes.length - 1) boxes[idx + 1].focus();
+      });
+      box.addEventListener('keydown', ev => {
+        if (ev.key === 'Backspace' && !box.value && idx > 0) boxes[idx - 1].focus();
+      });
+      box.addEventListener('paste', ev => {
+        ev.preventDefault();
+        const digits = (ev.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+        digits.split('').forEach((d, i) => { if (boxes[i]) boxes[i].value = d; });
+        const next = Math.min(digits.length, boxes.length - 1);
+        boxes[next].focus();
+      });
+    });
+  }
+
+  function doResetPassword(e) {
+    e.preventDefault();
+    const otp = otpValue();
+    if (otp.length !== 6) { showMsg('vfMsg', 'Enter all 6 digits.', 'err'); return; }
+
+    const email = document.getElementById('fgEmail').value.trim();
+    const pass  = document.getElementById('vfPass').value;
+    const btn   = document.getElementById('vfBtn');
+    hideMsg('vfMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner spin"></i> Saving…';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Set new password';
+        if (res && res.success) {
+          document.getElementById('lgEmail').value = email;
+          document.getElementById('lgPass').value = '';
+          gotoStep('stepLogin');
+          showMsg('lgMsg', 'Password updated. Sign in with your new password.', 'ok');
+        } else {
+          showMsg('vfMsg', (res && res.message) || 'Could not reset the password.', 'err');
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Set new password';
+        showMsg('vfMsg', 'Network error: ' + (err.message || err), 'err');
+      })
+      .apiResetPassword(email, otp, pass);
+  }
+
+  function doChangePassword(e) {
+    e.preventDefault();
+    const btn = document.getElementById('cpBtn');
+    const oldP = document.getElementById('cpOld').value;
+    const newP = document.getElementById('cpNew').value;
+    hideMsg('cpMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner spin"></i> Saving…';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-key"></i> ${t('Change Password')}`;
+        if (res && res.success) {
+          document.getElementById('cpOld').value = '';
+          document.getElementById('cpNew').value = '';
+          showMsg('cpMsg', 'Password changed.', 'ok');
+        } else if (res && res.expired) {
+          onSessionExpired();
+        } else {
+          showMsg('cpMsg', (res && res.message) || 'Could not change the password.', 'err');
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-key"></i> ${t('Change Password')}`;
+        showMsg('cpMsg', 'Network error: ' + (err.message || err), 'err');
+      })
+      .apiChangePassword(TOKEN, oldP, newP);
+  }
+
+  function openAccount() {
+    paintUser();
+    hideMsg('cpMsg');
+    openModal('accountModal');
+  }
+
+
+  // ─── v4.0 TASKS MODULE ───────────────────────────────────────
+
+  Object.assign(translations, {
+    "Today": "आज",
+    "Upcoming": "आने वाले",
+    "Overdue": "बाकी / लेट",
+    "Good morning": "सुप्रभात",
+    "Good afternoon": "नमस्कार",
+    "Good evening": "शुभ संध्या",
+    "Routine": "रूटीन",
+    "Nothing due today": "आज कुछ बाकी नहीं",
+    "Nothing coming up": "आगे कुछ नहीं है",
+    "Nothing overdue": "कुछ भी लेट नहीं",
+    "Everything on this vehicle is up to date.": "इस गाड़ी का सारा काम पूरा है।",
+    "Done by": "पूरा किया",
+    "Shift": "आगे बढ़ाएं",
+    "Postpone Task": "टास्क आगे बढ़ाएं",
+    "Confirm Postpone": "आगे बढ़ाना कन्फर्म करें",
+    "Day": "दिन",
+    "Days": "दिन",
+    "Tomorrow": "कल",
+    "day late": "दिन लेट",
+    "days late": "दिन लेट",
+    "Last done": "आखिरी बार किया",
+    "Never done": "कभी नहीं किया",
+    "today": "आज",
+    "yesterday": "कल",
+    "days ago": "दिन पहले",
+    "in": "में",
+    "days": "दिन",
+    "Will be recorded as": "इस नाम से दर्ज होगा",
+    "Your Account": "आपका अकाउंट",
+    "Current password": "मौजूदा पासवर्ड",
+    "New password": "नया पासवर्ड",
+    "Change Password": "पासवर्ड बदलें",
+    "Change": "बदलें",
+    "Log Out": "लॉग आउट",
+    "You are still using the default password 1234.": "आप अभी भी डिफ़ॉल्ट पासवर्ड 1234 इस्तेमाल कर रहे हैं।",
+    "No tasks found for this vehicle.": "इस गाड़ी के लिए कोई टास्क नहीं मिला।",
+    "Already postponed the maximum of 2 days": "अधिकतम 2 दिन पहले ही बढ़ाए जा चुके हैं",
+    "Postponed": "आगे बढ़ाया गया",
+    "Note": "रिमार्क",
+    "Remarks": "रिमार्क",
+    "Add a remark": "रिमार्क लिखें",
+    "Save Remark": "रिमार्क सेव करें",
+    "Remark saved": "रिमार्क सेव हो गया",
+    "No remarks on this task yet.": "इस टास्क पर अभी कोई रिमार्क नहीं है।",
+    "Once saved a remark cannot be edited or deleted.": "एक बार सेव होने के बाद रिमार्क बदला या हटाया नहीं जा सकता।",
+    "pending today": "आज बाकी",
+    "All tasks done for today": "आज के सारे टास्क पूरे हो गए",
+    "Saved, but the Checklist was not updated": "सेव हो गया, लेकिन Checklist अपडेट नहीं हुई",
+    "missed": "छूटा",
+    "Schedule stays": "शेड्यूल वही रहेगा",
+    "Schedule not set correctly": "शेड्यूल सही सेट नहीं है",
+    "The Freq cell for this task reads": "इस टास्क का Freq कॉलम है",
+    "Ask your admin to set it to D, a day name (MONDAY) or dates (17, 21).":
+      "एडमिन से कहें कि इसे D, दिन का नाम (MONDAY) या तारीखें (17, 21) सेट करें।",
+    "left": "बचा",
+    "A task can be postponed by 2 days in total. The allowance resets once the task is completed.":
+      "एक टास्क कुल 2 दिन आगे बढ़ाया जा सकता है। टास्क पूरा होने पर यह दोबारा मिल जाता है।"
+  });
+
+  // Which car / segment the user is looking at — preserved across refreshes.
+  let TASK_VIEW = { car: null, seg: 'today' };
+
+  function greetWord() {
+    const h = new Date().getHours();
+    if (h < 12) return t('Good morning');
+    if (h < 17) return t('Good afternoon');
+    return t('Good evening');
+  }
+
+  /** Pill colour class from the rule kind. */
+  function schedClass(kind) {
+    if (kind === 'daily')    return 'd';
+    if (kind === 'weekly')   return 'w';
+    if (kind === 'monthly')  return 'm';
+    if (kind === 'interval') return 'w';   // legacy W/M — valid, just not a rule yet
+    return 'x';                            // unreadable Freq
+  }
+
+  /** "Last done: 10/10/2026 · 4 days ago" from the task's LAST_DONE stamp (kept across cycles), or "Never done". */
+  function lastDoneText(task) {
+    const m = String(task.lastDoneStr || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!m) return task.lastDoneStr ? t('Last done') + ': ' + task.lastDoneStr : t('Never done');
+    const day = (dd, mm, yy) => Date.UTC(+yy, +mm - 1, +dd) / 86400000;
+    const n = String(SERVER_DATE || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    const ago = n ? Math.round(day(n[1], n[2], n[3]) - day(m[1], m[2], m[3])) : -1;
+    const tail = ago === 0 ? t('today') : ago === 1 ? t('yesterday') : ago > 1 ? ago + ' ' + t('days ago') : '';
+    return t('Last done') + ': ' + m[0] + (tail ? ' · ' + tail : '');
+  }
+
+  /** Friendly wording for a task's timing. */
+  function whenText(task) {
+    if (task.state === 'broken') {
+      return { cls: 'late', icon: 'circle-exclamation', txt: t('Schedule not set correctly') };
+    }
+    if (task.state === 'overdue') {
+      const n = task.overdueDays;
+      return { cls: 'late', icon: 'triangle-exclamation',
+               txt: n + ' ' + (n === 1 ? t('day late') : t('days late')) + ' · ' + lastDoneText(task) };
+    }
+    if (task.state === 'due')  return { cls: '', icon: 'calendar-check', txt: lastDoneText(task) };
+    if (task.state === 'done') return { cls: '', icon: 'calendar-check', txt: t('Next') + ': ' + task.dueStr };
+    const d = task.daysToGo;
+    if (d === 1) return { cls: 'soon', icon: 'calendar-day', txt: t('Tomorrow') + ' · ' + task.dueStr };
+    return { cls: 'soon', icon: 'calendar-days', txt: t('in') + ' ' + d + ' ' + t('days') + ' · ' + task.dueStr };
+  }
+
+  /** Split a car's visible tasks into the three segments. */
+  function bucketTasks(car) {
+    const out = { overdue: [], today: [], upcoming: [] };
+    TASKS.forEach(task => {
+      if (task.car !== car) return;
+      if (!task.visible) return;
+      if (task.state === 'broken') out.overdue.push(task);
+      else if (task.state === 'overdue') out.overdue.push(task);
+      else if (task.state === 'due' || task.state === 'done') out.today.push(task);
+      else out.upcoming.push(task);
+    });
+    const order = { broken: -1, overdue: 0, due: 1, done: 2, upcoming: 3 };
+    Object.keys(out).forEach(k => out[k].sort((a, b) => (order[a.state] - order[b.state])));
+    return out;
+  }
+
+  // ── GRID OF VEHICLE TILES ──
+  function renderTaskKPIs() {
+    TASK_VIEW.car = null;
+    const container = document.getElementById('taskViewsContainer');
+    container.setAttribute('data-viewing', 'ALL');
+
+    const byCar = {};
+    TASKS.forEach(task => {
+      if (!byCar[task.car]) byCar[task.car] = { overdue: 0, due: 0, done: 0 };
+      if (!task.visible) return;
+      if (task.state === 'overdue' || task.state === 'broken') byCar[task.car].overdue++;
+      else if (task.state === 'due') byCar[task.car].due++;
+      else if (task.state === 'done') byCar[task.car].done++;
+    });
+
+    const cars = Object.keys(byCar);
+    if (cars.length === 0) {
+      container.innerHTML = `<div class="tv-empty">
+          <div class="tv-empty-ic"><i class="fa-solid fa-clipboard-list"></i></div>
+          <div class="tv-empty-txt">${t('No Tasks Data Found')}</div>
+        </div>`;
+      return;
+    }
+
+    let html = `<div class="task-kpi-grid">`;
+    cars.forEach((car, i) => {
+      const c = byCar[car];
+      const open = c.overdue + c.due;
+      const badgeClass = open > 0 ? '' : 'zero';
+      const badgeText = open > 0
+        ? `${open} ${t('Pending')}`
+        : `<i class="fa-solid fa-check"></i> ${t('All Clear')}`;
+      const sub = c.overdue > 0
+        ? `<div class="task-v-sub"><i class="fa-solid fa-triangle-exclamation"></i> ${c.overdue} ${t('Overdue')}</div>`
+        : (c.done > 0 ? `<div class="task-v-sub"><i class="fa-solid fa-check"></i> ${c.done} ${t('Done')}</div>` : '');
+
+      html += `
+        <div class="task-v-card animate-in t-grad-${i % 6}" style="animation-delay:${i * 0.07}s;"
+             onclick="openCarTasks('${car.replace(/'/g, "\\'")}')">
+          <div class="task-badge ${badgeClass}">${badgeText}</div>
+          <i class="fa-solid fa-car-side task-v-icon"></i>
+          <div class="task-v-name">${getVName(car).toUpperCase()}</div>
+          ${sub}
+        </div>`;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+  }
+
+  function openCarTasks(car) {
+    TASK_VIEW.car = car;
+    TASK_VIEW.seg = 'today';
+    renderVehicleTasks(car);
+  }
+
+  function setTaskSeg(seg) {
+    TASK_VIEW.seg = seg;
+    renderVehicleTasks(TASK_VIEW.car, true);
+  }
+
+  // ── SIMPLIFIED SINGLE-CAR VIEW ──
+  function renderVehicleTasks(car, keepScroll) {
+    if (!car) { renderTaskKPIs(); return; }
+    TASK_VIEW.car = car;
+
+    const container = document.getElementById('taskViewsContainer');
+    container.setAttribute('data-viewing', car);
+    const prevScroll = keepScroll ? scrollContainer.scrollTop : null;
+
+    const buckets = bucketTasks(car);
+    const seg = TASK_VIEW.seg;
+    const list = buckets[seg] || [];
+
+    const segDef = [
+      { key: 'today',    label: t('Today'),    icon: 'sun',                   count: buckets.today.length },
+      { key: 'upcoming', label: t('Upcoming'), icon: 'calendar-days',         count: buckets.upcoming.length },
+      { key: 'overdue',  label: t('Overdue'),  icon: 'triangle-exclamation',  count: buckets.overdue.length, late: true }
+    ];
+
+    let html = `<div class="tv-wrap">`;
+
+    html += `
+      <div class="tv-top">
+        <button class="tv-back" onclick="renderTaskKPIs()" title="${t('Back to Grid')}">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div style="min-width:0;">
+          <div class="tv-greet-lbl">${greetWord()},</div>
+          <div class="tv-greet-name">${USER ? USER.name : ''}</div>
+          <div class="tv-sync"><div class="pulse-dot"></div> ${t('Live')} · ${getVName(car).toUpperCase()}</div>
+        </div>
+      </div>`;
+
+    html += `
+      <div class="tv-title-row">
+        <div class="tv-bar"></div>
+        <div class="tv-title">${t('Routine')}</div>
+      </div>`;
+
+    html += `<div class="tv-segs">`;
+    segDef.forEach(s => {
+      html += `
+        <div class="tv-seg ${s.late ? 'late' : ''} ${seg === s.key ? 'active' : ''}" onclick="setTaskSeg('${s.key}')">
+          <i class="fa-solid fa-${s.icon}"></i> ${s.label}
+          <span class="tv-seg-count">${s.count}</span>
+        </div>`;
+    });
+    html += `</div>`;
+
+    if (list.length === 0) {
+      const empty = {
+        today:    { ic: 'mug-hot',      cls: 'green', txt: t('Nothing due today') },
+        upcoming: { ic: 'calendar-check', cls: '',    txt: t('Nothing coming up') },
+        overdue:  { ic: 'circle-check', cls: 'green', txt: t('Nothing overdue') }
+      }[seg];
+      html += `
+        <div class="tv-empty">
+          <div class="tv-empty-ic ${empty.cls}"><i class="fa-solid fa-${empty.ic}"></i></div>
+          <div class="tv-empty-txt">${empty.txt}</div>
+          <div class="tv-empty-sub">${t('Everything on this vehicle is up to date.')}</div>
+        </div>`;
+    } else {
+      html += `<div class="tv-list">`;
+      list.forEach((task, i) => {
+        const w = whenText(task);
+        const stateCls = task.state === 'broken'  ? 'is-broken'
+                       : task.state === 'overdue' ? 'is-late'
+                       : task.state === 'done'    ? 'is-done'
+                       : task.state === 'due'     ? 'is-due' : 'is-soon';
+        const fCls = schedClass(task.schedKind);
+        const safe = task.taskName.replace(/'/g, "\\'");
+
+        let actions = '', statusIcon = '';
+        if (task.state === 'broken') {
+          statusIcon = `<div class="tv-status-ic" style="color:var(--text-red);"><i class="fa-solid fa-circle-exclamation"></i></div>`;
+        } else if (task.state === 'done') {
+          statusIcon = `<div class="tv-status-ic" style="color:var(--text-green);"><i class="fa-solid fa-circle-check"></i></div>`;
+        } else {
+          actions = `
+            <button class="tv-done-btn" onclick="openTaskModal(${task.rowIdx}, '${task.car.replace(/'/g, "\\'")}', '${safe}', '${task.schedLabel}', '${task.dueStr}')">
+              <i class="fa-solid fa-check"></i> ${t('Done')}
+            </button>`;
+          if (task.canShift) {
+            actions += `
+              <button class="tv-shift-btn" onclick="openShiftModal(${task.rowIdx}, '${task.car.replace(/'/g, "\\'")}', '${safe}', '${task.dueStr}', ${task.shiftLeft}, '${task.schedLabel}')">
+                <i class="fa-solid fa-calendar-plus"></i> ${t('Shift')}
+              </button>`;
+          }
+          if (task.canNote) {
+            const nc = (task.notes || []).length;
+            actions += `
+              <button class="tv-note-btn" onclick="openNoteModal(${task.rowIdx})" title="${t('Remarks')}">
+                <i class="fa-regular fa-comment-dots"></i> ${t('Note')}
+                ${nc ? `<span class="tv-note-count">${nc}</span>` : ''}
+              </button>`;
+          }
+        }
+
+        let footer = '';
+        if (task.state === 'broken') {
+          footer = `<div class="tv-fixnote">
+              <i class="fa-solid fa-wrench"></i>
+              ${t('The Freq cell for this task reads')} "<b>${task.schedLabel}</b>".
+              ${t('Ask your admin to set it to D, a day name (MONDAY) or dates (17, 21).')}
+            </div>`;
+        } else if (task.state === 'done') {
+          const timePart = (task.lastDoneStr || '').split(' ')[1] || '';
+          footer = `
+            <div class="tv-donechip">
+              <i class="fa-solid fa-circle-check"></i>
+              <div class="tv-donechip-txt">${t('Done by')}: <b>${task.doneBy || '—'}</b>${timePart ? ' · ' + timePart : ''}</div>
+            </div>`;
+        } else if (task.shiftUsed > 0) {
+          footer = `<div class="tv-shift-note">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              ${t('Postponed')} +${task.shiftUsed}d · ${task.shiftLeft} ${t('Day')} ${t('left')}
+            </div>`;
+        }
+
+        if (task.state !== 'done' && (task.notes || []).length) {
+          footer += `<div class="tv-notes">` + task.notes.map(n => `
+              <div class="tv-note">
+                <i class="fa-solid fa-comment-dots"></i>
+                <div class="tv-note-body">
+                  <div class="tv-note-txt">${escHtml(n.text)}</div>
+                  <div class="tv-note-meta">${escHtml(n.author)} · ${escHtml(n.when)}</div>
+                </div>
+              </div>`).join('') + `</div>`;
+        }
+
+        html += `
+          <div class="tv-card ${stateCls}" style="animation-delay:${i * 0.04}s;">
+            <div class="tv-title-line">
+              <div class="tv-task-name">${t(task.taskName)}</div>
+              ${statusIcon}
+            </div>
+            <div class="tv-actions">${actions}</div>
+            <div class="tv-meta">
+              <span class="tv-pill ${fCls}" title="${task.schedLabel || ''}">${task.schedShort || '?'}</span>
+              <span class="tv-when ${w.cls}"><i class="fa-solid fa-${w.icon}"></i> ${w.txt}</span>
+              ${task.missedCount > 0 && task.state === 'overdue'
+                  ? `<span class="tv-missed"><i class="fa-solid fa-xmark"></i> ${task.missedCount}× ${t('missed')}</span>` : ''}
+            </div>
+            ${footer}
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+    if (prevScroll !== null) scrollContainer.scrollTop = prevScroll;
+  }
+
+  /** Re-draw whatever the user is looking at, without touching the page position. */
+  function repaintTasks(keepScroll) {
+    updateTaskBadge();
+    if (TASK_VIEW.car) renderVehicleTasks(TASK_VIEW.car, keepScroll !== false);
+    else renderTaskKPIs();
+  }
+
+  // ── NAV BADGE: how much is left to do today, across every vehicle ──
+  function pendingToday() {
+    let n = 0;
+    TASKS.forEach(task => {
+      if (!task.visible) return;
+      if (task.state === 'due' || task.state === 'overdue' || task.state === 'broken') n++;
+    });
+    return n;
+  }
+
+  function updateTaskBadge() {
+    const n = pendingToday();
+    const anyVisible = TASKS.some(t => t.visible);
+
+    document.querySelectorAll('.js-task-badge').forEach(el => {
+      if (!anyVisible) {                       // nothing loaded / no tasks at all
+        el.className = 'nav-badge hide js-task-badge';
+        el.innerHTML = '';
+        el.removeAttribute('title');
+        return;
+      }
+      if (n > 0) {
+        el.className = 'nav-badge js-task-badge';
+        el.textContent = n > 99 ? '99+' : String(n);
+        el.title = n + ' ' + t('pending today');
+      } else {
+        el.className = 'nav-badge clear js-task-badge';
+        el.innerHTML = '<i class="fa-solid fa-check"></i>';
+        el.title = t('All tasks done for today');
+      }
+    });
+  }
+
+  // ── REMARKS ──
+  function noteCount() {
+    document.getElementById('nt_count').textContent =
+      String(document.getElementById('nt_text').value.length);
+  }
+
+  function renderNoteList(notes) {
+    const box = document.getElementById('nt_list');
+    if (!notes || !notes.length) {
+      box.innerHTML = `<div class="note-empty">
+          <i class="fa-regular fa-comment-dots" style="font-size:22px; display:block; margin-bottom:8px; opacity:.5;"></i>
+          ${t('No remarks on this task yet.')}
+        </div>`;
+      return;
+    }
+    box.innerHTML = notes.map(n => `
+      <div class="tv-note">
+        <i class="fa-solid fa-comment-dots"></i>
+        <div class="tv-note-body">
+          <div class="tv-note-txt">${escHtml(n.text)}</div>
+          <div class="tv-note-meta">${escHtml(n.author)} · ${escHtml(n.when)}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function openNoteModal(rowIdx) {
+    const task = TASKS.find(x => String(x.rowIdx) === String(rowIdx));
+    if (!task) return;
+
+    document.getElementById('nt_rowIdx').value = rowIdx;
+    document.getElementById('nt_taskName').value = task.taskName;
+    document.getElementById('nt_displayCar').textContent = getVName(task.car).toUpperCase();
+    document.getElementById('nt_displayTask').textContent = t(task.taskName);
+    document.getElementById('nt_text').value = '';
+    noteCount();
+    renderNoteList(task.notes);
+    openModal('noteModal');
+    setTimeout(() => document.getElementById('nt_text').focus(), 150);
+  }
+
+  function submitNote(e) {
+    e.preventDefault();
+    const text = document.getElementById('nt_text').value.trim();
+    if (!text) return;
+
+    const rowIdx = document.getElementById('nt_rowIdx').value;
+    const btn = document.getElementById('nt_btn');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> ${t('Saving')}…`;
+
+    const restore = () => {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t('Save Remark')}`;
+    };
+
+    google.script.run
+      .withSuccessHandler(res => {
+        restore();
+        if (res && res.success) {
+          const task = TASKS.find(x => String(x.rowIdx) === String(rowIdx));
+          if (task) {
+            task.notes = (task.notes || []).concat([res.note]);
+            renderNoteList(task.notes);
+          }
+          document.getElementById('nt_text').value = '';
+          noteCount();
+          repaintTasks(true);
+          flashToast(`<i class="fa-solid fa-comment-dots"></i> ${t('Remark saved')}`);
+          silentRefresh();
+        } else if (res && res.expired) {
+          closeModal('noteModal');
+          onSessionExpired();
+        } else {
+          alert((res && res.message) || 'Could not save the remark.');
+        }
+      })
+      .withFailureHandler(err => {
+        restore();
+        alert('Network error: ' + (err.message || err));
+      })
+      .apiAddTaskNote({ token: TOKEN, rowIdx: rowIdx,
+                        taskName: document.getElementById('nt_taskName').value, note: text });
+  }
+
+  // ── MARK DONE ──
+  function openTaskModal(rowIdx, car, taskName, schedLabel, dueStr) {
+    document.getElementById('t_rowIdx').value = rowIdx;
+    document.getElementById('t_car').value = car;
+    document.getElementById('t_taskName').value = taskName;
+    document.getElementById('t_freq').value = schedLabel;
+    document.getElementById('t_plannedStr').value = dueStr;
+
+    document.getElementById('t_displayCar').textContent = getVName(car).toUpperCase();
+    document.getElementById('t_displayTask').textContent = t(taskName);
+    document.getElementById('t_displayDue').innerHTML =
+      `<i class="fa-regular fa-calendar"></i> ${schedLabel} · ${t('Due')}: ${dueStr}`;
+    document.getElementById('t_displayUser').textContent = USER ? USER.name : '—';
+
+    openModal('taskModal');
+  }
+
+  function submitTask(e) {
+    e.preventDefault();
+    const btn = document.getElementById('t_btn');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> ${t('Saving')}…`;
+
+    const payload = {
+      token: TOKEN,
+      rowIdx: document.getElementById('t_rowIdx').value,
+      car: document.getElementById('t_car').value,
+      taskName: document.getElementById('t_taskName').value
+    };
+
+    const restore = () => {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-check-double"></i> ${t('Confirm & Mark Done')}`;
+    };
+
+    google.script.run
+      .withSuccessHandler(res => {
+        restore();
+        if (res && res.success) {
+          closeModal('taskModal');
+          // Optimistic update so the card flips to "Done by" instantly.
+          const task = TASKS.find(x => String(x.rowIdx) === String(payload.rowIdx));
+          if (task) {
+            task.state = 'done';
+            task.doneBy = res.doneBy;
+            task.lastDoneStr = SERVER_DATE + ' ' + res.doneAt;
+            task.dueStr = res.nextDue;
+            task.missedCount = 0;
+            task.visible = true;
+            task.canShift = false;
+            task.shiftUsed = 0;
+            task.overdueDays = 0;
+            task.notes = [];
+          }
+          repaintTasks(true);
+          flashToast(`<i class="fa-solid fa-circle-check"></i> ${t('Done by')} ${res.doneBy}`);
+          silentRefresh();
+        } else if (res && res.expired) {
+          closeModal('taskModal');
+          onSessionExpired();
+        } else {
+          alert((res && res.message) || 'Could not save.');
+        }
+      })
+      .withFailureHandler(err => {
+        restore();
+        alert('Network error: ' + (err.message || err));
+      })
+      .submitTaskCompletion(payload);
+  }
+
+  // ── SHIFT / POSTPONE ──
+  let SHIFT_CTX = { rowIdx: null, planned: null, left: 2, days: 1 };
+
+  function addDaysStr(dStr, n) {
+    const p = String(dStr).split('/');
+    if (p.length !== 3) return dStr;
+    const d = new Date(+p[2], +p[1] - 1, +p[0]);
+    d.setDate(d.getDate() + n);
+    const pad = v => String(v).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+
+  function openShiftModal(rowIdx, car, taskName, dueStr, shiftLeft, schedLabel) {
+    SHIFT_CTX = { rowIdx: rowIdx, planned: dueStr, left: shiftLeft, days: 1 };
+
+    document.getElementById('sh_rowIdx').value = rowIdx;
+    document.getElementById('sh_displayCar').textContent = getVName(car).toUpperCase();
+    document.getElementById('sh_displayTask').textContent = t(taskName);
+    document.getElementById('shiftDate1').textContent = addDaysStr(dueStr, 1);
+    document.getElementById('shiftDate2').textContent = addDaysStr(dueStr, 2);
+    const keepEl = document.getElementById('sh_keeps');
+    if (keepEl) keepEl.textContent = schedLabel || '';
+
+    const opt2 = document.getElementById('shiftOpt2');
+    if (shiftLeft < 2) opt2.classList.add('disabled');
+    else opt2.classList.remove('disabled');
+
+    document.getElementById('sh_left').textContent =
+      `${shiftLeft} ${shiftLeft === 1 ? t('Day') : t('Days')} ${t('left')}`;
+
+    pickShift(1);
+    openModal('shiftModal');
+  }
+
+  function pickShift(days) {
+    if (days > SHIFT_CTX.left) return;
+    SHIFT_CTX.days = days;
+    document.getElementById('sh_days').value = days;
+    document.getElementById('shiftOpt1').classList.toggle('selected', days === 1);
+    document.getElementById('shiftOpt2').classList.toggle('selected', days === 2);
+  }
+
+  function submitShift(e) {
+    e.preventDefault();
+    const btn = document.getElementById('sh_btn');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> ${t('Saving')}…`;
+
+    const restore = () => {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-calendar-plus"></i> ${t('Confirm Postpone')}`;
+    };
+
+    google.script.run
+      .withSuccessHandler(res => {
+        restore();
+        if (res && res.success) {
+          closeModal('shiftModal');
+          const task = TASKS.find(x => String(x.rowIdx) === String(SHIFT_CTX.rowIdx));
+          if (task) {
+            task.dueStr = res.newDue;
+            task.shiftUsed += SHIFT_CTX.days;
+            task.shiftLeft = res.shiftLeft;
+            task.canShift = res.shiftLeft > 0;
+            task.state = 'upcoming';
+            task.daysToGo = SHIFT_CTX.days;
+            task.overdueDays = 0;
+          }
+          repaintTasks(true);
+          if (res.checklistOk === false) {
+            flashToast(`<i class="fa-solid fa-triangle-exclamation" style="color:#FBBF24"></i> ` +
+                       `${t('Saved, but the Checklist was not updated')}`, 6000);
+            console.warn('Checklist not updated:', res.warning);
+          } else {
+            flashToast(`<i class="fa-solid fa-calendar-plus"></i> ${t('Postponed')} → ${res.newDue}`);
+          }
+          silentRefresh();
+        } else if (res && res.expired) {
+          closeModal('shiftModal');
+          onSessionExpired();
+        } else {
+          alert((res && res.message) || 'Could not postpone.');
+        }
+      })
+      .withFailureHandler(err => {
+        restore();
+        alert('Network error: ' + (err.message || err));
+      })
+      .shiftTask({ token: TOKEN, rowIdx: SHIFT_CTX.rowIdx, days: SHIFT_CTX.days });
+  }
+
+  // ── Small non-blocking toast (replaces the full-screen success wipe) ──
+  function flashToast(html, ms) {
+    let el = document.getElementById('jprToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'jprToast';
+      el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%) translateY(20px);' +
+        'bottom:100px;z-index:3000;background:#0F172A;color:#fff;padding:14px 20px;border-radius:14px;' +
+        'font-family:Outfit,sans-serif;font-size:13.5px;font-weight:700;display:flex;align-items:center;' +
+        'gap:10px;box-shadow:0 12px 30px rgba(0,0,0,0.3);opacity:0;transition:all .3s;pointer-events:none;' +
+        'max-width:90vw;';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = html;
+    requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)'; });
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(20px)';
+    }, ms || 2600);
+  }
+
+
+  // ─── DASHBOARD LOGIC ─────────────────────────────────────────
+
+  function buildVehicleStrip() {
+    const strip = document.getElementById('vehicleStrip'); 
+    strip.innerHTML = ''; 
+    const carsMap = {};
+    
+    RAW_FUEL.forEach(f => { 
+      if (f.vehicle && !carsMap[f.vehicle]) {
+        carsMap[f.vehicle] = f.driver; 
+      }
+    });
+    
+    let delay = 0;
+    for (const v in carsMap) {
+      const dName = (carsMap[v] || "Unknown").split(' ')[0]; 
+      const fills = RAW_FUEL.filter(f => f.vehicle === v).length; 
+      const isActive = activeCar === v;
+      
+      strip.innerHTML += `
+        <div class="v-card animate-in ${isActive ? 'active' : ''}" style="animation-delay: ${delay}s;" onclick="toggleCar('${v}')">
+          <i class="fa-solid fa-car-side v-card-icon"></i>
+          <div class="v-name">${getVName(v).toUpperCase()}</div>
+          <div class="v-km">${vehicleKm(v) ? vehicleKm(v).toLocaleString('en-IN') + ' KM' : '— KM'}</div>
+          <div class="v-driver">${dName} · ${fills} ${t('Fills')}</div>
+        </div>`;
+      delay += 0.05;
+    }
+  }
+
+  /** Current odometer of a vehicle: the highest reading in its fuel and service entries. */
+  function vehicleKm(v) {
+    let m = 0;
+    RAW_FUEL.forEach(f => { if (f.vehicle === v && f.odo > m) m = f.odo; });
+    RAW_SERVICE.forEach(s => { const o = parseFloat(s.odo) || 0; if (s.vehicle === v && o > m) m = o; });
+    return m;
+  }
+
+  // ─── DRIVERS: tiles + full history ───────────────────────────
+  let DRIVERS = [];        // one entry per person
+  let DRIVER_OF = {};      // normalised spelling -> person
+  let DH = { d: null, month: 'ALL', days: 30 };
+
+  function normName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9\u0900-\u097F]+/g, ' ').trim(); }
+  function firstTok(n) { return n.split(' ')[0] || ''; }
+  function escH(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function dInitials(name) { const p = normName(name).split(' ').filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')); }
+  function monthOf(s) { const p = String(s || '').split(/[\/\-\.]/); return p.length < 3 ? '' : String(parseInt(p[1], 10)).padStart(2, '0') + '/' + String(p[2]).slice(0, 4); }
+  function curMonthKey() {
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(SERVER_DATE || '')) return SERVER_DATE.slice(3);
+    const d = new Date(); return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  }
+  function monthLabel(key) { const p = key.split('/'); return new Date(+p[1], +p[0] - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' }); }
+  function dayLabel(s) { const p = String(s).split('/'); const d = new Date(+p[2], +p[1] - 1, +p[0]); return isNaN(d) ? s : d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+
+  function newDriver(name, username, account, active) {
+    const d = { id: DRIVERS.length, name: String(name).trim(), username: username || '', account: !!account, active: active !== false, role: '',
+                full: new Set(), firsts: new Set(), tasks: [], fuel: [], service: [], listed: false };
+    [name, username].forEach(x => { const n = normName(x); if (n) { d.full.add(n); d.firsts.add(firstTok(n)); } });
+    DRIVERS.push(d);
+    return d;
+  }
+
+  /* One person behind every spelling: "GAJENDRA" typed in an old fuel row, the
+     username "gajendra.meena" and "Gajendra Meena" in the Checklist land on one tile.
+     Full name / username first. A bare first name joins a person only when exactly
+     one person has that first name, so two different Gajendras never merge. */
+  function resolveDriver(raw, create) {
+    const n = normName(raw);
+    if (!n || n.length < 2 || n === 'UNKNOWN') return null;
+    if (DRIVER_OF[n]) return DRIVER_OF[n];
+    let hit = DRIVERS.find(d => d.full.has(n));
+    if (!hit) {
+      const f = firstTok(n), single = n.indexOf(' ') < 0;
+      const c = DRIVERS.filter(d => d.firsts.has(f) && (single || d.full.has(f)));
+      if (c.length === 1) {
+        hit = c[0];
+        if (!single) { hit.full.add(n); if (hit.name.indexOf(' ') < 0 && !hit.account) hit.name = String(raw).trim(); }
+      }
+    }
+    if (!hit && create) hit = newDriver(raw, '', false, true);
+    if (hit) DRIVER_OF[n] = hit;
+    return hit || null;
+  }
+
+  function buildDrivers() {
+    DRIVERS = []; DRIVER_OF = {};
+    PEOPLE.forEach(p => {
+      const same = DRIVERS.find(d => d.full.has(normName(p.name)));
+      if (same) { const u = normName(p.username); if (u) { same.full.add(u); same.firsts.add(firstTok(u)); } return; }
+      newDriver(p.name, p.username, true, p.active).role = String(p.role || '').toUpperCase();
+    });
+    FORM_DRIVERS.forEach(nm => { const d = resolveDriver(nm, true); if (d) d.listed = true; });
+    // this month from the live refresh, older months from the full log once it is loaded
+    const mk = curMonthKey();
+    const log = TASK_LOG.concat((FULL_LOG || []).filter(r => monthOf(r[0]) !== mk));
+    log.forEach(r => { const d = resolveDriver(r[4], true); if (d) d.tasks.push(r); });
+    RAW_FUEL.forEach(f => { const d = resolveDriver(f.driver, true); if (d) d.fuel.push(f); });
+    RAW_SERVICE.forEach(s => { const d = resolveDriver(s.driver, true); if (d) d.service.push(s); });
+    const byDate = (a, b) => parseDate(b.date) - parseDate(a.date);
+    DRIVERS.forEach(d => { d.fuel.sort(byDate); d.service.sort(byDate); });
+  }
+
+  function buildDriverStrip() {
+    const block = document.getElementById('driverBlock'), strip = document.getElementById('driverStrip');
+    if (!block || !strip) return;
+    buildDrivers();
+    const mk = curMonthKey();
+    // Only people whose ROLE in the Users tab is DRIVER get a tile. Everyone else still
+    // takes part in name matching, so an admin's entries never land on a driver.
+    const shown = DRIVERS
+      .filter(d => d.account && /DRIVER/.test(d.role))
+      .filter(d => d.active || d.tasks.length || d.fuel.length || d.service.length)
+      .map(d => ({ d: d, n: d.tasks.filter(r => monthOf(r[0]) === mk).length }))
+      .sort((a, b) => b.n - a.n || a.d.name.localeCompare(b.d.name));
+    if (!shown.length) { block.style.display = 'none'; strip.innerHTML = ''; return; }
+    block.style.display = '';
+    document.getElementById('driverMonthBadge').textContent = monthLabel(mk);
+    strip.innerHTML = shown.map((x, i) => `
+        <div class="v-card d-card animate-in" style="animation-delay: ${i * 0.04}s;" onclick="openDriver(${x.d.id})">
+          <div class="d-avatar" data-ggm-photo="${escH(x.d.username || x.d.name)}">${escH(dInitials(x.d.name))}</div>
+          <div class="d-name">${escH(x.d.name.toUpperCase())}</div>
+          <div class="d-count">${x.n}</div>
+          <div class="d-lbl">${t('Tasks done this month')}</div>
+        </div>`).join('');
+    if (DH.d && document.getElementById('driverModal').classList.contains('open')) {
+      DH.d = DRIVERS.find(d => d.name === DH.d.name) || DH.d; renderDriver();
+    }
+  }
+
+  function openDriver(id) {
+    DH = { d: DRIVERS[id], month: 'ALL', days: 30 };
+    if (!DH.d) return;
+    renderDriver();
+    openModal('driverModal');
+    document.querySelector('#driverModal .modal-content').scrollTop = 0;
+    if (!FULL_LOG || Date.now() - FULL_LOG_AT > 5 * 60000) loadFullLog();
+  }
+
+  let FULL_LOG_BUSY = false;
+  function loadFullLog() {
+    if (FULL_LOG_BUSY || !TOKEN) return;
+    FULL_LOG_BUSY = true;
+    google.script.run
+      .withSuccessHandler(res => {
+        FULL_LOG_BUSY = false;
+        try {
+          const data = JSON.parse(res);
+          if (data.expired) { onSessionExpired(); return; }
+          if (!data.success) return;
+          FULL_LOG = data.log || []; FULL_LOG_AT = Date.now();
+          buildDriverStrip();          // re-renders the open history with every month
+        } catch (e) { console.error('History load failed:', e); }
+      })
+      .withFailureHandler(() => { FULL_LOG_BUSY = false; if (DH.d) renderDriver(); })
+      .apiTaskHistory(TOKEN);
+  }
+  function setDriverMonth(v) { DH.month = v; DH.days = 30; renderDriver(); }
+  function moreDriverDays() { DH.days += 30; renderDriver(); }
+
+  function renderDriver() {
+    const d = DH.d; if (!d) return;
+    const mk = curMonthKey();
+    const pick = s => DH.month === 'ALL' || monthOf(s) === DH.month;
+    const tasks = d.tasks.filter(r => pick(r[0]));
+    const services = d.service.filter(s => pick(s.date));
+    const fuels = d.fuel.filter(f => pick(f.date));
+
+    document.getElementById('dhHead').innerHTML = `
+      <div class="d-avatar" data-ggm-photo="${escH(d.username || d.name)}">${escH(dInitials(d.name))}</div>
+      <div style="min-width:0;">
+        <div class="dh-name">${escH(d.name.toUpperCase())}</div>
+        <div class="dh-sub">${t('Driver History')}${d.username ? ' · ' + escH(d.username) : ''}</div>
+      </div>`;
+
+    const months = {};
+    d.tasks.forEach(r => { const m = monthOf(r[0]); if (m) months[m] = 1; });
+    d.fuel.concat(d.service).forEach(x => { const m = monthOf(x.date); if (m) months[m] = 1; });
+    const mOpts = Object.keys(months).sort((a, b) => (b.slice(3) + b.slice(0, 2)).localeCompare(a.slice(3) + a.slice(0, 2)))
+      .map(m => `<option value="${m}" ${DH.month === m ? 'selected' : ''}>${monthLabel(m)}</option>`).join('');
+
+    let h = `
+      <div class="dh-stats">
+        <div class="dh-stat"><b>${d.tasks.filter(r => monthOf(r[0]) === mk).length}</b><span>${t('This month')}</span></div>
+        <div class="dh-stat"><b>${d.tasks.length}</b><span>${t('Tasks (all)')}</span></div>
+        <div class="dh-stat"><b>${d.fuel.length}</b><span>${t('Fuel entries')}</span></div>
+        <div class="dh-stat"><b>${d.service.length}</b><span>${t('Services')}</span></div>
+      </div>
+      <div class="select-wrapper">
+        <select class="select-input" onchange="setDriverMonth(this.value)">
+          <option value="ALL" ${DH.month === 'ALL' ? 'selected' : ''}>${t('All time')}</option>${mOpts}
+        </select>
+        <i class="fa-solid fa-chevron-down"></i>
+      </div>`;
+
+    // latest fuel entry by him
+    h += `<div class="dh-sec"><i class="fa-solid fa-gas-pump" style="color:var(--primary)"></i> ${t('Latest Fuel Entry')}<span class="badge">${fuels.length}</span></div>`;
+    h += fuels.length ? `<div class="log-list" style="display:block;">${buildFuelCards([fuels[0]])}</div>`
+                      : `<div class="dh-empty">${t('No fuel entries')}</div>`;
+
+    // service forms by him
+    h += `<div class="dh-sec"><i class="fa-solid fa-wrench" style="color:var(--danger)"></i> ${t('Service Forms')}<span class="badge">${services.length}</span></div>`;
+    h += services.length ? services.map(s => `
+        <div class="dh-srv">
+          <div><b>${escH(getVName(s.vehicle).toUpperCase())}</b> <span class="dh-srv-meta">· ${escH(s.date)}${parseFloat(s.odo) ? ' · ' + (parseFloat(s.odo)).toLocaleString('en-IN') + ' km' : ''}</span></div>
+          <div class="dh-srv-amt">₹${(s.amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+          <div style="grid-column:1 / -1; font-weight:600;">${escH(s.issue)}</div>
+        </div>`).join('') : `<div class="dh-empty">${t('No service forms')}</div>`;
+
+    // log book: tasks marked done, by date
+    h += `<div class="dh-sec"><i class="fa-solid fa-book" style="color:#047857"></i> ${t('Log Book')}<span class="badge">${tasks.length}</span></div>`;
+    if (!FULL_LOG) h += `<div class="dh-empty" style="margin-bottom:10px;"><i class="fa-solid fa-spinner spin"></i> ${t('Loading older months...')}</div>`;
+    if (!tasks.length) h += `<div class="dh-empty">${t('No tasks marked done')}</div>`;
+    else {
+      const days = [], byDay = {};
+      tasks.forEach(r => { if (!byDay[r[0]]) { byDay[r[0]] = []; days.push(r[0]); } byDay[r[0]].push(r); });
+      h += days.slice(0, DH.days).map(day => `
+        <div class="dh-day">
+          <div class="dh-day-h">${escH(dayLabel(day))}<span>${byDay[day].length} ${byDay[day].length === 1 ? t('task') : t('tasks')}</span></div>
+          ${byDay[day].map(r => `
+            <div class="dh-row">
+              <span class="dh-car">${escH(String(r[2]).toUpperCase())}</span>
+              <span class="dh-task">${escH(t(r[3]))}</span>
+              ${r[5] ? `<span class="dh-late">${t('Late')}</span>` : ''}
+              <span class="dh-time">${escH(r[1])}</span>
+            </div>`).join('')}
+        </div>`).join('');
+      if (days.length > DH.days) h += `<button class="dh-more" onclick="moreDriverDays()">${t('Show more')} (${days.length - DH.days})</button>`;
+    }
+    document.getElementById('dhBody').innerHTML = h;
+  }
+
+  function toggleCar(v) { 
+    activeCar = (activeCar === v) ? null : v; 
+    document.getElementById('clearBtn').style.display = activeCar ? 'flex' : 'none'; 
+    buildVehicleStrip(); 
+    applyFilters(); 
+    document.getElementById('activeBadge').textContent = activeCar ? getVName(activeCar).toUpperCase() : t('All Vehicles'); 
+  }
+
+  function clearCar() { 
+    activeCar = null; 
+    document.getElementById('clearBtn').style.display = 'none'; 
+    document.getElementById('activeBadge').textContent = t('All Vehicles'); 
+    buildVehicleStrip(); 
+    applyFilters(); 
+  }
+
+  function applyFilters() {
+    const drv = document.getElementById('driverSel').value;
+    
+    let tempF = drv === 'ALL' ? [...RAW_FUEL] : RAW_FUEL.filter(f => f.driver === drv); 
+    let tempS = drv === 'ALL' ? [...RAW_SERVICE] : RAW_SERVICE.filter(s => s.driver === drv);
+    
+    if (activeCar) { 
+      FUEL = tempF.filter(f => f.vehicle === activeCar); 
+      SERVICE = tempS.filter(s => s.vehicle === activeCar); 
+    } else { 
+      FUEL = tempF; 
+      SERVICE = tempS; 
+    }
+    
+    renderDashboard(); 
+    renderFuelLogs(); 
+    renderServiceLogs(); 
+    renderDataTable();
+  }
+
+  function renderDashboard() {
+    let tF = 0, tC = 0, tS = 0, tK = 0;
+    
+    FUEL.forEach(f => { 
+      tF += f.qty || 0; 
+      tC += f.amount || 0; 
+      if(typeof f.range === 'number' && f.range !== null) tK += f.range; 
+    });
+    
+    SERVICE.forEach(s => tS += s.amount || 0);
+    
+    document.getElementById('kFuel').textContent = Math.round(tF).toLocaleString('en-IN') + ' L'; 
+    document.getElementById('kKm').textContent = Math.round(tK).toLocaleString('en-IN'); 
+    document.getElementById('kFuelCost').textContent = '₹' + Math.round(tC).toLocaleString('en-IN'); 
+    document.getElementById('kService').textContent = '₹' + Math.round(tS).toLocaleString('en-IN');
+    
+    document.getElementById('recentLogs').innerHTML = buildFuelCards(FUEL.slice(0, 5));
+    
+    renderServiceAlerts();
+  }
+
+  function renderServiceAlerts() {
+    const container = document.getElementById('serviceAlertsContainer');
+    if (!container) return;
+
+    let alertsHtml = '';
+    let allVehicles = Array.from(new Set([...RAW_FUEL.map(f=>f.vehicle), ...RAW_SERVICE.map(s=>s.vehicle)]));
+
+    let vehiclesToCheck = activeCar ? [activeCar] : allVehicles;
+    let hasAlerts = false;
+
+    vehiclesToCheck.forEach(v => {
+      let interval = SERVICE_CONFIG[v];
+      if (!interval || interval <= 0) return;
+
+      let fLogs = RAW_FUEL.filter(f => f.vehicle === v);
+      let sLogs = RAW_SERVICE.filter(s => s.vehicle === v);
+
+      let maxOdo = 0;
+      fLogs.forEach(f => { if(f.odo > maxOdo) maxOdo = f.odo; });
+      sLogs.forEach(s => { let o = parseFloat(s.odo)||0; if(o > maxOdo) maxOdo = o; });
+
+      let lastServOdo = 0;
+      sLogs.forEach(s => { let o = parseFloat(s.odo)||0; if(o > lastServOdo) lastServOdo = o; });
+
+      if (lastServOdo === 0) {
+         let minOdo = Infinity;
+         fLogs.forEach(f => { if(f.odo > 0 && f.odo < minOdo) minOdo = f.odo; });
+         if (minOdo !== Infinity) lastServOdo = minOdo;
+      }
+
+      if (maxOdo === 0) return;
+
+      let targetOdo = lastServOdo + interval;
+      let distanceDriven = maxOdo - lastServOdo;
+      let remaining = targetOdo - maxOdo;
+      let percentage = Math.min((distanceDriven / interval) * 100, 100).toFixed(0);
+
+      if (maxOdo >= targetOdo) {
+        hasAlerts = true;
+        alertsHtml += `
+          <div class="alert-card due animate-in">
+            <div class="alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div class="alert-content">
+              <div class="alert-title">${getVName(v).toUpperCase()} - SERVICE OVERDUE!</div>
+              <div class="alert-desc">Current ODO: <b>${maxOdo.toLocaleString('en-IN')} KM</b>. (Was due at ${targetOdo.toLocaleString('en-IN')} KM)</div>
+            </div>
+            <button class="alert-btn" onclick="openServiceFor('${v}', ${maxOdo})">Log Service</button>
+          </div>`;
+      } else if (remaining <= 500 && remaining > 0) { 
+        hasAlerts = true;
+        alertsHtml += `
+          <div class="alert-card warning animate-in">
+            <div class="alert-icon"><i class="fa-solid fa-clock"></i></div>
+            <div class="alert-content">
+              <div class="alert-title">${getVName(v).toUpperCase()} - Service Reminder</div>
+              <div class="alert-desc">Next Service at: <b>${targetOdo.toLocaleString('en-IN')} KM</b> (Due in ${remaining.toLocaleString('en-IN')} KM)</div>
+              <div class="alert-progress-bg"><div class="alert-progress-fill" style="width:${percentage}%"></div></div>
+            </div>
+          </div>`;
+      }
+    });
+
+    if (hasAlerts) {
+      container.innerHTML = `<h3 class="sec-title" style="margin-bottom:12px; font-size:16px;">Action Required</h3>` + alertsHtml;
+      container.style.display = 'block';
+    } else {
+      container.innerHTML = '';
+      container.style.display = 'none';
+    }
+  }
+
+  function openServiceFor(vehicle, odo) {
+    openModal('serviceModal');
+    setTimeout(() => {
+      document.getElementById('s_vehicle').value = vehicle;
+      document.getElementById('s_odo').value = odo;
+    }, 100);
+  }
+
+  function getPill(m, vName) {
+    if (!m) return `<div class="pill p-gray">NO AVG</div>`; 
+    const v = String(vName).toUpperCase();
+    
+    if (m > 20) return `<div class="pill p-red">${m} KM/L</div>`;
+    if ((v.includes('CRETA') || v.includes('KIA') || v.includes('SELTOS')) && m < 15) return `<div class="pill p-blue">${m} KM/L</div>`;
+    if ((v.includes('INNOVA') || v.includes('CRYSTA') || v.includes('HYCROSS')) && m < 12) return `<div class="pill p-blue">${m} KM/L</div>`;
+    if (v.includes('FORTUNER') && m < 8) return `<div class="pill p-blue">${m} KM/L</div>`;
+    
+    return `<div class="pill p-green">${m} KM/L</div>`;
+  }
+
+  function buildFuelCards(data) {
+    if (!data.length) return `<div class="empty"><i class="fa-solid fa-inbox"></i><br/>No records</div>`;
+    
+    return data.map((log, i) => `
+      <div class="log-card f-type animate-in" style="animation-delay: ${i * 0.05}s">
+        <div class="lc-top">
+          <div class="lc-title-group">
+            <div class="lc-icon fuel"><i class="fa-solid fa-gas-pump"></i></div>
+            <div>
+              <div class="lc-car">${getVName(log.vehicle).toUpperCase()}</div>
+              <div class="lc-date"><i class="fa-regular fa-user"></i> ${(log.driver||"").split(' ')[0]} &nbsp;·&nbsp; ${log.date}</div>
+            </div>
+          </div>
+          <div class="lc-right">
+            ${getPill(log.mileage, log.vehicle)}
+            <div class="lc-amt fuel">₹${(log.amount||0).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+          </div>
+        </div>
+        <div class="lc-grid">
+          <div class="lg-item"><div class="lg-lbl">Qty</div><div class="lg-val">${log.qty} L</div></div>
+          <div class="lg-item"><div class="lg-lbl">Range</div><div class="lg-val">${log.range ? log.range.toLocaleString('en-IN')+' km' : 'First'}</div></div>
+          <div class="lg-item"><div class="lg-lbl">Cost/KM</div><div class="lg-val">${log.costPerKm ? '₹'+log.costPerKm : '—'}</div></div>
+        </div>
+      </div>`
+    ).join('');
+  }
+
+  function clearFuelFilters() { 
+    document.getElementById('fuelFilterVehicle').value = 'ALL'; 
+    document.getElementById('fuelFilterDriver').value = 'ALL'; 
+    document.getElementById('fuelFilterDate').value = ''; 
+    renderFuelLogs(); 
+  }
+
+  function renderFuelLogs() { 
+    let filtered = [...FUEL]; 
+    const veh = document.getElementById('fuelFilterVehicle').value; 
+    const drv = document.getElementById('fuelFilterDriver').value; 
+    const dt = document.getElementById('fuelFilterDate').value;
+    
+    if(veh !== 'ALL') filtered = filtered.filter(f => f.vehicle === veh); 
+    if(drv !== 'ALL') filtered = filtered.filter(f => f.driver === drv);
+    
+    if(dt) { 
+      const [y, m, d] = dt.split('-'); 
+      const d1 = `${d}/${m}/${y}`; 
+      const d2 = `${parseInt(d)}/${parseInt(m)}/${y}`; 
+      filtered = filtered.filter(l => l.date.includes(dt) || l.date.includes(d1) || l.date.includes(d2)); 
+    }
+    
+    document.getElementById('fuelCount').textContent = filtered.length; 
+    document.getElementById('fuelCont').innerHTML = buildFuelCards(filtered); 
+  }
+
+  function renderServiceLogs() {
+    document.getElementById('serviceCount').textContent = SERVICE.length;
+    
+    if (!SERVICE.length) { 
+      document.getElementById('serviceCont').innerHTML = `<div class="empty"><i class="fa-solid fa-wrench"></i><br/>No records</div>`; 
+      return; 
+    }
+    
+    document.getElementById('serviceCont').innerHTML = SERVICE.map((log, i) => `
+      <div class="log-card s-type animate-in" style="animation-delay: ${i * 0.05}s">
+        <div class="lc-top">
+          <div class="lc-title-group">
+            <div class="lc-icon srvc"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <div>
+              <div class="lc-car">${getVName(log.vehicle).toUpperCase()}</div>
+              <div class="lc-date"><i class="fa-regular fa-user"></i> ${(log.driver||"").split(' ')[0]} &nbsp;·&nbsp; ${log.date}</div>
+            </div>
+          </div>
+          <div class="lc-right" style="justify-content:center;">
+            <div class="lc-amt srvc">₹${(log.amount||0).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+          </div>
+        </div>
+        <div class="lc-grid" style="grid-template-columns:1fr 1.5fr;">
+          <div class="lg-item"><div class="lg-lbl">Odo</div><div class="lg-val">${log.odo ? Number(log.odo).toLocaleString('en-IN')+' km' : '—'}</div></div>
+          <div class="lg-item"><div class="lg-lbl">Issue</div><div class="lg-val" style="white-space:normal; line-height:1.4;">${log.issue}</div></div>
+        </div>
+      </div>`
+    ).join('');
+  }
+
+  function clearTblFilters() { 
+    document.getElementById('tblType').value = 'ALL'; 
+    document.getElementById('tblVehicle').value = 'ALL'; 
+    document.getElementById('tblDriverData').value = 'ALL'; 
+    document.getElementById('tblDate').value = ''; 
+    renderDataTable(); 
+  }
+
+  function parseDate(dStr) { 
+    if(!dStr) return 0; 
+    if(dStr.includes('/')) { 
+      const [d,m,y] = dStr.split('/'); 
+      return new Date(`${y}-${m}-${d}`).getTime() || 0; 
+    } 
+    return new Date(dStr).getTime() || 0; 
+  }
+
+  function renderDataTable() {
+    let combined = [...FUEL, ...SERVICE].sort((a,b) => parseDate(b.date) - parseDate(a.date));
+    
+    const typeF = document.getElementById('tblType').value; 
+    const vehF = document.getElementById('tblVehicle').value; 
+    const drvF = document.getElementById('tblDriverData').value; 
+    const dateF = document.getElementById('tblDate').value;
+    
+    if(typeF !== 'ALL') combined = combined.filter(l => l.type === typeF); 
+    if(vehF !== 'ALL') combined = combined.filter(l => l.vehicle === vehF); 
+    if(drvF !== 'ALL') combined = combined.filter(l => l.driver === drvF);
+    
+    if(dateF) { 
+      const [y, m, d] = dateF.split('-'); 
+      const d1 = `${d}/${m}/${y}`; 
+      const d2 = `${parseInt(d)}/${parseInt(m)}/${y}`; 
+      combined = combined.filter(l => l.date.includes(dateF) || l.date.includes(d1) || l.date.includes(d2)); 
+    }
+    
+    document.getElementById('dataCount').textContent = combined.length; 
+    const tbody = document.getElementById('dataTbody');
+    
+    if (!combined.length) { 
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><i class="fa-solid fa-table"></i><br/>No records found</div></td></tr>`; 
+      return; 
+    }
+    
+    tbody.innerHTML = combined.map((log, i) => {
+      const isFuel = log.type === 'FUEL'; 
+      const typeClass = isFuel ? 'fuel' : 'service'; 
+      const odo = parseFloat(log.odo) || 0;   // odometer reading entered with the form
+      const details = isFuel ? `<span class="tbl-qty">${log.qty} L</span> <span style="color:var(--text-muted); font-size:12px;">(Range: ${log.range?log.range+' km':'N/A'})</span>` : log.issue;
+      
+      return `
+        <tr class="animate-in" style="animation-delay: ${i * 0.02}s">
+          <td style="color:var(--text-muted); font-size:12px; white-space:nowrap;">${log.date}</td>
+          <td><span class="td-type ${typeClass}">${t(log.type === 'FUEL' ? 'Fuel' : 'Service')}</span></td>
+          <td style="font-weight:800; white-space:nowrap;">${getVName(log.vehicle).toUpperCase()}</td>
+          <td style="color:var(--text-muted); font-weight:700; white-space:nowrap;">${(log.driver||"").split(' ')[0].toUpperCase()}</td>
+          <td style="text-align:right; font-family:'Outfit'; font-weight:800; white-space:nowrap;">${odo ? odo.toLocaleString('en-IN') : '<span style="color:var(--text-muted)">—</span>'}</td>
+          <td style="max-width:350px;">${details}</td>
+          <td style="text-align:right; font-family:'Outfit'; font-weight:800; font-size:16px; color:${isFuel ? 'var(--text-main)' : 'var(--danger)'}">₹${(log.amount||0).toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function switchTab(tabId) {
+    ACTIVE_TAB = tabId;
+    document.querySelectorAll('.side-item, .nav-item').forEach(n => n.classList.remove('active')); 
+    document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(n => n.classList.add('active')); 
+    document.querySelectorAll('.sec').forEach(s => s.classList.remove('active')); 
+    document.getElementById('sec-' + tabId).classList.add('active'); 
+    scrollContainer.scrollTo({ top: 0, behavior: 'smooth' }); 
+  }
+
+  function openModal(id) { 
+    document.getElementById(id).classList.add('open'); 
+  }
+  
+  function closeModal(id) { 
+    document.getElementById(id).classList.remove('open'); 
+  }
+
+  // ─── MULTIPLE PHOTOS COMPRESSION LOGIC ───
+  let fuelBase64Array = [];
+  let serviceBase64Array = [];
+
+  function compressImage(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas'); 
+          const MAX_WIDTH = 800; 
+          let scaleSize = 1;
+          if (img.width > MAX_WIDTH) {
+            scaleSize = MAX_WIDTH / img.width; 
+          }
+          canvas.width = img.width * scaleSize; 
+          canvas.height = img.height * scaleSize;
+          
+          const ctx = canvas.getContext('2d'); 
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+        }
+        img.src = e.target.result;
+      }
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFile(input, labelId, dropzoneId) {
+    const files = input.files; 
+    if (files.length === 0) return;
+    
+    if (files.length > 4) {
+      alert("Maximum 4 photos allowed! / 4 फोटो से ज्यादा नहीं चुन सकते।");
+      input.value = "";
+      return;
+    }
+
+    const targetArray = input.id === 'f_photo' ? fuelBase64Array : serviceBase64Array;
+    targetArray.length = 0; 
+
+    document.getElementById(labelId).classList.add('show'); 
+    const dz = document.getElementById(dropzoneId); 
+    dz.style.background = 'var(--icon-green)'; 
+    dz.style.color = 'var(--text-green)'; 
+    dz.style.borderColor = 'var(--text-green)'; 
+    dz.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Processing ${files.length}...`;
+    
+    for (let i = 0; i < files.length; i++) {
+      let b64 = await compressImage(files[i]);
+      targetArray.push(b64);
+    }
+    
+    dz.innerHTML = `<i class="fa-solid fa-check-double"></i> ${files.length} Ready`;
+    document.getElementById(labelId).innerHTML = `<i class="fa-solid fa-check-circle"></i> ${files.length} attached`;
+  }
+
+  function resetDropzone(id, labelId) {
+    const dz = document.getElementById(id); 
+    dz.style.background = 'var(--primary-bg)'; 
+    dz.style.color = 'var(--primary)'; 
+    dz.style.borderColor = 'var(--primary)'; 
+    dz.innerHTML = `<i class="fa-solid fa-images"></i> ${t('Select Image(s)')}`;
+    document.getElementById(labelId).classList.remove('show');
+  }
+
+  function showPremiumSuccess() { 
+    const overlay = document.getElementById('successAnim'); 
+    overlay.classList.add('show'); 
+    setTimeout(() => { 
+      overlay.classList.remove('show'); 
+      fetchData(); 
+    }, 2500); 
+  }
+
+  function submitFuel(e) {
+    e.preventDefault(); 
+    if (fuelBase64Array.length === 0) { 
+      alert('Please select at least 1 photo.'); 
+      return; 
+    }
+    
+    const btn = document.getElementById('f_btn'); 
+    btn.disabled = true; 
+    btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Saving...`;
+    
+    const payload = { 
+      token: TOKEN, 
+      driver: document.getElementById('f_driver').value, 
+      vehicle: document.getElementById('f_vehicle').value, 
+      fuelType: document.getElementById('f_type').value, 
+      qty: document.getElementById('f_qty').value, 
+      amount: document.getElementById('f_amount').value, 
+      odo: document.getElementById('f_odo').value, 
+      pumpName: document.getElementById('f_pump').value, 
+      paymentMode: document.getElementById('f_pay').value, 
+      remark: document.getElementById('f_remark').value, 
+      photosBase64: fuelBase64Array 
+    };
+    
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false; 
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t('Save Entry')}`;
+        if(res.success) { 
+          document.getElementById('fuelForm').reset(); fillFilledBy();
+          fuelBase64Array.length = 0; 
+          resetDropzone('f_dropzone', 'f_filename'); 
+          closeModal('fuelModal'); 
+          clearState(); 
+          showPremiumSuccess(); 
+        } else { 
+          alert("App Error: " + res.message); 
+        }
+      })
+      .withFailureHandler(err => { 
+        btn.disabled = false; 
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t('Save Entry')}`; 
+        alert("Error: " + err.message); 
+      })
+      .submitFuelForm(payload);
+  }
+
+  function submitService(e) {
+    e.preventDefault(); 
+    if (serviceBase64Array.length === 0) { 
+      alert('Please select at least 1 photo.'); 
+      return; 
+    }
+    
+    const btn = document.getElementById('s_btn'); 
+    btn.disabled = true; 
+    btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Saving...`;
+    
+    const payload = { 
+      token: TOKEN, 
+      driver: document.getElementById('s_driver').value, 
+      vehicle: document.getElementById('s_vehicle').value, 
+      odo: document.getElementById('s_odo').value, 
+      amount: document.getElementById('s_amount').value, 
+      issue: document.getElementById('s_issue').value, 
+      photosBase64: serviceBase64Array 
+    };
+    
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false; 
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t('Save Entry')}`;
+        if(res.success) { 
+          document.getElementById('serviceForm').reset(); fillFilledBy();
+          serviceBase64Array.length = 0; 
+          resetDropzone('s_dropzone', 's_filename'); 
+          closeModal('serviceModal'); 
+          clearState(); 
+          showPremiumSuccess(); 
+        } else { 
+          alert("App Error: " + res.message); 
+        }
+      })
+      .withFailureHandler(err => { 
+        btn.disabled = false; 
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t('Save Entry')}`; 
+        alert("Error: " + err.message); 
+      })
+      .submitServiceForm(payload);
+  }
+</script>
+
+</body>
+</html>

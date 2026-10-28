@@ -1,0 +1,2374 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GGM Tasks Dashboard</title>
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d6efd">
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+  <style>
+    :root { 
+        --app-bg: #f4f6f8; 
+        --card-bg: #ffffff; 
+        --card-shadow: 0 4px 15px rgba(0,0,0,0.04); 
+        --card-border: rgba(0,0,0,0.06); 
+        --primary-color: #0d6efd; 
+    }
+
+    [data-bs-theme="dark"] { 
+        --app-bg: #121212; 
+        --card-bg: #1e1e1e; 
+        --card-shadow: 0 4px 20px rgba(0,0,0,0.4); 
+        --card-border: rgba(255,255,255,0.08); 
+        --bs-body-color: #e0e0e0;
+        --bs-heading-color: #ffffff;
+        --bs-secondary-color: #aaaaaa;
+    }
+
+    body { 
+        font-family: 'Inter', sans-serif; 
+        background-color: var(--app-bg); 
+        color: var(--bs-body-color);
+        overflow-x: hidden; 
+        -webkit-tap-highlight-color: transparent; 
+        scroll-behavior: smooth; 
+        top: 0px !important; 
+        position: static !important;
+        min-height: 100vh;
+    }
+    iframe.goog-te-banner-frame { display: none !important; }
+    .goog-te-balloon-frame { display: none !important; }
+    .goog-tooltip { display: none !important; }
+    .goog-tooltip:hover { display: none !important; }
+    .goog-text-highlight { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+    .skiptranslate { display: none !important; }
+    #google_translate_element { display: none !important; }
+    .notranslate { translate: no; }
+
+    @keyframes shimmer { 0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; } }
+    .skeleton-box { display: inline-block; background: #e2e5e7; background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.4) 20%, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0)); background-size: 1000px 100%; animation: shimmer 2s infinite linear forwards; border-radius: 8px; }
+    [data-bs-theme="dark"] .skeleton-box { background: #2c2c2c; }
+
+    /* PREMIUM ANIMATIONS */
+    .anim-stagger-up { opacity: 0; transform: translateY(20px); animation: staggerUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes staggerUpFade { to { opacity: 1; transform: translateY(0); } }
+    
+    .filter-panel-light input:focus, .filter-panel-light select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15) !important;
+        border-color: #86b7fe !important;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .admin-shell { display: flex; height: 100vh; overflow: hidden; }
+
+    .admin-sidebar { 
+        width: 260px; flex-shrink: 0; border-right: 1px solid var(--card-border); 
+        display: flex; flex-direction: column; background-color: var(--card-bg); 
+        transition: all 0.3s ease; z-index: 1040; 
+    }
+
+    .brand-mark { 
+        padding: 20px; display: flex; align-items: center; gap: 12px; 
+        text-decoration: none; color: var(--bs-heading-color); 
+        border-bottom: 1px solid var(--card-border); 
+    }
+
+    .brand-icon { 
+        background: linear-gradient(135deg, #0d6efd, #0dcaf0); 
+        color: white; border-radius: 10px; width: 40px; height: 40px; 
+        display: flex; align-items: center; justify-content: center; 
+        font-size: 1.3rem; font-weight: bold; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3); 
+        cursor: pointer; transition: transform 0.2s;
+    }
+    .brand-icon:active { transform: scale(0.95); }
+
+    .sidebar-nav { padding: 15px 10px; flex: 1; overflow-y: auto; }
+    .nav-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--bs-secondary-color); letter-spacing: 0.5px; margin: 15px 15px 10px 15px; }
+
+    .nav-item-btn { 
+        display: flex; align-items: center; gap: 12px; padding: 10px 15px; 
+        color: var(--bs-body-color); border-radius: 8px; cursor: pointer; 
+        transition: all 0.2s; margin-bottom: 5px; border: none; 
+        background: transparent; width: 100%; text-align: left; 
+        font-weight: 500; font-size: 0.95rem; 
+    }
+
+    .nav-item-btn:hover { background-color: var(--bs-tertiary-bg); transform: translateX(4px); }
+    .nav-item-btn.active { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; font-weight: 600; }
+    [data-bs-theme="dark"] .nav-item-btn.active { background-color: rgba(13, 110, 253, 0.2); color: #6ea8fe; }
+
+    .admin-main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    .admin-navbar { 
+        height: 70px; border-bottom: 1px solid var(--card-border); 
+        display: flex; align-items: center; padding: 0 24px; 
+        justify-content: space-between; background-color: var(--card-bg); 
+        z-index: 1030; flex-shrink: 0; 
+    }
+
+    .dashboard-content { flex: 1; padding: 24px; overflow-y: auto; }
+
+    .dash-card { 
+        background: var(--card-bg); border: 1px solid var(--card-border);
+        border-radius: 10px; padding: 16px; height: 100%; display: flex;
+        flex-direction: column; justify-content: space-between; 
+        box-shadow: var(--card-shadow); cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .dash-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+
+    .dash-card.delegated { border: 2px solid #0d6efd; }
+    .dash-card.review { border: 2px solid #0dcaf0; }
+    .dash-card.routine-total { border: 2px solid #198754; }
+    .dash-card.score-card { border: 2px solid #fd7e14; }
+    .dash-card.renewals-card { border: 2px solid #dc3545; }
+    .dash-card.leaves-card { border: 2px solid #ffc107; }
+
+    [data-bs-theme="light"] .dash-card.routine-total { background: #e8f5e9; }
+    [data-bs-theme="light"] .dash-card.score-card { background: #fff3cd; }
+    [data-bs-theme="light"] .dash-card.renewals-card { background: #fff5f5; }
+    [data-bs-theme="light"] .dash-card.leaves-card { background: #fffbeb; }
+
+    .routine-tab-card { 
+        background: var(--card-bg); border: 2px solid var(--card-border);
+        border-radius: 10px; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: var(--card-shadow); height: 100%; display: flex; flex-direction: column;
+    }
+    .routine-tab-card:hover { transform: translateY(-3px); border-color: #81c784; }
+    .routine-tab-card.active { border-color: #198754; border-width: 3px; box-shadow: 0 4px 15px rgba(25, 135, 84, 0.2); }
+    [data-bs-theme="light"] .routine-tab-card.active { background: #f0fdf4; }
+    [data-bs-theme="dark"] .routine-tab-card.active { background: rgba(25, 135, 84, 0.15); }
+
+    .mini-chart-container { display: flex; justify-content: space-between; align-items: flex-end; height: 60px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--card-border); gap: 4px; }
+    .mini-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; height: 100%; }
+    .mini-bar-num { font-size: 0.75rem; font-weight: 800; color: var(--bs-heading-color); margin-bottom: 4px; line-height: 1; z-index: 1; }
+    .mini-bar-fill { width: 100%; max-width: 28px; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+    .bg-comp { background-color: #198754; } 
+    .bg-pend { background-color: #ffc107; } 
+    .bg-rev  { background-color: #0dcaf0; } 
+    .bg-over { background-color: #dc3545; } 
+
+    .panel { background: transparent; margin-top: 10px; }
+    .panel-header { padding: 16px 0; display: flex; justify-content: space-between; align-items: center; }
+
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    /* FIXED CSS FOR TEXT OVERFLOW AND DATE ALIGNMENT */
+    .task-card { 
+        background: var(--card-bg); border: 1px solid var(--card-border); 
+        border-radius: 12px; box-shadow: var(--card-shadow); padding: 18px; 
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        min-width: 0; 
+    }
+    .task-card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.08); transform: translateY(-3px); }
+    .task-desc-text { 
+        font-size: 0.95rem; 
+        display: -webkit-box; 
+        -webkit-line-clamp: 2; 
+        -webkit-box-orient: vertical; 
+        overflow: hidden; 
+        word-break: break-word; 
+        overflow-wrap: break-word;
+    }
+    .name-truncate { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    
+    /* Using Bootstrap Columns for inner grids instead of fragile flex */
+    .date-grid-item { min-width: 0; white-space: nowrap; }
+
+    [data-bs-theme="dark"] .task-card.renewal-review-card { background-color: rgba(220, 53, 69, 0.05) !important; border-color: #dc3545 !important; }
+    [data-bs-theme="dark"] .renewal-review-card .bg-white { background-color: rgba(255, 255, 255, 0.05) !important; color: #e0e0e0 !important; }
+    [data-bs-theme="dark"] .renewal-review-card .text-dark { color: #ffffff !important; }
+
+    .routine-card-compact { 
+        padding: 15px; border-radius: 10px; border: 2px solid #198754; 
+        border-left: 6px solid #198754; background: var(--card-bg);
+        box-shadow: var(--card-shadow); height: 100%; display: flex; flex-direction: column;
+        min-width: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .routine-card-compact:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(25, 135, 84, 0.15); }
+    .routine-card-compact.done { border-color: #c8e6c9; border-left-color: #198754; }
+    .routine-card-compact .desc { 
+        font-size: 0.95rem; line-height: 1.4; margin-top: 12px; margin-bottom: 12px; 
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+        overflow: hidden; color: var(--bs-body-color); word-break: break-word; overflow-wrap: break-word;
+    }
+    .routine-id-badge { background-color: var(--app-bg); color: var(--bs-secondary-color); border: 1px solid var(--card-border); border-radius: 6px; padding: 4px 10px; font-family: monospace; font-size: 0.8rem; }
+    .routine-btn-done { background-color: #198754; color: #ffffff; border: none; border-radius: 6px; padding: 6px 16px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .routine-btn-done:hover { background-color: #146c43; transform: scale(1.05); }
+
+    .scorecard-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; box-shadow: var(--card-shadow); cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); min-width:0; }
+    .scorecard-card:hover { transform: translateY(-4px); border-color: var(--primary-color); box-shadow: 0 10px 25px rgba(13, 110, 253, 0.15); }
+
+    .avatar-sm { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.5px; flex-shrink: 0;}
+    .avatar-md { width: 46px; height: 46px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px; flex-shrink: 0;}
+    .avatar-lg { width: 60px; height: 60px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.4rem; letter-spacing: 1px; flex-shrink: 0;}
+
+    .spin-anim { animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    .filter-panel, .filter-panel-light { border-radius: 12px; padding: 15px 20px; box-shadow: var(--card-shadow); margin-bottom: 24px; transition: all 0.3s; }
+    .filter-panel-light:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
+    [data-bs-theme="light"] .filter-panel { background: #e8f5e9; border: 2px solid #c8e6c9; }
+    [data-bs-theme="dark"] .filter-panel { background: var(--card-bg); border: 1px solid var(--card-border); }
+    .filter-panel-light { background: var(--card-bg); border: 1px solid var(--card-border); }
+
+    /* Fix Scroll Button Z-Index to not cover bottom buttons */
+    #scrollTopBtn { 
+        position: fixed; bottom: 85px; right: 20px; z-index: 1040; border-radius: 50%; 
+        width: 45px; height: 45px; display: none; align-items: center; justify-content: center; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; transform: translateY(20px); 
+    }
+    #scrollTopBtn.show { display: flex; opacity: 1; transform: translateY(0); }
+    #scrollTopBtn:active { transform: scale(0.9); }
+
+    .custom-tabs-group {
+        display: flex; flex-wrap: nowrap; width: 100%; border-radius: 8px; overflow: hidden;
+        background: var(--card-bg); margin-bottom: 24px; box-shadow: var(--card-shadow);
+    }
+    .custom-tabs-group.border-success { border: 2px solid #198754; }
+    .custom-tabs-group.border-primary { border: 2px solid var(--primary-color); }
+    .custom-tabs-group.border-warning { border: 2px solid #ffc107; }
+    .custom-tabs-group.border-danger { border: 2px solid #dc3545; }
+
+    .custom-tabs-group .btn {
+        flex: 1; border-radius: 0; border: none; font-weight: 700; padding: 10px 2px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        font-size: 0.68rem; gap: 4px; transition: background-color 0.2s ease; white-space: nowrap;
+    }
+    @media (min-width: 576px) { .custom-tabs-group .btn { flex-direction: row; padding: 10px 10px; font-size: 0.85rem; gap: 6px;} }
+    
+    .custom-tabs-group.border-success .btn-check:checked + .btn { background-color: #198754; color: #ffffff !important; }
+    .custom-tabs-group.border-primary .btn-check:checked + .btn { background-color: var(--primary-color); color: #ffffff !important; }
+    .custom-tabs-group.border-warning .btn-check:checked + .btn { background-color: #ffc107; color: #000000 !important; }
+    .custom-tabs-group.border-danger .btn-check:checked + .btn { background-color: #dc3545; color: #ffffff !important; }
+
+    .attach-menu-popover {
+        position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 20;
+        background: var(--card-bg); border: 1px solid var(--card-border);
+        border-radius: 14px; padding: 14px 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+    }
+    .attach-option-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: transparent; border: none; padding: 4px 0; width: 100%; color: inherit; }
+    .attach-option-btn:active .attach-icon-circle { transform: scale(0.92); }
+    .attach-icon-circle { width: 44px; height: 44px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; transition: transform 0.15s ease; }
+    .staged-attachment-chip { display: flex; align-items: center; gap: 6px; max-width: 100%; background: var(--app-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 5px 10px 5px 10px; font-size: 0.78rem; }
+    .staged-attachment-chip .chip-remove { cursor: pointer; color: #dc3545; font-weight: bold; line-height: 1; padding-left: 2px; }
+
+    .mobile-bottom-nav { display: none; }
+
+    @media (max-width: 991px) {
+      .admin-sidebar { display: none; }
+      .admin-navbar { position: sticky; top: 0; padding: 0 16px; height: 60px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+      
+      /* Routine Tabs Text Wrap Fix */
+      .routine-tab-card { padding: 10px !important; }
+      .routine-tab-card .d-flex span { white-space: normal; line-height: 1.1; }
+
+      .dashboard-content { padding: 16px; padding-bottom: 90px; }
+      .panel-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .panel-header .d-flex { width: 100%; }
+
+      /* Mobile 5-icon Nav Layout */
+      .mobile-bottom-nav { 
+        display: flex; position: fixed; bottom: 0; left: 0; right: 0; 
+        background: var(--card-bg); border-top: 1px solid var(--card-border); z-index: 1050; 
+        padding: 6px 2px; padding-bottom: env(safe-area-inset-bottom, 6px); 
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.2); justify-content: space-around; 
+      }
+      .mobile-nav-btn { 
+        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        background: transparent; border: none; color: var(--bs-secondary-color); 
+        padding: 4px 0; transition: color 0.2s; position: relative; min-width: 0;
+      }
+      .mobile-nav-btn i { font-size: 1.15rem; } 
+      .mobile-nav-btn span { font-size: 0.55rem; font-weight: 600; margin-top: 2px; display: block; white-space: nowrap; } 
+      .mobile-nav-btn.active { color: var(--primary-color); }
+      .mobile-nav-btn.active::after { content: ''; position: absolute; top: -6px; width: 40%; height: 3px; background: var(--primary-color); border-radius: 3px; }
+      .mobile-badge { position: absolute; top: -2px; right: 4px; font-size: 0.55rem; padding: 2px 4px; }
+    }
+
+    .offcanvas-start { width: 280px; background-color: var(--card-bg); border-right: 1px solid var(--card-border); }
+    
+    /* Select2 Dark Mode Compatibility */
+    .select2-container--bootstrap-5 .select2-selection { background-color: var(--bs-light); border: 1px solid #dee2e6; border-radius: 0.375rem; }
+    [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection { background-color: #2b2b2b; color: #fff; border-color: #444; }
+    [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection__rendered { color: #fff; }
+    [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown { background-color: #2b2b2b; color: #fff; border-color: #444; }
+    [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__option[aria-selected=true] { background-color: #444; }
+  </style>
+</head>
+<body>
+
+<div id="google_translate_element"></div>
+
+<div class="admin-shell">
+  <!-- DESKTOP SIDEBAR -->
+  <aside class="admin-sidebar d-none d-lg-flex notranslate" id="sidebar">
+    <a href="#" class="brand-mark">
+      <div class="brand-icon">G</div>
+      <div><h6 class="mb-0 fw-bold">GGM Tasks</h6></div>
+    </a>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Overview</div>
+      <button class="nav-item-btn active" data-tab="overview" onclick="switchTab('overview')"><i class="bi bi-grid-1x2-fill"></i> Dashboard</button>
+
+      <div class="nav-label mt-3">Tasks & Checklists</div>
+      <button class="nav-item-btn" data-tab="delegated" onclick="switchTabDelegated('all')"><i class="bi bi-ui-checks-grid text-primary"></i> Delegated Tasks <span class="badge bg-primary ms-auto rounded-pill badge-pending-cnt">0</span></button>
+      <button class="nav-item-btn" data-tab="routine" onclick="switchTabRoutine(currentRoutineLocation)"><i class="bi bi-card-checklist text-success"></i> Routine Works <span class="badge bg-success ms-auto rounded-pill badge-routine-cnt">0</span></button>
+
+      <div class="nav-label mt-3">Management Action</div>
+      <button class="nav-item-btn" data-tab="renewals" onclick="switchTab('renewals')"><i class="bi bi-file-earmark-text text-danger"></i> Renewals Explorer <span class="badge bg-danger ms-auto rounded-pill badge-renewal-cnt">0</span></button>
+      <button class="nav-item-btn" data-tab="review" onclick="switchTab('review')"><i class="bi bi-eye text-info"></i> In Review <span class="badge bg-info text-dark ms-auto rounded-pill badge-review-cnt">0</span></button>
+      <button class="nav-item-btn" data-tab="leave" onclick="switchTab('leave')"><i class="bi bi-calendar-minus text-warning"></i> Leave Requests <span class="badge bg-warning text-dark ms-auto rounded-pill badge-leave-cnt">0</span></button>
+
+      <div class="nav-label mt-3">Team</div>
+      <button class="nav-item-btn" data-tab="scorecard" onclick="switchTab('scorecard')"><i class="bi bi-person-vcard text-primary"></i> Score Card</button>
+    </nav>
+    <div class="p-3 border-top d-flex align-items-center justify-content-between">
+      <div class="text-muted d-flex align-items-center gap-2">
+        <i class="bi bi-cloud-check-fill text-success fs-4" id="desktop-sync-icon"></i>
+        <div><small class="d-block lh-1 fw-bold text-success">Live</small><small class="lh-1 font-monospace" style="font-size:0.65rem;" id="last-sync">--:--</small></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <div class="admin-main">
+    <nav class="admin-navbar shadow-sm notranslate">
+      <div class="d-flex align-items-center gap-3">
+        <div class="brand-icon d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" style="width: 32px; height: 32px; font-size: 1rem;">G</div>
+        <div>
+          <h5 class="mb-0 fw-bold fs-6 fs-md-5" id="header-title">Dashboard Overview</h5>
+          <small class="text-muted d-none d-sm-block" id="header-sub">Real-time metrics</small>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-success shadow-sm rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 38px; height: 38px;" id="btn-translate" onclick="toggleAppLanguage()" title="Translate to Hindi/English">
+            <i class="bi bi-translate text-white fs-5" translate="no" id="lang-icon"></i>
+        </button>
+        <button class="btn btn-light border d-flex align-items-center gap-2 shadow-sm" onclick="fetchData(true)" title="Manual Refresh">
+            <i class="bi bi-arrow-repeat text-primary" id="header-sync-icon"></i> <span class="d-none d-sm-inline fw-bold text-primary">Refresh</span>
+        </button>
+        <button class="btn btn-primary d-flex align-items-center gap-2 shadow-sm" onclick="openNewTaskModal()">
+            <i class="bi bi-plus-lg"></i> <span class="d-none d-sm-inline">New Task</span>
+        </button>
+        <button class="btn btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" onclick="toggleTheme()">
+            <i class="bi bi-moon-stars-fill text-secondary" id="theme-icon"></i>
+        </button>
+      </div>
+    </nav>
+
+    <main class="dashboard-content" id="scrollArea">
+      <!-- SKELETON LOADER -->
+      <div id="view-loading" class="view-section active text-center">
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-xl-4"><div class="skeleton-box" style="width: 100%; height: 140px;"></div></div>
+          <div class="col-6 col-xl-4"><div class="skeleton-box" style="width: 100%; height: 140px;"></div></div>
+          <div class="col-6 col-xl-4"><div class="skeleton-box" style="width: 100%; height: 140px;"></div></div>
+        </div>
+      </div>
+
+      <!-- OVERVIEW TAB -->
+      <div id="view-overview" class="view-section">
+        <div class="row g-3 mb-4 align-items-stretch">
+          <div class="col-6 col-xl-4 anim-slide-up delay-1">
+            <div class="dash-card delegated p-2 p-md-3" onclick="switchTabDelegated('all')">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <p class="text-muted fw-bold text-uppercase mb-0" style="font-size:0.65rem; letter-spacing:0.5px; line-height: 1.2;">Delegated Tasks</p>
+                    <h3 class="fw-bold mb-0 text-primary lh-1 notranslate" id="kpi-total">0</h3>
+                </div>
+                <div class="mini-chart-container">
+                    <div class="mini-bar-col"><span class="mini-bar-num notranslate" id="del-comp-n">0</span><div class="mini-bar-fill bg-comp" id="del-comp-b" style="height: 0%;"></div></div>
+                    <div class="mini-bar-col"><span class="mini-bar-num notranslate" id="del-pend-n">0</span><div class="mini-bar-fill bg-pend" id="del-pend-b" style="height: 0%;"></div></div>
+                    <div class="mini-bar-col"><span class="mini-bar-num notranslate" id="del-rev-n">0</span><div class="mini-bar-fill bg-rev" id="del-rev-b" style="height: 0%;"></div></div>
+                    <div class="mini-bar-col"><span class="mini-bar-num notranslate" id="del-over-n">0</span><div class="mini-bar-fill bg-over" id="del-over-b" style="height: 0%;"></div></div>
+                </div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-4 anim-slide-up delay-1">
+             <div class="dash-card routine-total p-2 p-md-3" onclick="switchTabRoutine('JPR')">
+                 <div class="d-flex justify-content-between align-items-start mb-1">
+                     <p class="text-success fw-bold text-uppercase mb-0" style="font-size: 0.65rem; line-height: 1.2;">Routine Tasks</p>
+                     <h3 class="fw-bold mb-0 text-success lh-1 notranslate" id="kpi-routine-total">0</h3>
+                 </div>
+                 <div class="mini-chart-container">
+                    <div class="mini-bar-col"><span class="mini-bar-num notranslate" id="rout-comp-n">0</span><div class="mini-bar-fill bg-comp" id="rout-comp-b" style="height: 0%;"></div></div>
+                    <div class="mini-bar-col"><span class="mini-bar-num notranslate" id="rout-pend-n">0</span><div class="mini-bar-fill bg-pend" id="rout-pend-b" style="height: 0%;"></div></div>
+                    <div class="mini-bar-col"><span class="mini-bar-num notranslate" id="rout-over-n">0</span><div class="mini-bar-fill bg-over" id="rout-over-b" style="height: 0%;"></div></div>
+                </div>
+             </div>
+          </div>
+          <div class="col-6 col-xl-4 anim-slide-up delay-2">
+            <div class="dash-card review p-3 position-relative overflow-hidden" onclick="switchTab('review')">
+                <i class="bi bi-eye position-absolute" style="font-size: 4rem; color: rgba(13, 202, 240, 0.12); bottom: -15px; right: -10px; transform: rotate(-10deg);"></i>
+                <div class="d-flex justify-content-between align-items-start mb-1 position-relative">
+                    <p class="text-muted fw-bold text-uppercase mb-0" style="font-size:0.65rem; letter-spacing:0.5px; line-height: 1.2;">In Review</p>
+                </div>
+                <div class="mt-auto d-flex justify-content-between align-items-end position-relative w-100">
+                    <h2 class="fw-bold mb-0 text-info lh-1 notranslate" id="kpi-review" style="font-size: 2.5rem;">0</h2>
+                </div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-4 anim-slide-up delay-2">
+            <div class="dash-card renewals-card p-3 position-relative overflow-hidden" onclick="switchTab('renewals')">
+                <i class="bi bi-file-earmark-text position-absolute" style="font-size: 4rem; color: rgba(220, 53, 69, 0.08); bottom: -15px; right: -10px; transform: rotate(-10deg);"></i>
+                <div class="d-flex justify-content-between align-items-start mb-1 position-relative">
+                    <p class="text-danger fw-bold text-uppercase mb-0" style="font-size:0.65rem; letter-spacing:0.5px; line-height: 1.2;">Renewals</p>
+                </div>
+                <div class="mt-auto d-flex justify-content-between align-items-end position-relative w-100">
+                    <div class="text-danger" style="font-size: 0.7rem; font-weight: bold;">Open</div>
+                    <h2 class="fw-bold mb-0 text-danger lh-1 notranslate" id="kpi-renewals" style="font-size: 2.5rem;">0</h2>
+                </div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-4 anim-slide-up delay-3">
+            <div class="dash-card leaves-card p-3 position-relative overflow-hidden" onclick="switchTab('leave')">
+                <i class="bi bi-calendar-minus position-absolute" style="font-size: 4rem; color: rgba(255, 193, 7, 0.15); bottom: -15px; right: -10px; transform: rotate(-10deg);"></i>
+                <div class="d-flex justify-content-between align-items-start mb-1 position-relative">
+                    <p class="text-warning-emphasis fw-bold text-uppercase mb-0" style="font-size:0.65rem; letter-spacing:0.5px; line-height: 1.2;">Leaves</p>
+                </div>
+                <div class="mt-auto d-flex justify-content-between align-items-end position-relative w-100">
+                    <div class="text-warning-emphasis" style="font-size: 0.7rem; font-weight: bold;">Pending</div>
+                    <h2 class="fw-bold mb-0 text-warning-emphasis lh-1 notranslate" id="kpi-leaves" style="font-size: 2.5rem;">0</h2>
+                </div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-4 anim-slide-up delay-3">
+             <div class="dash-card score-card p-2 p-md-3" onclick="switchTab('scorecard')">
+                 <div class="d-flex justify-content-between align-items-start mb-1">
+                     <p class="fw-bold text-uppercase mb-0" style="font-size: 0.65rem; line-height: 1.2; color: #fd7e14;">Team Scores</p>
+                 </div>
+                 <div class="mt-auto d-flex justify-content-between align-items-end w-100">
+                    <div class="d-flex align-items-center gap-2 bg-warning-subtle px-2 py-1 rounded-3" style="color: #fd7e14;">
+                        <i class="bi bi-bar-chart-fill"></i>
+                        <span class="fw-bold" style="font-size: 0.7rem;">AVG</span>
+                    </div>
+                    <h2 class="fw-bold mb-0 lh-1" style="color: #fd7e14; font-size: 2.5rem;"><span class="notranslate" id="kpi-score-avg">0</span>%</h2>
+                 </div>
+             </div>
+          </div>
+        </div>
+
+        <div class="panel anim-slide-up delay-3">
+          <div class="panel-header border-bottom mb-3 pb-2"><div><h6 class="mb-0 fw-bold text-primary"><i class="bi bi-calendar-star me-2"></i>Recent Important Tasks</h6></div><button class="btn btn-sm btn-outline-primary" onclick="switchTabDelegated('pending')">View All</button></div>
+          <div id="list-recent" class="row row-cols-1 row-cols-lg-2 g-3 mt-2"></div>
+        </div>
+      </div>
+
+      <!-- ROUTINE TAB -->
+      <div id="view-routine" class="view-section">
+        <div class="row g-2 mb-4" id="routine-location-cards">
+            <div class="col-4 d-flex">
+               <div class="routine-tab-card active p-2 w-100 d-flex flex-column" id="btn-loc-JPR" onclick="setRoutineLocation('JPR')">
+                   <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                       <span class="text-success fw-bold text-uppercase mb-0" style="font-size: 0.65rem;">JAIPUR</span>
+                       <h4 class="fw-bold mb-0 text-success lh-1 notranslate" id="kpi-routine-jpr">0</h4>
+                   </div>
+                   <div class="mini-chart-container mt-auto pt-2">
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="jpr-comp-n">0</span><div class="mini-bar-fill bg-comp" id="jpr-comp-b" style="height: 0%;"></div></div>
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="jpr-pend-n">0</span><div class="mini-bar-fill bg-pend" id="jpr-pend-b" style="height: 0%;"></div></div>
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="jpr-over-n">0</span><div class="mini-bar-fill bg-over" id="jpr-over-b" style="height: 0%;"></div></div>
+                  </div>
+               </div>
+            </div>
+            <div class="col-4 d-flex">
+               <div class="routine-tab-card p-2 w-100 d-flex flex-column" id="btn-loc-NEWAI" onclick="setRoutineLocation('NEWAI')">
+                   <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                       <span class="text-success fw-bold text-uppercase mb-0" style="font-size: 0.65rem;">NEWAI</span>
+                       <h4 class="fw-bold mb-0 text-success lh-1 notranslate" id="kpi-routine-newai">0</h4>
+                   </div>
+                   <div class="mini-chart-container mt-auto pt-2">
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="new-comp-n">0</span><div class="mini-bar-fill bg-comp" id="new-comp-b" style="height: 0%;"></div></div>
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="new-pend-n">0</span><div class="mini-bar-fill bg-pend" id="new-pend-b" style="height: 0%;"></div></div>
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="new-over-n">0</span><div class="mini-bar-fill bg-over" id="new-over-b" style="height: 0%;"></div></div>
+                  </div>
+               </div>
+            </div>
+            <div class="col-4 d-flex">
+               <div class="routine-tab-card p-2 w-100 d-flex flex-column" id="btn-loc-TONK" onclick="setRoutineLocation('TONK')">
+                   <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                       <span class="text-success fw-bold text-uppercase mb-0" style="font-size: 0.65rem;">TONK</span>
+                       <h4 class="fw-bold mb-0 text-success lh-1 notranslate" id="kpi-routine-tonk">0</h4>
+                   </div>
+                   <div class="mini-chart-container mt-auto pt-2">
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="tonk-comp-n">0</span><div class="mini-bar-fill bg-comp" id="tonk-comp-b" style="height: 0%;"></div></div>
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="tonk-pend-n">0</span><div class="mini-bar-fill bg-pend" id="tonk-pend-b" style="height: 0%;"></div></div>
+                      <div class="mini-bar-col"><span class="mini-bar-num notranslate" style="font-size:0.6rem" id="tonk-over-n">0</span><div class="mini-bar-fill bg-over" id="tonk-over-b" style="height: 0%;"></div></div>
+                  </div>
+               </div>
+            </div>
+        </div>
+
+        <div class="filter-panel-light shadow-sm p-3 mb-4 rounded-3 border">
+            <div class="row g-2 align-items-center">
+              <div class="col-12 col-lg-4">
+                 <div class="input-group input-group-sm rounded-2 overflow-hidden border bg-white">
+                    <span class="input-group-text border-0 bg-transparent"><i class="bi bi-search text-success"></i></span>
+                    <input type="text" class="form-control border-0 bg-transparent" id="search-routine" placeholder="Search name, task..." onkeyup="debounceRenderRoutine()">
+                 </div>
+              </div>
+              <div class="col-12 col-md-4 col-lg-3">
+                 <select class="form-select form-select-sm rounded-2 border fw-medium" id="filter-assignee-routine" onchange="renderRoutineView()">
+                    <option value="">All Assignees</option>
+                 </select>
+              </div>
+              <div class="col-8 col-md-5 col-lg-3">
+                 <input type="date" id="filter-date-routine" class="form-control form-control-sm rounded-2 border fw-medium text-secondary" onchange="renderRoutineView()" title="Filter by Planned Date">
+              </div>
+              <div class="col-4 col-md-3 col-lg-2">
+                 <button class="btn btn-sm btn-white text-danger fw-bold border w-100 rounded-2" onclick="resetRoutineFilters()"><i class="bi bi-eraser text-danger me-1"></i> Clear</button>
+              </div>
+            </div>
+        </div>
+
+        <div class="custom-tabs-group border-success shadow-sm">
+            <input type="radio" class="btn-check" name="routineTabs" id="tabDaily" autocomplete="off" checked onchange="currentRoutineTab='daily'; renderRoutineView()">
+            <label class="btn" for="tabDaily"><i class="bi bi-calendar-event"></i> Daily</label>
+            <input type="radio" class="btn-check" name="routineTabs" id="tabWeekly" autocomplete="off" onchange="currentRoutineTab='weekly'; renderRoutineView()">
+            <label class="btn" for="tabWeekly"><i class="bi bi-calendar-week"></i> W/M/Y</label>
+            <input type="radio" class="btn-check" name="routineTabs" id="tabSkipped" autocomplete="off" onchange="currentRoutineTab='skipped'; renderRoutineView()">
+            <label class="btn" for="tabSkipped"><i class="bi bi-skip-backward-circle"></i> Skipped</label>
+            <input type="radio" class="btn-check" name="routineTabs" id="tabOverdue" autocomplete="off" onchange="currentRoutineTab='overdue'; renderRoutineView()">
+            <label class="btn" for="tabOverdue"><i class="bi bi-exclamation-circle"></i> Overdue</label>
+            <input type="radio" class="btn-check" name="routineTabs" id="tabDone" autocomplete="off" onchange="currentRoutineTab='done'; renderRoutineView()">
+            <label class="btn" for="tabDone"><i class="bi bi-check-circle"></i> Done</label>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4" id="list-routine"></div>
+      </div>
+
+      <!-- DELEGATED TASKS TAB -->
+      <div id="view-delegated" class="view-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-ui-checks-grid me-2 text-primary"></i>Delegated Explorer</h6>
+        </div>
+
+        <div class="custom-tabs-group border-primary grid-3 shadow-sm mb-4">
+            <input type="radio" class="btn-check" name="delTabs" id="tabDelAll" autocomplete="off" onchange="currentDelTab='all'; renderDelegatedView()">
+            <label class="btn" for="tabDelAll"><i class="bi bi-list-ul"></i> All Tasks</label>
+            <input type="radio" class="btn-check" name="delTabs" id="tabDelPending" autocomplete="off" checked onchange="currentDelTab='pending'; renderDelegatedView()">
+            <label class="btn" for="tabDelPending"><i class="bi bi-hourglass-split"></i> Pending</label>
+            <input type="radio" class="btn-check" name="delTabs" id="tabDelDone" autocomplete="off" onchange="currentDelTab='done'; renderDelegatedView()">
+            <label class="btn" for="tabDelDone"><i class="bi bi-check-circle"></i> Completed</label>
+        </div>
+
+        <div class="filter-panel-light shadow-sm p-3 mb-4 rounded-3 border">
+           <div class="row g-2">
+              <div class="col-12 col-lg-3">
+                 <div class="input-group input-group-sm rounded-2 overflow-hidden border bg-white">
+                    <span class="input-group-text border-0 bg-transparent"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-0 bg-transparent" id="search-delegated" placeholder="Search ID, name..." onkeyup="debounceRenderDelegated()">
+                 </div>
+              </div>
+              <div class="col-6 col-md-4 col-lg-2">
+                 <select class="form-select form-select-sm rounded-2 border fw-medium" id="filter-status-del" onchange="renderDelegatedView()">
+                    <option value="">All Status</option><option value="pending">Pending</option><option value="review">Under Review</option><option value="overdue">Overdue</option><option value="rejected">Rejected</option><option value="done">Completed</option>
+                 </select>
+              </div>
+              <div class="col-6 col-md-4 col-lg-2">
+                 <select class="form-select form-select-sm rounded-2 border fw-medium" id="filter-assignee-del" onchange="renderDelegatedView()"><option value="">All Assignees</option></select>
+              </div>
+              <div class="col-6 col-md-4 col-lg-2">
+                 <select class="form-select form-select-sm rounded-2 border fw-medium" id="filter-givenby-del" onchange="renderDelegatedView()"><option value="">All Given By</option></select>
+              </div>
+              <div class="col-6 col-md-8 col-lg-2">
+                 <input type="date" id="filter-date-del" class="form-control form-control-sm rounded-2 border fw-medium text-secondary" onchange="renderDelegatedView()" title="Filter by Due Date">
+              </div>
+              <div class="col-12 col-md-4 col-lg-1">
+                 <button class="btn btn-sm btn-white border rounded-2 w-100 text-danger fw-bold" onclick="resetFilters()">Clear</button>
+              </div>
+           </div>
+        </div>
+        <div id="list-delegated" class="row row-cols-1 row-cols-lg-2 g-3 mt-2"></div>
+      </div>
+
+      <!-- RENEWALS TAB -->
+      <div id="view-renewals" class="view-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2 text-danger"></i>Renewals Explorer</h6>
+        </div>
+
+        <div class="custom-tabs-group border-danger shadow-sm mb-4">
+            <input type="radio" class="btn-check" name="renTabs" id="tabRenAll" autocomplete="off" checked onchange="currentRenTab='all'; renderRenewalsView()">
+            <label class="btn" for="tabRenAll"><i class="bi bi-list-ul"></i> All</label>
+            <input type="radio" class="btn-check" name="renTabs" id="tabRenExpired" autocomplete="off" onchange="currentRenTab='expired'; renderRenewalsView()">
+            <label class="btn" for="tabRenExpired"><i class="bi bi-exclamation-triangle"></i> Expired</label>
+            <input type="radio" class="btn-check" name="renTabs" id="tabRenPending" autocomplete="off" onchange="currentRenTab='pending'; renderRenewalsView()">
+            <label class="btn" for="tabRenPending"><i class="bi bi-hourglass-split"></i> Active</label>
+            <input type="radio" class="btn-check" name="renTabs" id="tabRenDone" autocomplete="off" onchange="currentRenTab='done'; renderRenewalsView()">
+            <label class="btn" for="tabRenDone"><i class="bi bi-check-circle"></i> Done</label>
+        </div>
+        <div id="list-renewals" class="row row-cols-1 row-cols-lg-2 g-3 mt-2"></div>
+      </div>
+
+      <!-- REVIEW TAB -->
+      <div id="view-review" class="view-section">
+        <div class="alert alert-info border-0 shadow-sm d-flex align-items-center gap-3 p-3 mb-3 rounded-3" style="background:#e0f7fa; color:#006064;">
+            <i class="bi bi-info-circle-fill fs-3 text-info"></i>
+            <div class="small"><strong>Action Required:</strong> Staff has marked tasks/renewals as Done. Approve or Reject them here.</div>
+        </div>
+        
+        <!-- NEW REVIEW FILTERS -->
+        <div class="filter-panel-light shadow-sm p-3 mb-4 rounded-3 border">
+           <div class="row g-2">
+              <div class="col-12 col-lg-3">
+                 <div class="input-group input-group-sm rounded-2 overflow-hidden border bg-white">
+                    <span class="input-group-text border-0 bg-transparent"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-0 bg-transparent" id="search-review" placeholder="Search ID, name..." onkeyup="debounceRenderReview()">
+                 </div>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3">
+                 <select class="form-select form-select-sm rounded-2 border fw-medium" id="filter-assignee-rev" onchange="renderReviewView()"><option value="">All Assignees</option></select>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3">
+                 <select class="form-select form-select-sm rounded-2 border fw-medium" id="filter-givenby-rev" onchange="renderReviewView()"><option value="">All Given By</option></select>
+              </div>
+              <div class="col-8 col-md-8 col-lg-2">
+                 <input type="date" id="filter-date-rev" class="form-control form-control-sm rounded-2 border fw-medium text-secondary" onchange="renderReviewView()" title="Filter by Due Date">
+              </div>
+              <div class="col-4 col-md-4 col-lg-1">
+                 <button class="btn btn-sm btn-white border rounded-2 w-100 text-danger fw-bold" onclick="resetReviewFilters()">Clear</button>
+              </div>
+           </div>
+        </div>
+
+        <div class="panel mt-0">
+          <div class="panel-header border-bottom mb-3 pb-2"><h6 class="mb-0 fw-bold"><i class="bi bi-eye text-info me-2"></i>In Review (Tasks & Renewals)</h6></div>
+          <div id="list-review" class="row row-cols-1 row-cols-lg-2 g-3 mt-2"></div>
+        </div>
+      </div>
+
+      <!-- SCORECARD TAB -->
+      <div id="view-scorecard" class="view-section">
+        <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-3">
+          <h5 class="mb-0 fw-bold">Team Performance</h5>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <input type="date" class="form-control form-control-sm w-auto shadow-sm border" id="reportStartDate" title="PDF Start Date">
+            <input type="date" class="form-control form-control-sm w-auto shadow-sm border" id="reportEndDate" title="PDF End Date">
+            <button class="btn btn-sm btn-danger shadow-sm d-flex align-items-center gap-1" id="btnManualPDF" onclick="triggerManualDownload()" title="Download PDF"><i class="bi bi-file-earmark-pdf-fill"></i></button>
+            <button class="btn btn-sm btn-primary shadow-sm d-flex align-items-center gap-1" id="btnManualEmail" onclick="triggerManualEmail()" title="Send Report Mail"><i class="bi bi-envelope-paper-fill"></i></button>
+          </div>
+        </div>
+
+        <div class="row mb-4" id="scorecard-filters-box" style="display:none;">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="filter-panel-light shadow-sm p-3 rounded-3 border">
+                   <h6 class="fw-bold mb-3" style="font-size: 0.85rem;"><i class="bi bi-funnel-fill me-1 text-primary"></i> Advanced Filters</h6>
+                   <div class="d-flex flex-column gap-2">
+                       <div class="input-group input-group-sm rounded-2 border shadow-sm bg-white overflow-hidden">
+                          <span class="input-group-text border-0 bg-transparent"><i class="bi bi-search text-muted"></i></span>
+                          <input type="text" class="form-control border-0 bg-transparent" id="search-staff" placeholder="Search ID, name..." onkeyup="renderScorecard()">
+                       </div>
+                       <select class="form-select form-select-sm shadow-sm rounded-2 border fw-medium" id="score-filter-status" onchange="renderScorecard()">
+                          <option value="">All Status</option><option value="done">Completed</option><option value="pending">Pending</option>
+                       </select>
+                   </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group shadow-sm mb-4 w-100" role="group">
+          <input type="radio" class="btn-check" name="scoreTabs" id="scoreRoutine" autocomplete="off" checked onchange="currentScoreTab='routine'; toggleScoreFilters(); renderScorecard()">
+          <label class="btn btn-outline-success fw-bold py-2" for="scoreRoutine"><i class="bi bi-card-checklist"></i> Routine Scores</label>
+
+          <input type="radio" class="btn-check" name="scoreTabs" id="scoreDelegated" autocomplete="off" onchange="currentScoreTab='delegated'; toggleScoreFilters(); renderScorecard()">
+          <label class="btn btn-outline-primary fw-bold py-2" for="scoreDelegated"><i class="bi bi-ui-checks-grid"></i> Delegated Scores</label>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3" id="staff-scorecard-grid"></div>
+      </div>
+
+      <!-- LEAVE TAB -->
+      <div id="view-leave" class="view-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-calendar-minus text-warning me-2"></i>Staff Leave Requests</h6>
+        </div>
+
+        <div class="custom-tabs-group border-warning shadow-sm mb-4">
+            <input type="radio" class="btn-check" name="leaveTabs" id="tabLeavePending" autocomplete="off" checked onchange="currentLeaveTab='Pending'; renderLeaveView()">
+            <label class="btn" for="tabLeavePending"><i class="bi bi-hourglass-split"></i> Pending</label>
+
+            <input type="radio" class="btn-check" name="leaveTabs" id="tabLeaveAll" autocomplete="off" onchange="currentLeaveTab='All'; renderLeaveView()">
+            <label class="btn" for="tabLeaveAll"><i class="bi bi-list-ul"></i> Actioned (Approved/Rejected)</label>
+        </div>
+
+        <div id="list-leave" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mt-2"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- IN-APP DOCUMENT VIEWER MODAL (NEW) -->
+<div class="modal fade" id="docViewerModal" tabindex="-1" aria-hidden="true" style="z-index: 1065;">
+  <div class="modal-dialog modal-xl modal-dialog-centered h-100 mt-0 mb-0">
+    <div class="modal-content h-100 rounded-0" style="background: var(--card-bg);">
+      <div class="modal-header border-bottom p-2">
+        <h6 class="modal-title fw-bold flex-grow-1 text-truncate pe-2"><i class="bi bi-file-earmark-text text-primary me-2"></i>Document Viewer</h6>
+        <button type="button" class="btn btn-sm btn-outline-primary me-2 fw-bold" id="btnFullViewDoc" target="_blank"><i class="bi bi-box-arrow-up-right me-1"></i> Open Full</button>
+        <button type="button" class="btn-close m-0" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0 h-100" style="min-height: 80vh;">
+        <div id="docViewerLoading" class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+            <div class="spinner-border text-primary mb-2"></div>
+            Loading Document...
+        </div>
+        <iframe id="docViewerIframe" class="w-100 h-100 border-0 d-none" allow="autoplay" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="offcanvas offcanvas-start notranslate" tabindex="-1" id="mobileSidebar">
+  <div class="offcanvas-header border-bottom">
+    <div class="brand-mark p-0 border-0 m-0"><div class="brand-icon">G</div><div><h6 class="mb-0 fw-bold">GGM Tasks</h6></div></div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    <nav class="sidebar-nav h-100">
+      <div class="nav-label">Overview</div>
+      <button class="nav-item-btn active" data-tab="overview" onclick="switchTab('overview')"><i class="bi bi-grid-1x2-fill"></i> Dashboard</button>
+
+      <div class="nav-label mt-3">Tasks & Checklists</div>
+      <button class="nav-item-btn" data-tab="delegated" onclick="switchTabDelegated('all')"><i class="bi bi-ui-checks-grid text-primary"></i> Delegated Tasks <span class="badge bg-primary ms-auto rounded-pill badge-pending-cnt">0</span></button>
+      <button class="nav-item-btn" data-tab="routine" onclick="switchTabRoutine(currentRoutineLocation)"><i class="bi bi-card-checklist text-success"></i> Routine Checklists <span class="badge bg-success ms-auto rounded-pill badge-routine-cnt">0</span></button>
+
+      <div class="nav-label mt-3">Management Action</div>
+      <button class="nav-item-btn" data-tab="renewals" onclick="switchTab('renewals')"><i class="bi bi-file-earmark-text text-danger"></i> Renewals Explorer <span class="badge bg-danger ms-auto rounded-pill badge-renewal-cnt">0</span></button>
+      <button class="nav-item-btn" data-tab="review" onclick="switchTab('review')"><i class="bi bi-eye text-info"></i> In Review <span class="badge bg-info text-dark ms-auto rounded-pill badge-review-cnt">0</span></button>
+      <button class="nav-item-btn" data-tab="leave" onclick="switchTab('leave')"><i class="bi bi-calendar-minus text-warning"></i> Leave Requests <span class="badge bg-warning text-dark ms-auto rounded-pill badge-leave-cnt">0</span></button>
+
+      <div class="nav-label mt-3">Team</div>
+      <button class="nav-item-btn" data-tab="scorecard" onclick="switchTab('scorecard')"><i class="bi bi-person-vcard text-primary"></i> Score Card</button>
+    </nav>
+  </div>
+</div>
+
+<div class="mobile-bottom-nav notranslate">
+  <button class="mobile-nav-btn active" data-tab="overview" onclick="switchTab('overview')"><i class="bi bi-grid-1x2-fill"></i><span>Home</span></button>
+  <button class="mobile-nav-btn" data-tab="delegated" onclick="switchTabDelegated('all')"><i class="bi bi-ui-checks-grid"></i><span>Tasks</span><span class="badge bg-primary rounded-pill mobile-badge badge-pending-cnt" style="display:none;">0</span></button>
+  <button class="mobile-nav-btn" data-tab="routine" onclick="switchTabRoutine(currentRoutineLocation)"><i class="bi bi-card-checklist"></i><span>Routine</span><span class="badge bg-success rounded-pill mobile-badge badge-routine-cnt" style="display:none;">0</span></button>
+  <button class="mobile-nav-btn" data-tab="review" onclick="switchTab('review')"><i class="bi bi-eye"></i><span>Review</span><span class="badge bg-info text-dark rounded-pill mobile-badge badge-review-cnt" style="display:none;">0</span></button>
+  <button class="mobile-nav-btn" data-tab="leave" onclick="switchTab('leave')"><i class="bi bi-calendar-minus"></i><span>Leave</span><span class="badge bg-warning text-dark rounded-pill mobile-badge badge-leave-cnt" style="display:none;">0</span></button>
+</div>
+
+<button id="scrollTopBtn" class="btn btn-primary" onclick="scrollToTop()" title="Go to top"><i class="bi bi-arrow-up-short fs-4"></i></button>
+
+<!-- NEW TASK MODAL -->
+<div class="modal fade" id="newTaskModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background: var(--card-bg);">
+      <div class="modal-header border-bottom-0"><h6 class="modal-title fw-bold"><i class="bi bi-plus-circle-fill text-primary me-2"></i>Assign New Task</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <form id="newTaskForm" onsubmit="submitNewTask(event)">
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Given By</label>
+            <select class="form-select bg-light" id="newTaskGivenBy" required>
+              <option value="" disabled selected>Select who is giving the task...</option>
+              <option value="NAKUL GOYAL">NAKUL GOYAL</option>
+              <option value="NEERAJ GOYAL">NEERAJ GOYAL</option>
+              <option value="AAKASH GOYAL">AAKASH GOYAL</option>
+              <option value="VIPIN GOYAL">VIPIN GOYAL</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Location / Site</label>
+            <select class="form-select bg-light" id="newTaskLocation" onchange="filterDoersByLocation()" required><option value="ALL" selected>All Locations</option></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Doer Name (Assignee)</label>
+            <select class="form-select bg-light" id="newTaskDoer" required><option value="" disabled selected>Loading doers...</option></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Task Description</label>
+            <textarea class="form-control bg-light" id="newTaskDesc" rows="3" required placeholder="Describe the task..."></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Attachments <span class="text-muted fw-normal">(Max 3, up to 50MB each)</span></label>
+            <div class="position-relative">
+              <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center justify-content-center gap-2 w-100 py-2" id="btnOpenAttachMenu" onclick="toggleAttachMenu()"><i class="bi bi-paperclip"></i> Add Attachment</button>
+              <div id="attachMenuPopover" class="attach-menu-popover d-none">
+                <div class="row g-1 text-center justify-content-center">
+                  <div class="col-4"><button type="button" class="attach-option-btn" onclick="triggerAttachInput('camera')"><span class="attach-icon-circle bg-danger-subtle text-danger"><i class="bi bi-camera-fill"></i></span><small>Camera</small></button></div>
+                  <div class="col-4"><button type="button" class="attach-option-btn" onclick="triggerAttachInput('gallery')"><span class="attach-icon-circle bg-primary-subtle text-primary"><i class="bi bi-images"></i></span><small>Photos</small></button></div>
+                  <div class="col-4"><button type="button" class="attach-option-btn" onclick="triggerAttachInput('document')"><span class="attach-icon-circle bg-info-subtle text-info"><i class="bi bi-file-earmark-fill"></i></span><small>Files</small></button></div>
+                </div>
+              </div>
+            </div>
+            <input type="file" id="fileInputCamera" accept="image/*" capture="environment" class="d-none" onchange="handleFileSelection(event)">
+            <input type="file" id="fileInputGallery" accept="image/*" multiple class="d-none" onchange="handleFileSelection(event)">
+            <input type="file" id="fileInputDocument" multiple class="d-none" onchange="handleFileSelection(event)">
+            <div id="stagedAttachmentsList" class="d-flex flex-wrap gap-2 mt-2"></div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-muted">Due Date</label>
+            <input type="date" class="form-control bg-light" id="newTaskDate" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm rounded-3" id="btnSubmitTask">Assign Task</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK DETAIL MODAL -->
+<div class="modal fade" id="taskModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down">
+    <div class="modal-content" style="background: var(--card-bg);">
+      <div class="modal-header border-bottom-0"><h6 class="modal-title fw-bold">Task Details</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="taskModalBody" style="padding-bottom: 90px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT TASK MODAL -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background: var(--card-bg);">
+      <div class="modal-header border-bottom-0"><h6 class="modal-title fw-bold"><i class="bi bi-pencil-square text-warning me-2"></i>Edit Task</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="editTaskId">
+        <div class="mb-3"><label class="form-label small fw-bold text-muted">Task ID</label><input type="text" class="form-control form-control-sm bg-light border-0" id="editTaskIdDisplay" disabled></div>
+        <div class="mb-3"><label class="form-label small fw-bold text-muted">Assignee</label><select class="form-select bg-light" id="editTaskDoer"><option value="" disabled>Loading doers...</option></select></div>
+        <div class="mb-3"><label class="form-label small fw-bold text-muted">Task Description</label><textarea class="form-control bg-light" id="editTaskDesc" rows="3" placeholder="Task description..."></textarea></div>
+        <div class="mb-4"><label class="form-label small fw-bold text-muted">Due Date</label><input type="date" class="form-control bg-light" id="editTaskDate"></div>
+        <button class="btn btn-warning w-100 py-2 fw-bold shadow-sm text-dark rounded-3" id="btnSaveEdit" onclick="submitEditTask()"><i class="bi bi-save2-fill me-2"></i>Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div class="modal fade" id="staffModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-md-down modal-dialog-scrollable"><div class="modal-content" style="background: var(--app-bg);"><div class="modal-header border-bottom-0 pb-0" style="background: var(--card-bg);"><div class="d-flex align-items-center gap-3 w-100 pb-3 border-bottom"><div id="staffModalAvatar"></div><div style="min-width: 0;"><h5 class="modal-title fw-bold mb-0 text-truncate" id="staffModalName">Name</h5><span class="text-muted small text-truncate d-block" id="staffModalSub">Profile</span></div><button type="button" class="btn-close ms-auto mb-auto" data-bs-dismiss="modal"></button></div></div><div class="modal-body pt-3" style="padding-bottom: 90px;"><div class="row g-2 text-center mb-4" id="staffModalKPIs"></div><h6 class="fw-bold mb-3"><i class="bi bi-list-task me-2"></i>Assigned Task List</h6><div id="staffModalTaskList" class="row row-cols-1 g-3"></div></div></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script type="text/javascript">
+  function googleTranslateElementInit() {
+    new google.translate.TranslateElement({ pageLanguage: 'en', includedLanguages: 'hi,en', autoDisplay: false }, 'google_translate_element');
+  }
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+<script>
+let isHindi = false;
+function toggleAppLanguage() {
+    let combo = document.querySelector('.goog-te-combo');
+    if (!combo) { alert("Translation engine is loading... please wait a second."); return; }
+    isHindi = !isHindi;
+    combo.value = isHindi ? 'hi' : 'en';
+    combo.dispatchEvent(new Event('change'));
+
+    const btn = document.getElementById('btn-translate');
+    if (isHindi) {
+        btn.classList.replace('btn-success', 'btn-warning');
+        btn.innerHTML = '<span class="fw-bold text-dark fs-6 notranslate" style="font-family: monospace;">EN</span>';
+    } else {
+        btn.classList.replace('btn-warning', 'btn-success');
+        btn.innerHTML = '<i class="bi bi-translate text-white fs-5 notranslate" translate="no"></i>';
+    }
+}
+
+const scrollBtn = document.getElementById("scrollTopBtn");
+const scrollArea = document.querySelector(".dashboard-content");
+scrollArea.addEventListener("scroll", () => { if (scrollArea.scrollTop > 300) scrollBtn.classList.add("show"); else scrollBtn.classList.remove("show"); });
+function scrollToTop() { scrollArea.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function toggleTheme() {
+  const htmlEl = document.documentElement; const newTheme = htmlEl.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+  htmlEl.setAttribute('data-bs-theme', newTheme); document.getElementById('theme-icon').className = newTheme === 'dark' ? 'bi bi-sun-fill text-warning' : 'bi bi-moon-stars-fill text-secondary';
+}
+
+const TITLES = { 
+    'overview': { title: 'Dashboard', sub: 'Real-time metrics' }, 
+    'routine': { title: 'Routine Checklists', sub: 'Daily & Weekly Works' },
+    'delegated': { title: 'Delegated Tasks', sub: 'Manage delegated assignments' }, 
+    'renewals': { title: 'Renewals Explorer', sub: 'Manage Document Renewals' },
+    'review': { title: 'In Review', sub: 'Staff marked done. Awaiting approval.' }, 
+    'leave': { title: 'Leave Requests', sub: 'Approve or Reject Staff Leaves' },
+    'scorecard': { title: 'Team Scorecard', sub: 'Performance metrics' } 
+};
+
+function animateValue(obj, start, end, duration) {
+    if (!obj) return;
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        obj.innerHTML = Math.floor(easeOut * (end - start) + start);
+        if (progress < 1) window.requestAnimationFrame(step); 
+    };
+    window.requestAnimationFrame(step);
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
+  document.querySelectorAll('.nav-item-btn, .mobile-nav-btn').forEach(btn => btn.classList.remove('active'));
+
+  document.getElementById('view-' + tabId).classList.add('active');
+  document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(btn => btn.classList.add('active'));
+  document.getElementById('header-title').textContent = TITLES[tabId].title;
+  if (document.getElementById('header-sub')) document.getElementById('header-sub').textContent = TITLES[tabId].sub;
+
+  if (initialLoadComplete) {
+      if (tabId === 'overview') renderAllViews();
+      else if (tabId === 'routine') renderRoutineView();
+      else if (tabId === 'review') renderReviewView();
+      else if (tabId === 'leave') renderLeaveView();
+      else if (tabId === 'scorecard') { toggleScoreFilters(); renderScorecard(); }
+      else if (tabId === 'delegated') renderDelegatedView();
+      else if (tabId === 'renewals') renderRenewalsView();
+  }
+
+  scrollToTop();
+  const offcanvasEl = document.getElementById('mobileSidebar');
+  if (offcanvasEl) { const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl); if (bsOffcanvas) bsOffcanvas.hide(); }
+}
+
+function switchTabRoutine(location) { setRoutineLocation(location); switchTab('routine'); }
+function switchTabDelegated(subTab) {
+    currentDelTab = subTab;
+    document.getElementById('tabDelAll').checked = (subTab === 'all');
+    document.getElementById('tabDelPending').checked = (subTab === 'pending');
+    document.getElementById('tabDelDone').checked = (subTab === 'done');
+    switchTab('delegated');
+}
+
+function parseStaffInfo(rawString) {
+  if (!rawString) return { cleanName: 'Unassigned', subtext: '', initials: 'U' };
+  let str = rawString.trim(); let loc = '', phone = '', role = '';
+  const locMatch = str.match(/^([A-Z]{2,5})\s*-\s*/); if (locMatch) { loc = locMatch[1]; str = str.replace(locMatch[0], ''); }
+  const phoneMatch = str.match(/\s*-\s*(\d{10,12})$/); if (phoneMatch) { phone = phoneMatch[1]; str = str.replace(phoneMatch[0], ''); }
+  const roleMatch = str.match(/\s*\(([^)]+)\)$/); if (roleMatch) { role = roleMatch[1]; str = str.replace(roleMatch[0], ''); }
+
+  let cleanName = str.trim() || rawString.trim(); 
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  let initials = 'U';
+  if (parts.length > 0) {
+      initials = parts[0].charAt(0); 
+      if (parts.length > 1) { initials += parts[parts.length - 1].charAt(0); }
+  }
+
+  let subArr = []; if (loc) subArr.push(loc); if (role) subArr.push(role); if (phone) subArr.push(phone);
+  return { cleanName, subtext: subArr.join(' • '), initials: initials.toUpperCase(), rawString: rawString.trim() };
+}
+
+function getAvatar(initials, sizeClass = 'avatar-sm', name = '') {   // name: shows that person's GGM Portal photo when they have one
+    if (!initials) initials = 'U';
+    initials = initials.toString().trim().toUpperCase().substring(0, 2);
+    if (initials.length === 0) initials = 'U';
+
+    const colorPairs = [
+        { bg: '#e0f2fe', text: '#0284c7' }, { bg: '#dcfce7', text: '#16a34a' },
+        { bg: '#fee2e2', text: '#dc2626' }, { bg: '#fef3c7', text: '#d97706' },
+        { bg: '#f3e8ff', text: '#9333ea' }, { bg: '#ffe4e6', text: '#e11d48' },
+        { bg: '#e0e7ff', text: '#4f46e5' } 
+    ];
+
+    const charCode = initials.charCodeAt(0) || 65;
+    const theme = colorPairs[charCode % colorPairs.length]; 
+    const photo = name ? ` data-ggm-photo="${String(name).replace(/[&"<>]/g, c => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }[c]))}"` : '';
+    return `<div class="${sizeClass} shadow-sm border"${photo} style="background-color: ${theme.bg}; color:${theme.text}; border-color: ${theme.text}40 !important;">${initials}</div>`; 
+}
+
+const colMap = { taskId: 1, name: 2, task: 3, dueDate: 4, completionDate: 7, status: 9 };
+let allData = []; 
+let routineJPRData = []; 
+let routineNewaiData = []; 
+let routineTonkData = [];
+let scoresSummaryData = { JPR: [], NEWAI: [], TONK: [] }; 
+let allGlobalDoers = []; 
+let leaveData = []; 
+let renewalData = []; 
+
+let today = new Date(); today.setHours(0,0,0,0); 
+let nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7); 
+let currentRoutineTab = 'daily'; 
+let currentRoutineLocation = 'JPR';
+let currentDelTab = 'pending'; 
+let currentScoreTab = 'routine'; 
+let currentLeaveTab = 'Pending';
+let currentRenTab = 'all';
+
+let initialLoadComplete = false;
+let isFetchingData = false;
+
+let stagedFiles = [];
+const MAX_ATTACHMENTS = 3;
+
+let delTimer, routTimer, revTimer;
+function debounceRenderDelegated() { clearTimeout(delTimer); delTimer = setTimeout(renderDelegatedView, 300); }
+function debounceRenderRoutine() { clearTimeout(routTimer); routTimer = setTimeout(renderRoutineView, 300); }
+function debounceRenderReview() { clearTimeout(revTimer); revTimer = setTimeout(renderReviewView, 300); }
+
+/* ---- GGM Portal: session, login screen, "Given By" ---- */
+const PORTAL = window.PORTAL || {};
+function adminToken() { try { return localStorage.getItem('ggmAdminToken') || ''; } catch (e) { return ''; } }
+function adminUser() { try { return localStorage.getItem('ggmAdminUser') || ''; } catch (e) { return ''; } }
+
+function adminStart() {
+  if (PORTAL.boot && PORTAL.boot.token) {             // opened from GGM Portal: already signed in
+    localStorage.setItem('ggmAdminToken', PORTAL.boot.token);
+    localStorage.setItem('ggmAdminUser', PORTAL.boot.username || '');
+    PORTAL.boot = null;
+  }
+  if (PORTAL.info && PORTAL.info.enabled && !adminToken()) { showAdminLogin(''); return; }
+  lockGivenBy();
+  fetchData(true);
+  fetchDoers();
+  if (!window.__adminPoll) window.__adminPoll = setInterval(() => { if (!document.getElementById('adminLogin')) fetchData(false); }, 30000);
+}
+
+function adminSessionEnded() {
+  localStorage.removeItem('ggmAdminToken'); localStorage.removeItem('ggmAdminUser');
+  if (PORTAL.info && PORTAL.info.enabled) showAdminLogin('Your sign-in has ended. Please sign in again.');
+}
+
+/** Given By is the signed-in admin; nobody picks it any more. */
+function lockGivenBy() {
+  if (!(PORTAL.info && PORTAL.info.enabled)) return;
+  const sel = document.getElementById('newTaskGivenBy');
+  if (!sel) return;
+  const u = adminUser() || 'you';
+  sel.innerHTML = '';
+  const o = document.createElement('option'); o.value = u; o.textContent = u + ' (signed in)'; o.selected = true;
+  sel.appendChild(o); sel.disabled = true;
+}
+
+function showAdminLogin(msg) {
+  let box = document.getElementById('adminLogin');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'adminLogin';
+    box.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:16px';
+    box.innerHTML =
+      '<form style="background:#fff;border-radius:18px;padding:26px;width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.3);font-family:inherit">' +
+      '<div style="font-weight:800;font-size:20px;margin-bottom:2px">Main Admin Dashboard</div>' +
+      '<div style="color:#64748b;font-size:13px;margin-bottom:16px">Sign in with your GGM Portal account.</div>' +
+      '<label style="font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8">Username or phone</label>' +
+      '<input id="alId" class="form-control mb-3" autocomplete="username" autocapitalize="none" required>' +
+      '<label style="font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8">Password</label>' +
+      '<input id="alPw" type="password" class="form-control mb-3" autocomplete="current-password" required>' +
+      '<button id="alBtn" class="btn btn-dark w-100" type="submit">Sign in</button>' +
+      '<div id="alErr" style="color:#dc2626;font-size:13px;min-height:1.4em;margin-top:10px"></div>' +
+      (PORTAL.info.hubLink ? '<a href="' + PORTAL.info.hubLink + '" target="_top" style="font-size:13px">Open GGM Portal instead</a>' : '') +
+      '</form>';
+    document.body.appendChild(box);
+    box.querySelector('form').addEventListener('submit', ev => {
+      ev.preventDefault();
+      const btn = document.getElementById('alBtn'); btn.disabled = true; btn.textContent = 'Signing in…';
+      document.getElementById('alErr').textContent = '';
+      google.script.run.withSuccessHandler(res => {
+        btn.disabled = false; btn.textContent = 'Sign in';
+        if (res && res.success) {
+          localStorage.setItem('ggmAdminToken', res.token); localStorage.setItem('ggmAdminUser', res.username || '');
+          box.remove(); adminStart();
+        } else document.getElementById('alErr').textContent = (res && res.message) || 'Could not sign in.';
+      }).withFailureHandler(err => {
+        btn.disabled = false; btn.textContent = 'Sign in';
+        document.getElementById('alErr').textContent = (err && err.message) || 'No connection.';
+      }).maLogin(document.getElementById('alId').value, document.getElementById('alPw').value);
+    });
+  }
+  document.getElementById('alErr').textContent = msg || '';
+  setTimeout(() => { const f = document.getElementById('alId'); if (f) f.focus(); }, 50);
+}
+
+adminStart();
+
+function fetchDoers() {
+  try {
+      google.script.run.withSuccessHandler(function(response) {
+          if (response && response.error) { 
+              ['newTaskDoer', 'editTaskDoer'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '<option value="" disabled selected>Error loading</option>'; });
+              return; 
+          }
+          if (response && response.doers && response.doers.length > 0) {
+              allGlobalDoers = response.doers;
+              let locs = new Set(['JPR', 'NEWAI', 'TONK', 'KCL', 'SAW', 'KHA']);
+              allGlobalDoers.forEach(d => {
+                 const match = d.match(/^([A-Za-z]{2,5})\s*-/);
+                 if(match) locs.add(match[1].toUpperCase());
+              });
+
+              let locSelect = document.getElementById('newTaskLocation');
+              if(locSelect) {
+                 let locHtml = '<option value="ALL" selected>All Locations</option>';
+                 Array.from(locs).sort().forEach(l => { locHtml += `<option value="${l}">${l}</option>`; });
+                 locSelect.innerHTML = locHtml;
+              }
+              filterDoersByLocation(); 
+          }
+      }).getDoerList(adminToken());
+  } catch(e) { console.error("fetchDoers Exception:", e); }
+}
+
+function filterDoersByLocation() {
+    const locSelect = document.getElementById('newTaskLocation');
+    const doerSelect = document.getElementById('newTaskDoer');
+    if (!doerSelect) return;
+
+    let selectedLoc = locSelect ? locSelect.value : 'ALL';
+    let filteredDoers = allGlobalDoers || [];
+    if (selectedLoc !== 'ALL') { 
+        filteredDoers = filteredDoers.filter(d => d.toUpperCase().startsWith(selectedLoc) || (selectedLoc === 'NEWAI' && d.toUpperCase().startsWith('NW'))); 
+    }
+
+    let optionsHtml = '<option value="" disabled selected>Select Assignee...</option>';
+    filteredDoers.forEach(doer => { optionsHtml += `<option value="${doer}">${doer}</option>`; });
+    doerSelect.innerHTML = optionsHtml;
+
+    if (typeof jQuery !== 'undefined' && $.fn.select2) {
+        if ($('#newTaskDoer').data('select2')) {
+            $('#newTaskDoer').select2('destroy');
+        }
+        $('#newTaskDoer').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $('#newTaskModal'),
+            width: '100%',
+            placeholder: 'Select Assignee...'
+        });
+    }
+}
+
+function _updateSyncIndicators(success) {
+    if (success) {
+        document.getElementById('last-sync').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('desktop-sync-icon').className = 'bi bi-cloud-check-fill text-success fs-4';
+    }
+}
+
+function fetchData(isForced) {
+    isForced = isForced === true;
+    if (isFetchingData && !isForced) return;
+    isFetchingData = true;
+
+    const syncIcons = [document.getElementById('header-sync-icon')];
+    syncIcons.forEach(el => { if (el) el.classList.add('spin-anim'); });
+
+    google.script.run.withSuccessHandler(function(res) {
+        isFetchingData = false;
+        syncIcons.forEach(el => { if (el) el.classList.remove('spin-anim'); });
+
+        if (res && res.sessionExpired) { adminSessionEnded(); return; }
+        if (res) {
+            if (res.master && res.master.rows) processRawData(res.master.rows);
+            if (res.leaves && res.leaves.rows) leaveData = res.leaves.rows;
+            if (res.renewals && res.renewals.rows) renewalData = res.renewals.rows;
+            if (res.routineJPR && res.routineJPR.rows) processRoutineData(res.routineJPR.rows, 'JPR');
+            if (res.routineNewai && res.routineNewai.rows) processRoutineData(res.routineNewai.rows, 'NEWAI');
+            if (res.routineTonk && res.routineTonk.rows) processRoutineData(res.routineTonk.rows, 'TONK');
+            if (res.scores) scoresSummaryData = res.scores;
+
+            _updateSyncIndicators(true);
+
+            if (!initialLoadComplete) {
+                initialLoadComplete = true;
+                document.getElementById('view-loading').classList.remove('active');
+                switchTab('overview');
+            } else {
+                renderAllViews();
+            }
+        }
+    }).withFailureHandler(function(error) {
+        isFetchingData = false;
+        syncIcons.forEach(el => { if (el) el.classList.remove('spin-anim'); });
+        _updateSyncIndicators(false);
+    }).getDashboardData(adminToken());
+}
+
+function resetFilters() {
+    document.getElementById('search-delegated').value = '';
+    document.getElementById('filter-status-del').value = '';
+    document.getElementById('filter-assignee-del').value = '';
+    document.getElementById('filter-givenby-del').value = '';
+    document.getElementById('filter-date-del').value = '';
+    renderDelegatedView();
+}
+
+function resetReviewFilters() {
+    document.getElementById('search-review').value = '';
+    document.getElementById('filter-assignee-rev').value = '';
+    document.getElementById('filter-givenby-rev').value = '';
+    document.getElementById('filter-date-rev').value = '';
+    renderReviewView();
+}
+
+function resetScoreFilters() {
+    document.getElementById('search-staff').value = '';
+    document.getElementById('score-filter-givenby').value = '';
+    document.getElementById('score-filter-assignee').value = '';
+    document.getElementById('score-filter-status').value = '';
+    document.getElementById('score-filter-date').value = '';
+    renderScorecard();
+}
+
+function toggleScoreFilters() {
+    const isDelegated = (currentScoreTab === 'delegated');
+    document.getElementById('scorecard-filters-box').style.display = isDelegated ? 'block' : 'none';
+}
+
+function populateFilterDropdown(id, list, defaultLabel) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const currentVal = select.value;
+    let html = `<option value="">${defaultLabel}</option>` + list.filter(Boolean).map(item => `<option value="${item}" ${currentVal === item ? 'selected' : ''}>${item}</option>`).join('');
+    select.innerHTML = html;
+}
+
+function setRoutineLocation(loc) {
+    currentRoutineLocation = loc;
+    document.getElementById('btn-loc-JPR').classList.remove('active');
+    document.getElementById('btn-loc-NEWAI').classList.remove('active');
+    document.getElementById('btn-loc-TONK').classList.remove('active');
+    document.getElementById(`btn-loc-${loc}`).classList.add('active');
+    resetRoutineFilters(); 
+}
+
+function resetRoutineFilters() {
+    document.getElementById('search-routine').value = '';
+    document.getElementById('filter-assignee-routine').value = '';
+    document.getElementById('filter-date-routine').value = '';
+    renderRoutineView();
+}
+
+function processRoutineData(rows, location) {
+  if(!rows || !Array.isArray(rows)) return;
+  let mappedData = rows.map(r => {
+    return {
+      name: r[0] || 'Unknown', dept: r[2] || '', taskId: r[3] || '',
+      freq: (r[4] || '').toString().toUpperCase().trim(), task: r[5] || '',
+      plannedDate: r[6] || '', status: (r[8] || 'Pending').toLowerCase(), location: location,
+      compRaw: r[7] || '' 
+    };
+  }).filter(t => t.taskId !== '');
+
+  if (location === 'JPR') routineJPRData = mappedData;
+  else if (location === 'NEWAI') routineNewaiData = mappedData;
+  else if (location === 'TONK') routineTonkData = mappedData;
+}
+
+function parseDateCustom(dateStr) {
+  if (!dateStr) return 9e15; 
+  let p = dateStr.split('/');
+  if (p.length === 3) return new Date(p[2], p[1]-1, p[0]).getTime();
+  return new Date(dateStr).getTime() || 9e15;
+}
+
+function updateRoutineBadges() {
+  const pendingJPR = routineJPRData.filter(t => t.status !== 'done').length;
+  const pendingNewai = routineNewaiData.filter(t => t.status !== 'done').length;
+  const pendingTonk = routineTonkData.filter(t => t.status !== 'done').length;
+  const totalPending = pendingJPR + pendingNewai + pendingTonk;
+
+  document.querySelectorAll('.badge-routine-cnt').forEach(el => { el.textContent = totalPending; el.style.display = totalPending > 0 ? 'inline-block' : 'none'; });
+}
+
+function renderRoutineView() {
+  const query = (document.getElementById('search-routine')?.value || '').toLowerCase();
+  const assigneeFilter = document.getElementById('filter-assignee-routine')?.value;
+  const dateFilterVal = document.getElementById('filter-date-routine')?.value; 
+  updateRoutineBadges(); 
+
+  let activeData = currentRoutineLocation === 'JPR' ? routineJPRData : (currentRoutineLocation === 'NEWAI' ? routineNewaiData : routineTonkData);
+  let uniqueAssignees = [...new Set(activeData.map(t => t.name))].sort();
+  populateFilterDropdown('filter-assignee-routine', uniqueAssignees, 'All Assignees');
+
+  let filtered = activeData;
+  let todayTime = new Date(); todayTime.setHours(0,0,0,0); let todayTimeVal = todayTime.getTime();
+
+  if (currentRoutineTab === 'done') {
+      filtered = filtered.filter(t => t.status === 'done');
+  } else if (currentRoutineTab === 'skipped') {
+      filtered = filtered.filter(t => t.status !== 'done' && (t.freq === 'D' || t.freq === 'DAILY') && parseDateCustom(t.plannedDate) < todayTimeVal);
+  } else if (currentRoutineTab === 'overdue') {
+      filtered = filtered.filter(t => t.status !== 'done' && t.freq !== 'D' && t.freq !== 'DAILY' && parseDateCustom(t.plannedDate) < todayTimeVal);
+  } else {
+      filtered = filtered.filter(t => t.status !== 'done' && parseDateCustom(t.plannedDate) >= todayTimeVal);
+      if (currentRoutineTab === 'daily') {
+          filtered = filtered.filter(t => (t.freq === 'D' || t.freq === 'DAILY') && parseDateCustom(t.plannedDate) === todayTimeVal);
+      } else {
+          filtered = filtered.filter(t => t.freq !== 'D' && t.freq !== 'DAILY');
+      }
+  }
+
+  if (assigneeFilter) filtered = filtered.filter(t => t.name === assigneeFilter);
+  if (dateFilterVal) {
+      let [y, m, d] = dateFilterVal.split('-'); let formattedFilterDate = `${d}/${m}/${y}`; 
+      filtered = filtered.filter(t => t.plannedDate === formattedFilterDate);
+  }
+  if (query) { filtered = filtered.filter(t => t.name.toLowerCase().includes(query) || t.task.toLowerCase().includes(query) || t.taskId.toString().includes(query)); }
+
+  filtered.sort((a, b) => { let nameCmp = a.name.localeCompare(b.name); if (nameCmp !== 0) return nameCmp; return parseDateCustom(a.plannedDate) - parseDateCustom(b.plannedDate); });
+
+  const container = document.getElementById('list-routine'); if (!container) return;
+  if (filtered.length === 0) { container.innerHTML = `<div class="col-12 anim-stagger-up"><div class="text-center py-5 text-muted rounded border shadow-sm" style="background:var(--card-bg);"><i class="bi bi-check2-all fs-2 d-block mb-2 text-success"></i> No tasks found!</div></div>`; return; }
+
+  let htmlArray = filtered.map(t => {
+      let avatarInitials = 'U';
+      const parts = t.name.split(/\s+/).filter(Boolean);
+      if(parts.length > 0) {
+          avatarInitials = parts[0][0];
+          if(parts.length > 1) avatarInitials += parts[parts.length-1][0];
+      }
+
+      let isDone = t.status === 'done';
+      let statusBadge = isDone ? `<span class="badge bg-success fw-bold px-2 py-1 shadow-sm"><i class="bi bi-check-circle"></i> Done</span>` : `<span class="badge bg-warning text-dark fw-bold px-2 py-1 shadow-sm"><i class="bi bi-hourglass-split"></i> Pending</span>`;
+      let cardBorder = isDone ? "done" : "";
+
+      let bottomAction = !isDone 
+            ? `<button class="routine-btn-done shadow-sm" onclick="submitRoutineDone('${t.taskId}', this, '${t.location}')"><i class="bi bi-check-circle-fill"></i> Done</button>` 
+            : `<div class="d-flex flex-column text-end w-100"><span class="small text-success fw-bold"><i class="bi bi-check-all"></i> Done: ${t.compRaw||'N/A'}</span></div>`;
+
+      return `
+      <div class="col anim-stagger-up" id="routine-wrapper-${t.taskId}">
+          <div class="routine-card-compact shadow-sm ${cardBorder}" id="routine-card-${t.taskId}">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+              <span class="routine-id-badge notranslate">ID: ${t.taskId}</span>${statusBadge}
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-2" style="min-width: 0;">
+              ${getAvatar(avatarInitials, 'avatar-md', t.name)}
+              <div class="lh-sm" style="min-width: 0;">
+                  <div class="fw-bold notranslate name-truncate" style="font-size:0.95rem;">${t.name}</div>
+                  <div class="text-muted text-uppercase notranslate name-truncate" style="font-size:0.65rem; letter-spacing:0.5px;">${t.dept}</div>
+              </div>
+            </div>
+            <div class="fw-medium desc flex-grow-1">${t.task}</div>
+            <div class="d-flex justify-content-between align-items-end mt-2 border-top pt-2 flex-wrap gap-2">
+              <div class="d-flex flex-column text-start">
+                  <span class="small text-muted mb-1" style="font-size:0.75rem;"><i class="bi bi-calendar"></i> Date: ${t.plannedDate}</span>
+              </div>
+              <div class="ms-auto">${bottomAction}</div>
+            </div>
+          </div>
+      </div>`;
+  });
+  container.innerHTML = htmlArray.join('');
+}
+
+function submitRoutineDone(taskId, btnEl, location) {
+  const wrapper = document.getElementById(`routine-wrapper-${taskId}`);
+  if (wrapper) { wrapper.style.opacity = "0.5"; btnEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>...'; btnEl.disabled = true; }
+
+  let activeArray = location === 'JPR' ? routineJPRData : (location === 'NEWAI' ? routineNewaiData : routineTonkData);
+  const idx = activeArray.findIndex(t => t.taskId.toString() === taskId.toString());
+  if (idx !== -1) { 
+      activeArray[idx].status = 'done'; 
+      activeArray[idx].compRaw = new Date().toLocaleDateString('en-IN') + " " + new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}); 
+  }
+  updateRoutineBadges(); 
+  updateMiniBars(); 
+
+  google.script.run.withSuccessHandler(res => {
+      if (!res.success) { console.error("Sync Error:", res.error); if(wrapper) {wrapper.style.opacity = "1"; btnEl.disabled=false; btnEl.innerHTML='<i class="bi bi-check-circle-fill"></i> Done';} }
+      else { if(wrapper) wrapper.remove(); fetchData(true); }
+  }).withFailureHandler(err => {
+      console.error("Sync Failed:", err.message); if(wrapper) {wrapper.style.opacity = "1"; btnEl.disabled=false; btnEl.innerHTML='<i class="bi bi-check-circle-fill"></i> Done';}
+  }).markRoutineDone(adminToken(), taskId, location);
+}
+
+function processRawData(rows) {
+  if (!rows || !Array.isArray(rows)) return;
+  let uniqueAssignees = new Set();
+  let uniqueGivenBy = new Set();
+
+  allData = rows.map((row, index) => {
+    const getVal = (idx) => (row.length > idx && row[idx] != null) ? row[idx].toString().trim() : '';
+    const rawNameStr = getVal(colMap.name); const taskDesc = getVal(colMap.task); 
+    if (!rawNameStr && !taskDesc) return null;
+
+    const staffInfo = parseStaffInfo(rawNameStr); uniqueAssignees.add(staffInfo.cleanName);
+    const givenByPerson = getVal(10) || 'Unknown'; if (givenByPerson !== 'Unknown') uniqueGivenBy.add(givenByPerson);
+
+    const dueStr = getVal(colMap.dueDate); let dueObj = null;
+    if (dueStr) { 
+      let m = dueStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); 
+      if (m) { dueObj = new Date(+m[3], +m[2]-1, +m[1]); } else { dueObj = new Date(dueStr); } 
+      if (isNaN(dueObj)) dueObj = null; else dueObj.setHours(0,0,0,0); 
+    }
+
+    const rawStatus = getVal(colMap.status).toLowerCase(); let computedStatus = 'pending';
+    if (rawStatus.includes('done') || rawStatus.includes('complet')) computedStatus = 'done'; 
+    else if (rawStatus === 'review') computedStatus = 'review';
+    else if (rawStatus === 'rejected') computedStatus = 'rejected';
+    else if (dueObj) { if (dueObj < today) computedStatus = 'overdue'; else if (dueObj.getTime() === today.getTime()) computedStatus = 'today'; }
+
+    let isWeekShifted = false; 
+    if (computedStatus !== 'done' && computedStatus !== 'review') { 
+        if (computedStatus === 'overdue' || computedStatus === 'rejected') isWeekShifted = true; 
+        if (dueObj && dueObj > today && dueObj <= nextWeek) isWeekShifted = true; 
+    }
+
+    return { 
+        id: getVal(colMap.taskId) || `TSK-${index+1}`, 
+        staff: staffInfo, 
+        task: taskDesc || '—', 
+        creationDate: getVal(0) || '—',              
+        reviewDate: getVal(17) || '—',               
+        dueRaw: dueStr || '—', 
+        compRaw: getVal(colMap.completionDate) || '', 
+        dueObj: dueObj, 
+        status: computedStatus, 
+        isShifted: isWeekShifted, 
+        givenBy: givenByPerson, 
+        attachments: getVal(11) ? getVal(11).split(',').map(l => l.trim()).filter(Boolean) : [], 
+        remark: getVal(13) || '', 
+        staffRemark: getVal(14) || '', 
+        staffFiles: getVal(15) ? getVal(15).split(',').map(l => l.trim()).filter(Boolean) : [], 
+        extraRemark: getVal(16) || '' 
+    };
+  }).filter(Boolean); 
+
+  populateFilterDropdown('filter-assignee-del', [...uniqueAssignees].sort(), 'All Assignees');
+  populateFilterDropdown('filter-givenby-del', [...uniqueGivenBy].sort(), 'All Given By');
+  populateFilterDropdown('filter-assignee-rev', [...uniqueAssignees].sort(), 'All Assignees');
+  populateFilterDropdown('filter-givenby-rev', [...uniqueGivenBy].sort(), 'All Given By');
+
+  populateFilterDropdown('score-filter-assignee', [...uniqueAssignees].sort(), 'All Assignees');
+  populateFilterDropdown('score-filter-givenby', [...uniqueGivenBy].sort(), 'All Given By');
+}
+
+function getBadge(status) { 
+  if (status === 'overdue') return '<span class="badge text-bg-danger rounded-pill px-2 py-1"><i class="bi bi-exclamation-circle"></i> Overdue</span>'; 
+  if (status === 'done') return '<span class="badge text-bg-success rounded-pill px-2 py-1"><i class="bi bi-check-circle"></i> Done</span>'; 
+  if (status === 'review') return '<span class="badge text-bg-info rounded-pill px-2 py-1"><i class="bi bi-eye"></i> Wait For Review</span>';
+  if (status === 'rejected') return '<span class="badge text-bg-danger rounded-pill px-2 py-1"><i class="bi bi-x-circle"></i> Rejected</span>';
+  if (status === 'today') return '<span class="badge bg-primary rounded-pill px-2 py-1"><i class="bi bi-star-fill"></i> Today</span>'; 
+  return '<span class="badge text-bg-warning rounded-pill px-2 py-1"><i class="bi bi-hourglass-split"></i> Pending</span>'; 
+}
+
+// DOC VIEWER FUNCTION (NEW)
+window.viewDocument = function(url) {
+    if (!url) return;
+    const iframe = document.getElementById('docViewerIframe');
+    const loading = document.getElementById('docViewerLoading');
+    const btnFull = document.getElementById('btnFullViewDoc');
+    
+    iframe.classList.add('d-none');
+    loading.classList.remove('d-none');
+    btnFull.setAttribute('onclick', `window.open('${url}', '_blank')`);
+    
+    let viewUrl = url;
+    if(viewUrl.includes('drive.google.com/file/d/')) {
+        viewUrl = viewUrl.replace(/\/view.*$/, '/preview');
+    }
+    
+    iframe.src = viewUrl;
+    iframe.onload = function() {
+        loading.classList.add('d-none');
+        iframe.classList.remove('d-none');
+    };
+    
+    new bootstrap.Modal(document.getElementById('docViewerModal')).show();
+};
+
+function generateCardHTML(t, type) {
+  let badgeHtml = getBadge(t.status); 
+  let paperclip = (t.attachments.length > 0 || t.staffFiles.length > 0) ? `<i class="bi bi-paperclip ms-1 text-primary" title="Has Attachments"></i>` : '';
+
+  let datesGridHtml = `
+  <div class="d-flex flex-wrap gap-2 mt-2 pt-2 border-top border-light text-muted" style="font-size:0.75rem;">
+      <div class="date-grid-item"><i class="bi bi-plus-circle me-1"></i>Created: <strong class="text-dark">${t.creationDate.split(' ')[0]}</strong></div>
+      <div class="date-grid-item"><i class="bi bi-calendar-event me-1"></i>Due: <strong class="text-dark">${t.dueObj ? t.dueObj.toLocaleDateString('en-IN') : t.dueRaw}</strong></div>
+      ${t.compRaw ? `<div class="date-grid-item w-100"><i class="bi bi-check-all me-1 text-success"></i>Done: <strong class="text-success">${t.compRaw.split(' ')[0]}</strong></div>` : ''}
+      ${t.reviewDate !== '—' ? `<div class="date-grid-item w-100"><i class="bi bi-eye-fill me-1 text-info"></i>Reviewed: <strong class="text-info">${t.reviewDate.split(' ')[0]}</strong></div>` : ''}
+  </div>`;
+
+  let staffFilesChip = '';
+  if (t.staffFiles.length > 0) {
+      staffFilesChip = `<div class="mt-2 d-flex flex-wrap gap-1">`;
+      t.staffFiles.forEach((url, i) => {
+         staffFilesChip += `<button onclick="viewDocument('${url}')" class="btn btn-sm badge bg-success-subtle text-success text-decoration-none border border-success-subtle"><i class="bi bi-file-earmark-check-fill"></i> Staff File ${i+1}</button>`;
+      });
+      staffFilesChip += `</div>`;
+  }
+
+  if (type === 'recent' && t.status === 'today') badgeHtml = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">High Priority</span>`;
+
+  return `
+  <div class="col anim-stagger-up">
+    <div class="task-card h-100 d-flex flex-column mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="badge bg-light text-secondary border font-monospace px-2 shadow-sm notranslate">${t.id}${paperclip}</span>${badgeHtml}
+      </div>
+      <div class="d-flex align-items-center gap-3 mb-3" style="min-width: 0;">
+        ${getAvatar(t.staff.initials, 'avatar-md', t.staff.cleanName)}
+        <div class="lh-sm" style="min-width: 0;">
+            <div class="fw-bold notranslate name-truncate" style="font-size:0.95rem;">${t.staff.cleanName}</div>
+            <div class="text-muted notranslate name-truncate" style="font-size:0.75rem;">${t.staff.subtext}</div>
+        </div>
+      </div>
+      <div class="task-desc-text mb-2 flex-grow-1">${t.task}</div>
+      <div class="text-muted mb-2" style="font-size:0.75rem;"><i class="bi bi-person-fill me-1"></i>Given By: <strong class="notranslate">${t.givenBy}</strong></div>
+      ${staffFilesChip}${datesGridHtml}
+
+      <div class="d-flex justify-content-end mt-2 pt-2">
+        <button class="btn btn-sm btn-outline-primary py-1 px-3 rounded-2 shadow-sm w-100 fw-bold" onclick="openTaskModal('${t.id}')">
+          <i class="bi bi-arrows-fullscreen"></i> View Detail
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateMiniBars() {
+    let todayTime = new Date().setHours(0,0,0,0);
+
+    function getVisualHeight(value, max) {
+        if (value === 0) return '6%'; 
+        if (max === 0) max = 1;
+        const logVal = Math.log(value + 1);
+        const logMax = Math.log(max + 1);
+        const pct = (logVal / logMax) * 100;
+        return Math.max(12, pct) + '%'; 
+    }
+
+    const delDone = allData.filter(t => t.status === 'done').length;
+    const delPend = allData.filter(t => ['pending', 'today'].includes(t.status)).length;
+    const delRev = allData.filter(t => t.status === 'review').length;
+    const delOver = allData.filter(t => ['overdue', 'rejected'].includes(t.status)).length;
+    const delMax = Math.max(delDone, delPend, delRev, delOver) || 1; 
+
+    let elDelComp = document.getElementById('del-comp-n'); if(elDelComp && parseInt(elDelComp.textContent) !== delDone) animateValue(elDelComp, parseInt(elDelComp.textContent) || 0, delDone, 800);
+    let elDelCompB = document.getElementById('del-comp-b'); if(elDelCompB) elDelCompB.style.height = getVisualHeight(delDone, delMax);
+
+    let elDelPend = document.getElementById('del-pend-n'); if(elDelPend && parseInt(elDelPend.textContent) !== delPend) animateValue(elDelPend, parseInt(elDelPend.textContent) || 0, delPend, 800);
+    let elDelPendB = document.getElementById('del-pend-b'); if(elDelPendB) elDelPendB.style.height = getVisualHeight(delPend, delMax);
+
+    let elDelRev = document.getElementById('del-rev-n'); if(elDelRev && parseInt(elDelRev.textContent) !== delRev) animateValue(elDelRev, parseInt(elDelRev.textContent) || 0, delRev, 800);
+    let elDelRevB = document.getElementById('del-rev-b'); if(elDelRevB) elDelRevB.style.height = getVisualHeight(delRev, delMax);
+
+    let elDelOver = document.getElementById('del-over-n'); if(elDelOver && parseInt(elDelOver.textContent) !== delOver) animateValue(elDelOver, parseInt(elDelOver.textContent) || 0, delOver, 800);
+    let elDelOverB = document.getElementById('del-over-b'); if(elDelOverB) elDelOverB.style.height = getVisualHeight(delOver, delMax);
+
+    // ROUTINE MINI BARS
+    const jprDone = routineJPRData.filter(t => t.status === 'done').length;
+    const jprPend = routineJPRData.filter(t => t.status !== 'done' && parseDateCustom(t.plannedDate) >= todayTime).length;
+    const jprOver = routineJPRData.filter(t => t.status !== 'done' && parseDateCustom(t.plannedDate) < todayTime).length;
+    const jprMax = Math.max(jprDone, jprPend, jprOver) || 1; 
+
+    let kpiJpr = document.getElementById('kpi-routine-jpr'); if (kpiJpr) animateValue(kpiJpr, parseInt(kpiJpr.textContent)||0, jprDone + jprPend + jprOver, 800);
+
+    let elJprComp = document.getElementById('jpr-comp-n'); if(elJprComp && parseInt(elJprComp.textContent) !== jprDone) animateValue(elJprComp, parseInt(elJprComp.textContent) || 0, jprDone, 800);
+    let elJprCompB = document.getElementById('jpr-comp-b'); if(elJprCompB) elJprCompB.style.height = getVisualHeight(jprDone, jprMax);
+
+    let elJprPend = document.getElementById('jpr-pend-n'); if(elJprPend && parseInt(elJprPend.textContent) !== jprPend) animateValue(elJprPend, parseInt(elJprPend.textContent) || 0, jprPend, 800);
+    let elJprPendB = document.getElementById('jpr-pend-b'); if(elJprPendB) elJprPendB.style.height = getVisualHeight(jprPend, jprMax);
+
+    let elJprOver = document.getElementById('jpr-over-n'); if(elJprOver && parseInt(elJprOver.textContent) !== jprOver) animateValue(elJprOver, parseInt(elJprOver.textContent) || 0, jprOver, 800);
+    let elJprOverB = document.getElementById('jpr-over-b'); if(elJprOverB) elJprOverB.style.height = getVisualHeight(jprOver, jprMax);
+
+    const newDone = routineNewaiData.filter(t => t.status === 'done').length;
+    const newPend = routineNewaiData.filter(t => t.status !== 'done' && parseDateCustom(t.plannedDate) >= todayTime).length;
+    const newOver = routineNewaiData.filter(t => t.status !== 'done' && parseDateCustom(t.plannedDate) < todayTime).length;
+    const newMax = Math.max(newDone, newPend, newOver) || 1; 
+
+    let kpiNewai = document.getElementById('kpi-routine-newai'); if (kpiNewai) animateValue(kpiNewai, parseInt(kpiNewai.textContent)||0, newDone + newPend + newOver, 800);
+
+    let elNewComp = document.getElementById('new-comp-n'); if(elNewComp && parseInt(elNewComp.textContent) !== newDone) animateValue(elNewComp, parseInt(elNewComp.textContent) || 0, newDone, 800);
+    let elNewCompB = document.getElementById('new-comp-b'); if(elNewCompB) elNewCompB.style.height = getVisualHeight(newDone, newMax);
+
+    let elNewPend = document.getElementById('new-pend-n'); if(elNewPend && parseInt(elNewPend.textContent) !== newPend) animateValue(elNewPend, parseInt(elNewPend.textContent) || 0, newPend, 800);
+    let elNewPendB = document.getElementById('new-pend-b'); if(elNewPendB) elNewPendB.style.height = getVisualHeight(newPend, newMax);
+
+    let elNewOver = document.getElementById('new-over-n'); if(elNewOver && parseInt(elNewOver.textContent) !== newOver) animateValue(elNewOver, parseInt(elNewOver.textContent) || 0, newOver, 800);
+    let elNewOverB = document.getElementById('new-over-b'); if(elNewOverB) elNewOverB.style.height = getVisualHeight(newOver, newMax);
+
+    const tonkDone = routineTonkData.filter(t => t.status === 'done').length;
+    const tonkPend = routineTonkData.filter(t => t.status !== 'done' && parseDateCustom(t.plannedDate) >= todayTime).length;
+    const tonkOver = routineTonkData.filter(t => t.status !== 'done' && parseDateCustom(t.plannedDate) < todayTime).length;
+    const tonkMax = Math.max(tonkDone, tonkPend, tonkOver) || 1; 
+
+    let kpiTonk = document.getElementById('kpi-routine-tonk'); if (kpiTonk) animateValue(kpiTonk, parseInt(kpiTonk.textContent)||0, tonkDone + tonkPend + tonkOver, 800);
+
+    let elTonkComp = document.getElementById('tonk-comp-n'); if(elTonkComp && parseInt(elTonkComp.textContent) !== tonkDone) animateValue(elTonkComp, parseInt(elTonkComp.textContent) || 0, tonkDone, 800);
+    let elTonkCompB = document.getElementById('tonk-comp-b'); if(elTonkCompB) elTonkCompB.style.height = getVisualHeight(tonkDone, tonkMax);
+
+    let elTonkPend = document.getElementById('tonk-pend-n'); if(elTonkPend && parseInt(elTonkPend.textContent) !== tonkPend) animateValue(elTonkPend, parseInt(elTonkPend.textContent) || 0, tonkPend, 800);
+    let elTonkPendB = document.getElementById('tonk-pend-b'); if(elTonkPendB) elTonkPendB.style.height = getVisualHeight(tonkPend, tonkMax);
+
+    let elTonkOver = document.getElementById('tonk-over-n'); if(elTonkOver && parseInt(elTonkOver.textContent) !== tonkOver) animateValue(elTonkOver, parseInt(elTonkOver.textContent) || 0, tonkOver, 800);
+    let elTonkOverB = document.getElementById('tonk-over-b'); if(elTonkOverB) elTonkOverB.style.height = getVisualHeight(tonkOver, tonkMax);
+
+    const routDone = jprDone + newDone + tonkDone;
+    const routPend = jprPend + newPend + tonkPend;
+    const routOver = jprOver + newOver + tonkOver;
+    const routMax = Math.max(routDone, routPend, routOver) || 1; 
+
+    let elRoutComp = document.getElementById('rout-comp-n'); if(elRoutComp && parseInt(elRoutComp.textContent) !== routDone) animateValue(elRoutComp, parseInt(elRoutComp.textContent) || 0, routDone, 800);
+    let elRoutCompB = document.getElementById('rout-comp-b'); if(elRoutCompB) elRoutCompB.style.height = getVisualHeight(routDone, routMax);
+
+    let elRoutPend = document.getElementById('rout-pend-n'); if(elRoutPend && parseInt(elRoutPend.textContent) !== routPend) animateValue(elRoutPend, parseInt(elRoutPend.textContent) || 0, routPend, 800);
+    let elRoutPendB = document.getElementById('rout-pend-b'); if(elRoutPendB) elRoutPendB.style.height = getVisualHeight(routPend, routMax);
+
+    let elRoutOver = document.getElementById('rout-over-n'); if(elRoutOver && parseInt(elRoutOver.textContent) !== routOver) animateValue(elRoutOver, parseInt(elRoutOver.textContent) || 0, routOver, 800);
+    let elRoutOverB = document.getElementById('rout-over-b'); if(elRoutOverB) elRoutOverB.style.height = getVisualHeight(routOver, routMax);
+}
+
+function renderAllViews() {
+  try {
+      const pending = allData.filter(t => ['pending', 'today', 'rejected', 'overdue'].includes(t.status)).length; 
+      const reviewCount = allData.filter(t => t.status === 'review').length;
+      const pendingLeaves = leaveData.filter(l => l.status === 'Pending').length;
+
+      // RENEWALS COUNT
+      const pendingRenewals = renewalData.filter(r => r.status.toLowerCase() !== 'completed' && String(r.isDone).toUpperCase() !== 'TRUE').length;
+      const reviewRenewalsCount = renewalData.filter(r => r.status && r.status.toLowerCase() === 'review').length;
+
+      let kpiTotalEl = document.getElementById('kpi-total'); 
+      if(kpiTotalEl) kpiTotalEl.textContent = allData.length;
+
+      const kpiReviewEl = document.getElementById('kpi-review');
+      if (kpiReviewEl) kpiReviewEl.textContent = reviewCount + reviewRenewalsCount; 
+
+      const totalRoutine = routineJPRData.length + routineNewaiData.length + routineTonkData.length;
+      const rTotKpi = document.getElementById('kpi-routine-total');
+      if (rTotKpi) rTotKpi.textContent = totalRoutine;
+
+      const kpiLeavesEl = document.getElementById('kpi-leaves');
+      if (kpiLeavesEl) kpiLeavesEl.textContent = pendingLeaves;
+
+      const kpiRenewalsEl = document.getElementById('kpi-renewals');
+      if (kpiRenewalsEl) kpiRenewalsEl.textContent = pendingRenewals;
+
+      let totalScore = 0; let countScore = 0;
+      ['JPR', 'NEWAI', 'TONK'].forEach(loc => {
+          if(scoresSummaryData[loc] && scoresSummaryData[loc].length > 1) {
+              for(let i = 1; i < scoresSummaryData[loc].length; i++) {
+                  let scoreStr = scoresSummaryData[loc][i][1];
+                  if(scoreStr) {
+                      let val = parseInt(scoreStr.toString().replace('%', ''));
+                      if(!isNaN(val)) { totalScore += val; countScore++; }
+                  }
+              }
+          }
+      });
+      let avgScore = countScore > 0 ? Math.round(totalScore / countScore) : 0;
+      const kpiScoreEl = document.getElementById('kpi-score-avg');
+      if (kpiScoreEl) kpiScoreEl.textContent = avgScore;
+
+      document.querySelectorAll('.badge-pending-cnt').forEach(el => { el.textContent = pending; el.style.display = pending > 0 ? 'inline-block' : 'none'; }); 
+      document.querySelectorAll('.badge-review-cnt').forEach(el => { el.textContent = reviewCount + reviewRenewalsCount; el.style.display = (reviewCount + reviewRenewalsCount) > 0 ? 'inline-block' : 'none'; });
+      document.querySelectorAll('.badge-leave-cnt').forEach(el => { el.textContent = pendingLeaves; el.style.display = pendingLeaves > 0 ? 'inline-block' : 'none'; });
+      document.querySelectorAll('.badge-renewal-cnt').forEach(el => { el.textContent = pendingRenewals; el.style.display = pendingRenewals > 0 ? 'inline-block' : 'none'; });
+
+      updateRoutineBadges();
+      updateMiniBars(); 
+
+      const activeViewId = document.querySelector('.view-section.active')?.id || 'view-overview';
+      if (activeViewId === 'view-overview') renderRecentView();
+      else if (activeViewId === 'view-delegated') renderDelegatedView();
+      else if (activeViewId === 'view-routine') renderRoutineView();
+      else if (activeViewId === 'view-review') renderReviewView();
+      else if (activeViewId === 'view-leave') renderLeaveView();
+      else if (activeViewId === 'view-scorecard') renderScorecard();
+      else if (activeViewId === 'view-renewals') renderRenewalsView();
+
+  } catch(e) { console.error("Render Error:", e); }
+}
+
+function renderRecentView() {
+  let data = [...allData]; 
+  const todayTasks = data.filter(t => t.status === 'today' || t.status === 'review'); 
+  const upcomingTasks = data.filter(t => (t.status === 'pending' || t.status === 'rejected') && t.dueObj && t.dueObj > today); 
+  upcomingTasks.sort((a,b) => a.dueObj - b.dueObj); 
+  data = [...todayTasks, ...upcomingTasks].slice(0, 6); 
+
+  const listContainer = document.getElementById('list-recent'); if (!listContainer) return;
+  if (data.length === 0) { listContainer.innerHTML = `<div class="col-12 text-center py-5 text-muted rounded border shadow-sm" style="background:var(--card-bg);"><i class="bi bi-inbox fs-2 d-block mb-2 text-primary"></i> No high priority tasks right now.</div>`; return; }
+  listContainer.innerHTML = data.map(t => generateCardHTML(t, 'recent')).join('');
+}
+
+function renderReviewView() {
+  const listContainer = document.getElementById('list-review'); 
+  if (!listContainer) return;
+
+  const query = (document.getElementById('search-review')?.value || '').toLowerCase();
+  const assigneeFilter = document.getElementById('filter-assignee-rev')?.value;
+  const givenByFilter = document.getElementById('filter-givenby-rev')?.value;
+  const dateFilterVal = document.getElementById('filter-date-rev')?.value;
+
+  let delData = allData.filter(t => t.status === 'review'); 
+  if (assigneeFilter) delData = delData.filter(t => t.staff.cleanName === assigneeFilter);
+  if (givenByFilter) delData = delData.filter(t => t.givenBy === givenByFilter);
+  if (dateFilterVal) { let fObj = new Date(dateFilterVal); fObj.setHours(0,0,0,0); delData = delData.filter(t => t.dueObj && t.dueObj.getTime() === fObj.getTime()); }
+  if (query) { delData = delData.filter(t => t.staff.cleanName.toLowerCase().includes(query) || t.task.toLowerCase().includes(query) || t.id.toLowerCase().includes(query)); }
+
+  let renData = renewalData.filter(r => r.status && r.status.toLowerCase() === 'review');
+  if (assigneeFilter) renData = renData.filter(r => r.assignee.includes(assigneeFilter));
+  if (query) { renData = renData.filter(r => r.assignee.toLowerCase().includes(query) || r.title.toLowerCase().includes(query) || r.id.toLowerCase().includes(query)); }
+
+  if (delData.length === 0 && renData.length === 0) { 
+      listContainer.innerHTML = `<div class="col-12 text-center py-5 text-muted rounded border shadow-sm anim-stagger-up" style="background:var(--card-bg);"><i class="bi bi-check-circle fs-2 d-block mb-2 text-success"></i> No tasks waiting for your approval.</div>`; 
+      return; 
+  }
+
+  let html = '';
+  html += delData.map(t => generateCardHTML(t, 'review')).join('');
+
+  html += renData.map(r => {
+      const parsedStaff = parseStaffInfo(r.assignee);
+      return `
+      <div class="col anim-stagger-up">
+          <div class="task-card renewal-review-card h-100 d-flex flex-column mb-3" style="border: 2px solid #dc3545; background-color: #fffafb;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="badge bg-white text-danger border border-danger font-monospace px-2 py-1">${r.id}</span>
+              <span class="badge bg-danger text-white"><i class="bi bi-file-earmark-check"></i> Renewal Review</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3 mb-3" style="min-width: 0;">
+              ${getAvatar(parsedStaff.initials, 'avatar-md', parsedStaff.cleanName)}
+              <div class="lh-sm" style="min-width: 0;">
+                  <div class="fw-bold notranslate name-truncate" style="font-size:0.95rem;">${parsedStaff.cleanName}</div>
+                  <div class="text-muted notranslate name-truncate" style="font-size:0.75rem;">Renewal Assignee</div>
+              </div>
+            </div>
+
+            <div class="fw-bold text-danger mb-2 flex-grow-1" style="font-size: 0.95rem; word-break: break-word;">${r.title}</div>
+
+            <div class="d-flex flex-wrap gap-2 text-muted small mb-3 bg-white p-3 rounded border">
+                <div class="date-grid-item"><i class="bi bi-cash-coin text-success"></i> Cost: <strong class="text-dark">₹${r.cost || '0'}</strong></div>
+                <div class="date-grid-item"><i class="bi bi-calendar-check text-primary"></i> Renewed: <strong class="text-dark">${r.renewedOn}</strong></div>
+                <div class="date-grid-item w-100"><i class="bi bi-shield-check text-success"></i> New Validity: <strong class="text-success">${r.newValid}</strong></div>
+                ${r.remark ? `<div class="date-grid-item w-100 text-primary mt-2 p-2 bg-light rounded border" style="word-break: break-word;"><i class="bi bi-chat-left-text"></i> Staff Note: ${r.remark}</div>` : ''}
+            </div>
+
+            ${r.docLink ? `<button onclick="viewDocument('${r.docLink}')" class="btn btn-sm btn-outline-danger w-100 mb-3 fw-bold"><i class="bi bi-file-earmark-pdf"></i> View Attached Document</button>` : ''}
+
+            <div class="d-flex gap-2 border-top pt-3 mt-2">
+                <button class="btn btn-danger flex-fill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="promptRejectRenewal('${r.id}')"><i class="bi bi-x-circle-fill"></i> Reject</button>
+                <button class="btn btn-success flex-fill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="approveRenewal('${r.id}')"><i class="bi bi-check-circle-fill"></i> Approve</button>
+            </div>
+          </div>
+      </div>`;
+  }).join('');
+
+  listContainer.innerHTML = html;
+}
+
+function renderDelegatedView() {
+  let data = [...allData]; 
+  const query = (document.getElementById('search-delegated')?.value || '').toLowerCase();
+  const statusFilter = document.getElementById('filter-status-del')?.value; 
+  const assigneeFilter = document.getElementById('filter-assignee-del')?.value;
+  const givenByFilter = document.getElementById('filter-givenby-del')?.value;
+  const dateFilterVal = document.getElementById('filter-date-del')?.value;
+
+  if (currentDelTab === 'pending') { data = data.filter(t => ['pending', 'today', 'rejected', 'overdue'].includes(t.status)); } 
+  else if (currentDelTab === 'done') { data = data.filter(t => t.status === 'done'); }
+
+  if (statusFilter && currentDelTab === 'all') { 
+      if (statusFilter === 'pending') data = data.filter(t => ['pending', 'today'].includes(t.status)); else data = data.filter(t => t.status === statusFilter); 
+  }
+  if (assigneeFilter) data = data.filter(t => t.staff.cleanName === assigneeFilter);
+  if (givenByFilter) data = data.filter(t => t.givenBy === givenByFilter);
+  if (dateFilterVal) { let filterDateObj = new Date(dateFilterVal); filterDateObj.setHours(0,0,0,0); data = data.filter(t => t.dueObj && t.dueObj.getTime() === filterDateObj.getTime()); }
+  if (query) { data = data.filter(t => t.staff.cleanName.toLowerCase().includes(query) || t.task.toLowerCase().includes(query) || t.id.toLowerCase().includes(query)); }
+
+  data.sort((a,b) => {
+      let isTodayA = (a.status === 'today'); let isTodayB = (b.status === 'today');
+      if (isTodayA && !isTodayB) return -1; if (!isTodayA && isTodayB) return 1;
+      let dateA = a.dueObj ? a.dueObj.getTime() : 9e15; let dateB = b.dueObj ? b.dueObj.getTime() : 9e15;
+      return dateA - dateB;
+  });
+
+  const listContainer = document.getElementById('list-delegated'); if (!listContainer) return;
+  if (data.length === 0) { listContainer.innerHTML = `<div class="col-12 text-center py-5 text-muted rounded border shadow-sm anim-stagger-up" style="background:var(--card-bg);"><i class="bi bi-inbox fs-2 d-block mb-2 text-primary"></i> No tasks found.</div>`; return; }
+  listContainer.innerHTML = data.map(t => generateCardHTML(t, 'delegated')).join('');
+}
+
+function renderRenewalsView() {
+    const listContainer = document.getElementById('list-renewals');
+    if (!listContainer) return;
+
+    let data = [...renewalData];
+
+    if (currentRenTab === 'expired') data = data.filter(r => r.sysExpired.trim() === 'EXPIRED');
+    else if (currentRenTab === 'pending') data = data.filter(r => r.status.toLowerCase() !== 'review' && r.status.toLowerCase() !== 'completed' && r.sysExpired.trim() !== 'EXPIRED');
+    else if (currentRenTab === 'done') data = data.filter(r => r.status.toLowerCase() === 'completed' || r.isDone === 'TRUE');
+
+    if (data.length === 0) {
+        listContainer.innerHTML = `<div class="col-12 text-center py-5 text-muted rounded border shadow-sm anim-stagger-up" style="background:var(--card-bg);"><i class="bi bi-check-circle fs-2 d-block mb-2 text-success"></i> No renewals found in this category.</div>`;
+        return;
+    }
+
+    listContainer.innerHTML = data.map(r => {
+        let badge = `<span class="badge bg-warning text-dark">Pending / Active</span>`;
+        let cardBorder = "";
+
+        if(r.sysExpired.trim() === 'EXPIRED') { badge = `<span class="badge bg-danger">Expired</span>`; cardBorder = "border-danger bg-danger-subtle bg-opacity-10"; }
+        if(r.status.toLowerCase() === 'review') { badge = `<span class="badge bg-info text-dark">In Review</span>`; cardBorder = "border-info"; }
+        if(r.status.toLowerCase() === 'completed' || r.isDone === 'TRUE') { badge = `<span class="badge bg-success">Completed</span>`; cardBorder = "border-success opacity-75"; }
+
+        const parsedStaff = parseStaffInfo(r.assignee);
+        const actionBtnHtml = (r.status.toLowerCase() !== 'completed' && r.isDone !== 'TRUE') ? `<div class="d-flex justify-content-end mt-3 border-top pt-2"><button class="btn btn-sm btn-success fw-bold px-3 py-1" onclick="approveRenewal('${r.id}')"><i class="bi bi-check-circle-fill"></i> Direct Mark Done</button></div>` : ``;
+
+        return `
+        <div class="col anim-stagger-up">
+            <div class="task-card h-100 d-flex flex-column mb-3 ${cardBorder}">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge bg-light text-secondary border font-monospace">${r.id}</span>
+                    ${badge}
+                </div>
+
+                <div class="fw-bold mb-2 text-dark flex-grow-1" style="font-size:0.95rem; word-break: break-word;">${r.title}</div>
+
+                <div class="d-flex flex-wrap gap-2 mt-2 pt-2 border-top border-light text-muted" style="font-size:0.75rem;">
+                    <div class="date-grid-item"><i class="bi bi-person-fill me-1"></i>Assignee: <strong class="text-dark">${parsedStaff.cleanName}</strong></div>
+                    <div class="date-grid-item"><i class="bi bi-calendar-event me-1"></i>Due Date: <strong class="${r.sysExpired.trim() === 'EXPIRED' ? 'text-danger' : 'text-dark'}">${r.dueDate}</strong></div>
+                    <div class="date-grid-item"><i class="bi bi-exclamation-triangle me-1"></i>Priority: <strong class="text-dark">${r.priority}</strong></div>
+                    ${r.sysExpired.trim() === 'EXPIRED' ? `<div class="w-100 mt-1"><span class="badge bg-danger text-white w-100 text-start py-2"><i class="bi bi-clock-history"></i> Overdue by ${Math.abs(r.daysLeft)} days</span></div>` : ''}
+                </div>
+                ${actionBtnHtml}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderLeaveView() {
+    const listContainer = document.getElementById('list-leave');
+    if (!listContainer) return;
+
+    let data = [...leaveData];
+    if (currentLeaveTab === 'Pending') {
+        data = data.filter(l => l.status === 'Pending');
+    } else {
+        data = data.filter(l => l.status !== 'Pending');
+    }
+
+    if (data.length === 0) {
+        listContainer.innerHTML = `<div class="col-12 text-center py-5 text-muted rounded border shadow-sm anim-stagger-up" style="background:var(--card-bg);"><i class="bi bi-calendar-check fs-2 d-block mb-2 text-success"></i> No ${currentLeaveTab.toLowerCase()} leave requests.</div>`;
+        return;
+    }
+
+    listContainer.innerHTML = data.map(l => {
+        let badge = l.status === 'Approved' ? `<span class="badge bg-success">Approved</span>` : (l.status === 'Rejected' ? `<span class="badge bg-danger">Rejected</span>` : `<span class="badge bg-warning text-dark">Pending</span>`);
+        return `
+        <div class="col anim-stagger-up">
+            <div class="task-card d-flex flex-column h-100 border-${l.status === 'Approved' ? 'success' : (l.status === 'Rejected' ? 'danger' : 'warning')}">
+                <div class="d-flex justify-content-between align-items-center mb-2" style="min-width:0;">
+                    <span class="fw-bold fs-6 text-dark name-truncate">${l.employee}</span>
+                    ${badge}
+                </div>
+                <div class="text-muted small mb-2"><i class="bi bi-person-badge"></i> Rep: ${l.reportingTo} | Type: <strong>${l.leaveType}</strong></div>
+                <div class="d-flex gap-2 text-primary small fw-bold bg-light p-2 rounded mb-2 border flex-wrap">
+                    <div class="date-grid-item"><i class="bi bi-calendar"></i> ${l.startDate}</div> <div><i class="bi bi-arrow-right"></i></div> <div class="date-grid-item"><i class="bi bi-calendar-fill"></i> ${l.endDate}</div>
+                    <div class="w-100 mt-1">${l.duration} Days</div>
+                </div>
+                <p class="mb-3 small text-secondary flex-grow-1" style="word-break: break-word;"><strong>Reason:</strong> ${l.reason}</p>
+                ${l.status === 'Pending' ? `
+                <div class="d-flex gap-2 mt-auto border-top pt-3">
+                    <button class="btn btn-sm btn-success flex-fill fw-bold shadow-sm" onclick="actionLeave(${l.rowNum}, 'Approved')"><i class="bi bi-check-lg"></i> Approve</button>
+                    <button class="btn btn-sm btn-danger flex-fill fw-bold shadow-sm" onclick="actionLeave(${l.rowNum}, 'Rejected')"><i class="bi bi-x-lg"></i> Reject</button>
+                </div>` : (l.remark ? `<div class="small text-danger bg-danger-subtle p-2 rounded mt-auto" style="word-break: break-word;">Remark: ${l.remark}</div>` : '')}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.actionLeave = function(rowNum, status) {
+    Swal.fire({
+        title: `${status} Leave?`,
+        text: status === 'Rejected' ? 'Add a reason for rejection (optional):' : 'Confirm leave approval?',
+        input: status === 'Rejected' ? 'text' : null,
+        icon: status === 'Approved' ? 'success' : 'warning',
+        showCancelButton: true,
+        confirmButtonColor: status === 'Approved' ? '#198754' : '#dc3545',
+        confirmButtonText: `Yes, ${status}`
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+            let remark = result.value || '';
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) { Swal.fire('Success!', `Leave ${status}`, 'success'); fetchData(true); }
+                else { Swal.fire('Error', res.error, 'error'); }
+            }).updateLeaveStatus(adminToken(), rowNum, status, remark);
+        }
+    });
+};
+
+window.approveRenewal = function(taskId) {
+    Swal.fire({
+        title: 'Approve Renewal?',
+        text: "This will set status to Completed and tick the DONE checkbox in the sheet.",
+        icon: 'success',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Approve & Tick',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Approving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) { Swal.fire('Approved!', 'Renewal completed successfully.', 'success'); fetchData(true); }
+                else { Swal.fire('Error', res.error, 'error'); }
+            }).actionRenewalTask(adminToken(), taskId, 'Approve', '');
+        }
+    });
+};
+
+window.promptRejectRenewal = function(taskId) {
+    Swal.fire({
+      title: 'Reject Renewal',
+      input: 'text',
+      inputLabel: 'Reason for rejection (Will be sent to staff)',
+      showCancelButton: true,
+      confirmButtonText: 'Reject Renewal',
+      confirmButtonColor: '#dc3545',
+      preConfirm: (remark) => {
+        if (!remark) Swal.showValidationMessage('A reason is required to reject.');
+        return remark;
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+          Swal.fire({ title: 'Rejecting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          google.script.run.withSuccessHandler(res => {
+              if(res.success) { Swal.fire('Rejected', 'Task sent back to staff.', 'success'); fetchData(true); }
+              else { Swal.fire('Error', res.error, 'error'); }
+          }).actionRenewalTask(adminToken(), taskId, 'Reject', result.value);
+      }
+    });
+};
+
+function renderScorecard() {
+  const query = (document.getElementById('search-staff')?.value || '').toLowerCase(); 
+  const container = document.getElementById('staff-scorecard-grid'); 
+
+  if (currentScoreTab === 'delegated') {
+      const givenBy = document.getElementById('score-filter-givenby')?.value;
+      const status = document.getElementById('score-filter-status')?.value;
+      const assignee = document.getElementById('score-filter-assignee')?.value;
+      const singleDate = document.getElementById('score-filter-date')?.value;
+
+      let filteredTasks = [...allData];
+
+      if (givenBy) filteredTasks = filteredTasks.filter(t => t.givenBy === givenBy);
+      if (assignee) filteredTasks = filteredTasks.filter(t => t.staff.cleanName === assignee);
+      if (status) {
+          if (status === 'pending') filteredTasks = filteredTasks.filter(t => ['pending', 'today'].includes(t.status));
+          else filteredTasks = filteredTasks.filter(t => t.status === status);
+      }
+      if (singleDate) {
+          let dFilter = new Date(singleDate); dFilter.setHours(0,0,0,0);
+          filteredTasks = filteredTasks.filter(t => t.dueObj && t.dueObj.getTime() === dFilter.getTime());
+      }
+      if (query) {
+           filteredTasks = filteredTasks.filter(t => t.staff.cleanName.toLowerCase().includes(query) || t.id.toLowerCase().includes(query));
+      }
+
+      const staffMap = {};
+      filteredTasks.forEach(t => { 
+        const name = t.staff.cleanName; 
+        if (!staffMap[name]) staffMap[name] = { staffName: name, initials: t.staff.initials, subtext: t.staff.subtext, total: 0, done: 0, pending: 0, shifted: 0 }; 
+        staffMap[name].total++; 
+        if (t.status === 'done') staffMap[name].done++; else staffMap[name].pending++; 
+        if (t.isShifted) staffMap[name].shifted++; 
+      });
+
+      let staffList = Object.values(staffMap); 
+      staffList.sort((a,b) => (b.done/b.total) - (a.done/a.total));
+
+      if (staffList.length === 0) { container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No scorecards found for this category/filter.</div>`; return; }
+
+      container.innerHTML = staffList.map(s => {
+        const scorePct = Math.round((s.done / s.total) * 100) || 0; let scoreColor = scorePct < 40 ? 'bg-danger' : (scorePct < 70 ? 'bg-warning' : 'bg-success');
+        let shiftedBlock = `<h5 class="mb-0 fw-bold ${s.shifted > 0 ? 'text-danger' : 'text-warning-emphasis'}">${s.pending}</h5>`;
+
+        return `
+        <div class="col anim-stagger-up">
+          <div class="scorecard-card h-100" onclick="openStaffModal('${s.staffName}', 'delegated')">
+            <div class="card-body p-3 p-md-4">
+              <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                <div class="d-flex gap-3 align-items-center" style="min-width: 0;">
+                  ${getAvatar(s.initials, 'avatar-lg', s.staffName)}
+                  <div style="min-width: 0;">
+                    <h6 class="mb-0 fw-bold notranslate name-truncate">${s.staffName}</h6>
+                    <small class="text-muted d-block notranslate name-truncate" style="font-size:0.7rem;">${s.subtext}</small>
+                  </div>
+                </div>
+                <div class="text-end ms-2">
+                  <h4 class="mb-0 fw-bold ${scoreColor.replace('bg-', 'text-')}">${scorePct}%</h4>
+                </div>
+              </div>
+              <div class="progress mb-3 border" style="height: 8px; background:var(--app-bg);">
+                <div class="progress-bar ${scoreColor}" style="width: ${scorePct}%"></div>
+              </div>
+              <div class="row g-2 text-center">
+                <div class="col-6">
+                  <div class="p-2 rounded bg-success-subtle border-success-subtle">
+                    <h5 class="mb-0 fw-bold text-success">${s.done}</h5>
+                    <small class="text-success fw-bold" style="font-size:0.65rem;">DONE</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="p-2 rounded bg-warning-subtle border-warning-subtle">
+                    ${shiftedBlock}
+                    <small class="text-warning-emphasis fw-bold" style="font-size:0.65rem;">PENDING</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+  } else if (currentScoreTab === 'routine') {
+      let allScores = [];
+      ['JPR', 'NEWAI', 'TONK'].forEach(loc => {
+          if (scoresSummaryData[loc] && scoresSummaryData[loc].length > 1) {
+              for(let i = 1; i < scoresSummaryData[loc].length; i++) {
+                  const row = scoresSummaryData[loc][i];
+                  const name = row[0];
+                  if (!name) continue;
+                  const dailyScore = row[1] || '0%';
+
+                  const parts = name.split(/\s+/).filter(Boolean);
+                  let initials = 'U';
+                  if(parts.length > 0) {
+                      initials = parts[0][0];
+                      if(parts.length > 1) initials += parts[parts.length-1][0];
+                  }
+
+                  allScores.push({
+                      staffName: name,
+                      initials: initials.toUpperCase(),
+                      subtext: `Site: ${loc}`,
+                      dailyScore: dailyScore,
+                      rawVal: parseInt(dailyScore.replace('%','')) || 0,
+                      monthlyScores: [row[2] || '0', row[3] || '0', row[4] || '0']
+                  });
+              }
+          }
+      });
+
+      if (query) allScores = allScores.filter(s => s.staffName.toLowerCase().includes(query));
+      allScores.sort((a,b) => b.rawVal - a.rawVal);
+
+      if (allScores.length === 0) { container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No Routine Scores found.</div>`; return; }
+
+      container.innerHTML = allScores.map(s => {
+          let scorePct = s.rawVal;
+          let scoreColor = scorePct < 40 ? 'bg-danger' : (scorePct < 70 ? 'bg-warning' : 'bg-success');
+          let txtColor = scoreColor.replace('bg-', 'text-');
+          if (txtColor === 'text-warning') txtColor = 'text-warning-emphasis';
+
+          return `
+          <div class="col anim-stagger-up">
+            <div class="scorecard-card h-100">
+              <div class="card-body p-3 p-md-4">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                  <div class="d-flex gap-3 align-items-center" style="min-width: 0;">
+                    ${getAvatar(s.initials, 'avatar-lg', s.staffName)}
+                    <div style="min-width: 0;">
+                      <h6 class="mb-0 fw-bold notranslate name-truncate">${s.staffName}</h6>
+                      <small class="text-muted d-block fw-bold notranslate name-truncate" style="color: #198754;">${s.subtext}</small>
+                    </div>
+                  </div>
+                  <div class="text-end ms-2">
+                    <small class="d-block text-muted" style="font-size:0.6rem; font-weight:bold;">DAILY SCORE</small>
+                    <h4 class="mb-0 fw-bold ${txtColor}">${s.dailyScore}</h4>
+                  </div>
+                </div>
+                <div class="progress mb-3 border" style="height: 8px; background:var(--app-bg);">
+                  <div class="progress-bar ${scoreColor}" style="width: ${scorePct}%"></div>
+                </div>
+                <div class="row g-2 text-center">
+                  <div class="col-4">
+                      <div class="p-2 rounded bg-light border">
+                          <h6 class="mb-0 fw-bold">${s.monthlyScores[0]}</h6>
+                          <small class="text-muted fw-bold" style="font-size:0.55rem; text-transform:uppercase;">Prev M1</small>
+                      </div>
+                  </div>
+                  <div class="col-4">
+                      <div class="p-2 rounded bg-light border">
+                          <h6 class="mb-0 fw-bold">${s.monthlyScores[1]}</h6>
+                          <small class="text-muted fw-bold" style="font-size:0.55rem; text-transform:uppercase;">Prev M2</small>
+                      </div>
+                  </div>
+                  <div class="col-4">
+                      <div class="p-2 rounded bg-light border">
+                          <h6 class="mb-0 fw-bold">${s.monthlyScores[2]}</h6>
+                          <small class="text-muted fw-bold" style="font-size:0.55rem; text-transform:uppercase;">Prev M3</small>
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+  }
+}
+
+function toggleAttachMenu() {
+    document.getElementById('attachMenuPopover').classList.toggle('d-none');
+}
+function triggerAttachInput(type) {
+    toggleAttachMenu();
+    if(stagedFiles.length >= MAX_ATTACHMENTS) { Swal.fire('Limit Reached', 'Max 3 attachments allowed.', 'warning'); return; }
+    if(type==='camera') document.getElementById('fileInputCamera').click();
+    if(type==='gallery') document.getElementById('fileInputGallery').click();
+    if(type==='document') document.getElementById('fileInputDocument').click();
+}
+let stagingBusy = 0;   // attachments still uploading (files over 5 MB go to Drive in pieces: BigUpload.js)
+function handleFileSelection(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    (async () => {
+        for (const file of files) {
+            if(stagedFiles.length + stagingBusy >= MAX_ATTACHMENTS) break;
+            if(file.size > 50 * 1024 * 1024) { Swal.fire('File too large', `${file.name} is larger than 50MB.`, 'error'); continue; }
+            stagingBusy++;
+            try { stagedFiles.push(await GGMUpload.pack(file, adminToken())); renderStagedFiles(); }
+            catch (err) { Swal.fire('Upload failed', `${file.name}: ${String((err && err.message) || err)}`, 'error'); }
+            finally { stagingBusy--; }
+        }
+    })();
+}
+function renderStagedFiles() {
+    const container = document.getElementById('stagedAttachmentsList');
+    container.innerHTML = stagedFiles.map((f, i) => `<div class="staged-attachment-chip"><i class="bi bi-file-earmark-check text-success"></i> <span class="text-truncate" style="max-width:120px;">${f.filename}</span> <i class="bi bi-x-circle chip-remove" onclick="removeStagedFile(${i})"></i></div>`).join('');
+}
+function removeStagedFile(idx) { stagedFiles.splice(idx, 1); renderStagedFiles(); }
+
+function openNewTaskModal() {
+    document.getElementById('newTaskForm').reset();
+    stagedFiles = []; renderStagedFiles();
+    new bootstrap.Modal(document.getElementById('newTaskModal')).show();
+}
+
+window.submitNewTask = function(e) {
+    e.preventDefault();
+    const givenBy = document.getElementById('newTaskGivenBy').value;
+    const doer = document.getElementById('newTaskDoer').value;
+    const desc = document.getElementById('newTaskDesc').value;
+    const dueDate = document.getElementById('newTaskDate').value;
+    
+    if(!givenBy || !doer || !desc || !dueDate) { Swal.fire('Error', 'Fill all required fields.', 'error'); return; }
+    if(stagingBusy) { Swal.fire('Please wait', 'An attachment is still uploading.', 'info'); return; }
+    
+    const btn = document.getElementById('btnSubmitTask');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Assigning...';
+    btn.disabled = true;
+    
+    let dueDateFormatted = dueDate.split('-').reverse().join('/');
+    
+    google.script.run.withSuccessHandler(res => {
+        btn.innerHTML = originalText; btn.disabled = false;
+        if(res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide();
+            Swal.fire('Task Created', res.message, 'success');
+            fetchData(true);
+        } else { Swal.fire('Error', res.error, 'error'); }
+    }).addNewTask(adminToken(), doer, desc, dueDateFormatted, givenBy, stagedFiles);
+};
+
+window.markTaskDone = function(taskId) {
+    Swal.fire({title: 'Mark task as Done?', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, Done!'}).then((result) => {
+        if(result.isConfirmed) {
+            Swal.fire({title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    Swal.fire('Success', 'Task marked as done.', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('taskModal'));
+                    if(modal) modal.hide();
+                    fetchData(true);
+                } else Swal.fire('Error', res.error, 'error');
+            }).updateTaskStatusById(adminToken(), taskId, 'Completed');
+        }
+    });
+};
+
+window.toggleRejectBox = function(taskId) {
+    const box = document.getElementById(`rejectBox-${taskId}`);
+    if(box) box.classList.toggle('d-none');
+};
+
+window.submitReject = function(taskId) {
+    const remark = document.getElementById(`rejectRemark-${taskId}`).value;
+    if(!remark) { Swal.fire('Required', 'Enter rejection reason.', 'warning'); return; }
+    Swal.fire({title: 'Rejecting...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+    google.script.run.withSuccessHandler(res => {
+        if(res.success) {
+            Swal.fire('Rejected', 'Task sent back.', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+            fetchData(true);
+        } else Swal.fire('Error', res.error, 'error');
+    }).rejectTaskByBoss(adminToken(), taskId, remark);
+};
+
+window.openEditModal = function(taskId) {
+    bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+    const t = allData.find(x => x.id === taskId); if(!t) return;
+    
+    document.getElementById('editTaskId').value = t.id;
+    document.getElementById('editTaskIdDisplay').value = t.id;
+    document.getElementById('editTaskDesc').value = t.task;
+    
+    const doerSelect = document.getElementById('editTaskDoer');
+    let optionsHtml = '<option value="" disabled>Select Assignee...</option>';
+    (allGlobalDoers || []).forEach(d => { optionsHtml += `<option value="${d}" ${d === t.staff.rawString ? 'selected' : ''}>${d}</option>`; });
+    doerSelect.innerHTML = optionsHtml;
+    
+    if(t.dueObj) {
+        const y = t.dueObj.getFullYear();
+        const m = String(t.dueObj.getMonth() + 1).padStart(2, '0');
+        const d = String(t.dueObj.getDate()).padStart(2, '0');
+        document.getElementById('editTaskDate').value = `${y}-${m}-${d}`;
+    } else { document.getElementById('editTaskDate').value = ''; }
+    
+    new bootstrap.Modal(document.getElementById('editTaskModal')).show();
+};
+
+window.submitEditTask = function() {
+    const taskId = document.getElementById('editTaskId').value;
+    const doer = document.getElementById('editTaskDoer').value;
+    const desc = document.getElementById('editTaskDesc').value;
+    const due = document.getElementById('editTaskDate').value;
+    let dueFmt = due ? due.split('-').reverse().join('/') : '';
+    
+    const btn = document.getElementById('btnSaveEdit');
+    const orig = btn.innerHTML; btn.innerHTML = 'Saving...'; btn.disabled = true;
+    
+    google.script.run.withSuccessHandler(res => {
+        btn.innerHTML = orig; btn.disabled = false;
+        if(res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editTaskModal')).hide();
+            Swal.fire('Updated', 'Task updated successfully.', 'success');
+            fetchData(true);
+        } else Swal.fire('Error', res.error, 'error');
+    }).editTask(adminToken(), taskId, doer, desc, dueFmt);
+};
+
+window.openStaffModal = function(staffName, tab) {
+    const data = allData.filter(t => t.staff.cleanName === staffName);
+    if(data.length === 0) return;
+    const s = data[0].staff;
+    
+    document.getElementById('staffModalAvatar').innerHTML = getAvatar(s.initials, 'avatar-lg', s.cleanName);
+    document.getElementById('staffModalName').textContent = s.cleanName;
+    document.getElementById('staffModalSub').textContent = s.subtext;
+    
+    const done = data.filter(x => x.status === 'done').length;
+    const pending = data.filter(x => x.status !== 'done').length;
+    
+    document.getElementById('staffModalKPIs').innerHTML = `
+        <div class="col-6"><div class="p-3 bg-success-subtle text-success rounded border fw-bold fs-4">${done}<div class="fs-6 fw-normal">Done</div></div></div>
+        <div class="col-6"><div class="p-3 bg-warning-subtle text-warning-emphasis rounded border fw-bold fs-4">${pending}<div class="fs-6 fw-normal">Pending</div></div></div>
+    `;
+    
+    document.getElementById('staffModalTaskList').innerHTML = data.map(t => generateCardHTML(t, 'staff')).join('');
+    new bootstrap.Modal(document.getElementById('staffModal')).show();
+};
+
+function openTaskModal(taskId) {
+  const t = allData.find(x => x.id === taskId); if (!t) return;
+  let actionButtons = '';
+  if (t.status === 'review') {
+    actionButtons = `<div class="mt-4 pt-3 border-top d-flex flex-column gap-2"><div class="d-flex justify-content-end gap-2"><button class="btn btn-success d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="markTaskDone('${t.id}')" id="btnDone-${t.id}"><i class="bi bi-check-circle-fill"></i> Approve (Finish)</button><button class="btn btn-danger d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="toggleRejectBox('${t.id}')"><i class="bi bi-x-circle-fill"></i> Reject</button></div><div id="rejectBox-${t.id}" class="d-none mt-3 p-3 bg-danger-subtle border border-danger-subtle rounded"><label class="form-label small fw-bold text-danger">Remark (Will be sent to staff):</label><textarea class="form-control form-control-sm mb-2" id="rejectRemark-${t.id}" rows="2" placeholder="Explain why this task is being rejected..."></textarea><div class="text-end"><button class="btn btn-sm btn-danger fw-bold" onclick="submitReject('${t.id}')">Confirm Rejection</button></div></div></div>`;
+  } else if (t.status !== 'done') {
+    actionButtons = `<div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2"><button class="btn btn-outline-warning d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="openEditModal('${t.id}')"><i class="bi bi-pencil-square"></i> Edit</button><button class="btn btn-success d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="markTaskDone('${t.id}')" id="btnDone-${t.id}"><i class="bi bi-check-circle-fill"></i> Direct Mark Done</button></div>`;
+  }
+  
+  let remarkHtml = t.status === 'rejected' ? `<div class="alert alert-danger mt-3 mb-0 p-2 small"><i class="bi bi-x-circle-fill me-1"></i> <strong>Boss Remark:</strong> ${t.remark}</div>` : '';
+  let staffRemarkHtml = t.staffRemark ? `<div class="alert alert-info mt-2 mb-0 p-2 small" style="word-break: break-word;"><i class="bi bi-chat-left-text-fill me-1"></i> <strong>Staff Remark:</strong> ${t.staffRemark}</div>` : '';
+
+  let dateHtmlModal = '';
+  if (t.status === 'done' || t.status === 'review') {
+      dateHtmlModal = `<div class="p-3 border rounded h-100"><small class="text-muted fw-bold d-block text-uppercase mb-1" style="font-size:0.7rem;">${t.status==='done'?'Done Date':'Submitted Date'}</small><span class="fw-bold ${t.status==='done'?'text-success':'text-info'}"><i class="bi ${t.status==='done'?'bi-check-all':'bi-upload'} me-1"></i> ${t.compRaw || 'N/A'}</span></div>`;
+  } else {
+      dateHtmlModal = `<div class="p-3 border rounded h-100"><small class="text-muted fw-bold d-block text-uppercase mb-1" style="font-size:0.7rem;">Completion</small><span class="fw-bold text-success"><i class="bi bi-check-all me-1"></i> —</span></div>`;
+  }
+
+  let attachmentsHtml = '';
+  if (t.attachments && t.attachments.length > 0) {
+      attachmentsHtml = `<div class="mt-3 pt-3 border-top"><small class="text-muted fw-bold d-block text-uppercase mb-2" style="font-size:0.7rem;">Attached Files</small><div class="d-flex flex-wrap gap-2">`;
+      t.attachments.forEach((url, i) => {
+          if (url && url.trim() !== '') {
+              attachmentsHtml += `<button onclick="viewDocument('${url.trim()}')" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm fw-bold"><i class="bi bi-file-earmark-text"></i> File ${i+1}</button>`;
+          }
+      });
+      attachmentsHtml += `</div></div>`;
+  }
+
+  let staffFilesHtml = '';
+  if (t.staffFiles && t.staffFiles.length > 0) {
+      staffFilesHtml = `<div class="mt-3 pt-3 border-top"><small class="text-muted fw-bold d-block text-uppercase mb-2" style="font-size:0.7rem;">Staff Attachments (Review Files)</small><div class="d-flex flex-wrap gap-2">`;
+      t.staffFiles.forEach((url, i) => {
+          if (url && url.trim() !== '') {
+              staffFilesHtml += `<button onclick="viewDocument('${url.trim()}')" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1 shadow-sm fw-bold"><i class="bi bi-file-earmark-check-fill"></i> Staff File ${i+1}</button>`;
+          }
+      });
+      staffFilesHtml += `</div></div>`;
+  }
+
+  document.getElementById('taskModalBody').innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+        <h6 class="mb-0 font-monospace text-primary notranslate">#${t.id}</h6>${getBadge(t.status)}
+    </div>
+    <div class="mb-4 d-flex align-items-center gap-3" style="min-width: 0;">
+        ${getAvatar(t.staff.initials, 'avatar-lg', t.staff.cleanName)}
+        <div style="min-width: 0;">
+            <span class="fs-5 fw-bold d-block notranslate name-truncate">${t.staff.cleanName}</span>
+            <span class="text-muted small notranslate name-truncate">${t.staff.subtext}</span>
+        </div>
+    </div>
+    <div class="mb-4 p-3 rounded border" style="background:var(--app-bg);">
+        <small class="text-muted fw-bold d-block mb-2 text-uppercase" style="font-size:0.7rem;">Task Description</small>
+        <p class="mb-0 fs-6" style="white-space: pre-wrap; word-break: break-word;">${t.task}</p>
+        <div class="mt-3 pt-3 border-top">
+            <small class="text-muted fw-bold d-block text-uppercase mb-1" style="font-size:0.7rem;">Given By</small>
+            <span class="fw-medium notranslate"><i class="bi bi-person-badge text-primary me-1"></i> ${t.givenBy}</span>
+        </div>
+        ${remarkHtml}
+        ${staffRemarkHtml}
+        ${attachmentsHtml}
+        ${staffFilesHtml}
+    </div>
+    <div class="row g-3">
+        <div class="col-6">
+            <div class="p-3 border rounded h-100">
+                <small class="text-muted fw-bold d-block text-uppercase mb-1" style="font-size:0.7rem;">Creation Date</small>
+                <span class="fw-bold text-dark"><i class="bi bi-plus-circle me-1"></i> ${t.creationDate.split(' ')[0]}</span>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="p-3 border rounded h-100">
+                <small class="text-muted fw-bold d-block text-uppercase mb-1" style="font-size:0.7rem;">Due Date</small>
+                <span class="fw-bold text-primary"><i class="bi bi-calendar-event me-1"></i> ${t.dueObj ? t.dueObj.toLocaleDateString('en-IN') : t.dueRaw}</span>
+            </div>
+        </div>
+        <div class="col-6">
+            ${dateHtmlModal}
+        </div>
+        <div class="col-6">
+            <div class="p-3 border rounded h-100">
+                <small class="text-muted fw-bold d-block text-uppercase mb-1" style="font-size:0.7rem;">Review Date</small>
+                <span class="fw-bold text-info"><i class="bi bi-eye-fill me-1"></i> ${t.reviewDate !== '—' ? t.reviewDate.split(' ')[0] : '—'}</span>
+            </div>
+        </div>
+    </div>
+    ${actionButtons}`;
+  new bootstrap.Modal(document.getElementById('taskModal')).show();
+}
+
+window.onload = function() {
+    fetchData(true);
+};
+</script>
+</body>
+</html>

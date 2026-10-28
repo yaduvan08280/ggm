@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
+    <meta name="theme-color" content="#f4f7f8">
+    <title>Newai Tasks</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
+    </script>
+
+    <style>
+        :root {
+            --bg:#f4f7f8; --ink:#1e293b; --blue:#00a8ff; --orange:#ff6b00;
+            --amber:#ffb800; --green:#22c55e; --nav:#161d2b;
+        }
+        * { -webkit-tap-highlight-color: transparent; }
+        html, body { background-color: var(--bg); color: var(--ink); }
+        body { font-family:'Inter',sans-serif; overscroll-behavior-y:none; padding-bottom:env(safe-area-inset-bottom); }
+        body.locked { overflow:hidden; }
+        ::-webkit-scrollbar { display:none; }
+        button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+
+        .view-section { display:none; }
+        .view-section.active { display:block; animation:fadeUp .34s cubic-bezier(.16,1,.3,1) both; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+        @keyframes cardIn { from { opacity:0; transform:translateY(16px) scale(.985); } to { opacity:1; transform:none; } }
+        @keyframes popIn { 0% { opacity:0; transform:scale(.7) rotate(-8deg); } 60% { transform:scale(1.06) rotate(2deg); } 100% { opacity:1; transform:none; } }
+        @keyframes riseIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+        @keyframes floatBlob { 0%,100% { transform:translate3d(0,0,0) scale(1); } 50% { transform:translate3d(18px,-26px,0) scale(1.12); } }
+        @keyframes sheen { 0% { transform:translateX(-120%) skewX(-18deg); } 100% { transform:translateX(320%) skewX(-18deg); } }
+        .pulse-soft { animation:pulseSoft 2s infinite; }
+        @keyframes pulseSoft { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+        .spin-slow { animation:spinSlow 1s linear infinite; }
+        @keyframes spinSlow { 100% { transform:rotate(360deg); } }
+
+        /* ---------- LOGIN ---------- */
+        .login-wrap { background-color:#141b28; min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+        .login-blob { position:absolute; border-radius:50%; filter:blur(70px); opacity:.55; animation:floatBlob 11s ease-in-out infinite; }
+        .blob-a { width:260px; height:260px; background:#0077d6; top:-70px; left:-60px; }
+        .blob-b { width:230px; height:230px; background:#ff6b00; bottom:-60px; right:-50px; animation-delay:2.5s; }
+        .blob-c { width:180px; height:180px; background:#00d1b2; top:42%; right:-70px; animation-delay:5s; opacity:.35; }
+        .login-box { position:relative; z-index:2; background:rgba(255,255,255,.97); border-radius:26px; padding:38px 24px 32px; width:90%; max-width:360px; text-align:center; box-shadow:0 40px 80px -28px rgba(0,0,0,.75); animation:riseIn .55s cubic-bezier(.16,1,.3,1) both; }
+        .login-logo { position:relative; overflow:hidden; background:linear-gradient(135deg,#00a8ff,#0062c4); color:#fff; width:74px; height:74px; border-radius:24px; display:inline-flex; align-items:center; justify-content:center; font-size:30px; box-shadow:0 16px 30px -10px rgba(0,168,255,.65); margin-bottom:18px; animation:popIn .6s cubic-bezier(.16,1,.3,1) both .1s; }
+        .login-logo::after { content:''; position:absolute; top:0; bottom:0; width:34%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent); animation:sheen 2.8s ease-in-out infinite 1s; }
+        .stagger > * { animation:riseIn .5s cubic-bezier(.16,1,.3,1) both; }
+        .stagger > *:nth-child(1) { animation-delay:.16s; }
+        .stagger > *:nth-child(2) { animation-delay:.22s; }
+        .stagger > *:nth-child(3) { animation-delay:.28s; }
+        .stagger > *:nth-child(4) { animation-delay:.34s; }
+        .stagger > *:nth-child(5) { animation-delay:.40s; }
+        .login-field { position:relative; margin-bottom:14px; }
+        .login-field > i.fld { position:absolute; left:15px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px; pointer-events:none; transition:color .2s; }
+        .login-field:focus-within > i.fld { color:var(--blue); }
+        .login-input { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:14px; padding:16px 44px; font-size:14px; font-weight:700; color:#334155; width:100%; outline:none; transition:.2s; }
+        .login-input:focus { border-color:var(--blue); background:#fff; box-shadow:0 0 0 4px rgba(0,168,255,.13); }
+        .eye-btn { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:36px; height:36px; border:0; background:transparent; color:#94a3b8; cursor:pointer; border-radius:10px; }
+        .login-btn { background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff; border-radius:14px; font-weight:900; padding:16px; width:100%; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:8px; transition:.2s; cursor:pointer; border:0; box-shadow:0 14px 26px -14px rgba(15,23,42,.9); }
+        .login-btn:active { transform:scale(.98); }
+        .error-box { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; font-size:11px; font-weight:800; padding:11px 12px; border-radius:12px; margin-bottom:14px; text-align:left; animation:shake .4s; }
+        @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+
+        /* ---------- SIDEBAR & BOTTOM NAV ---------- */
+        .drawer-overlay { position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(4px); z-index:120; opacity:0; pointer-events:none; transition:opacity .3s; }
+        .drawer-overlay.open { opacity:1; pointer-events:auto; }
+        .drawer { position:fixed; top:0; left:0; bottom:0; width:84%; max-width:318px; background:linear-gradient(180deg,#1b2434 0%,#141b28 100%); z-index:130; transform:translateX(-104%); transition:transform .38s cubic-bezier(.16,1,.3,1); display:flex; flex-direction:column; color:#fff; box-shadow:24px 0 60px -20px rgba(0,0,0,.7); }
+        .drawer.open { transform:none; }
+        .drawer-head { padding:calc(30px + env(safe-area-inset-top)) 22px 22px; border-bottom:1px solid rgba(255,255,255,.07); }
+        .avatar { width:52px; height:52px; border-radius:17px; background:linear-gradient(135deg,#00a8ff,#0062c4); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:19px; letter-spacing:.5px; box-shadow:0 12px 22px -10px rgba(0,168,255,.8); }
+        .drawer-item { display:flex; align-items:center; gap:14px; width:100%; padding:14px 18px; border:0; background:transparent; color:#93a1b5; font-size:13px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; border-radius:14px; cursor:pointer; transition:.2s; }
+        .drawer-item i { width:20px; text-align:center; font-size:15px; }
+        .drawer-item:active { transform:scale(.98); }
+        .drawer-item.active { background:rgba(255,255,255,.08); color:#fff; }
+        .drawer-item.active i { color:var(--blue); }
+        .drawer-count { margin-left:auto; font-size:10px; font-weight:900; padding:3px 8px; border-radius:9px; background:rgba(255,255,255,.1); color:#fff; }
+
+        .dark-nav-wrap { position:fixed; bottom:calc(12px + env(safe-area-inset-bottom)); left:0; right:0; margin-left:auto; margin-right:auto; width:calc(100% - 20px); max-width:452px; z-index:95; animation:riseIn .5s cubic-bezier(.16,1,.3,1) both .15s; }
+        .dark-bottom-nav { position:relative; display:flex; gap:0; padding:7px; border-radius:26px; background:linear-gradient(180deg, rgba(38,48,66,.98), rgba(18,24,36,.98)); border:1px solid rgba(255,255,255,.09); box-shadow:0 24px 48px -16px rgba(2,6,23,.8), inset 0 1px 0 rgba(255,255,255,.09); backdrop-filter:blur(16px); }
+        .nav-indicator { position:absolute; top:7px; bottom:7px; left:7px; width:calc((100% - 14px) / 5); border-radius:19px; background:linear-gradient(180deg,#3d4d69,#26314a); box-shadow:0 8px 18px -8px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14); transform:translateX(calc(var(--nav-i, 0) * 100%)); transition:transform .42s cubic-bezier(.2,1.1,.3,1); }
+        .nav-indicator::after { content:''; position:absolute; left:50%; transform:translateX(-50%); top:-8px; width:26px; height:3px; border-radius:3px; background:var(--blue); box-shadow:0 0 12px 1px rgba(0,168,255,.85); }
+        .dark-nav-btn { position:relative; z-index:2; flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:10px 2px; border:0; background:transparent; color:#7b8aa1; font-size:8.5px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; cursor:pointer; transition:.28s; }
+        .dark-nav-btn i { font-size:17px; line-height:1; transition:transform .32s cubic-bezier(.2,1.4,.4,1); }
+        .dark-nav-btn span { line-height:1; opacity:.85; }
+        .dark-nav-btn.active { color:#fff; }
+        .dark-nav-btn.active i { transform:translateY(-2px) scale(1.14); }
+        .dark-nav-btn.active span { opacity:1; }
+        .nav-badge-new { position:absolute; top:3px; right:calc(50% - 25px); font-size:9px; font-weight:900; padding:2px 5px; border-radius:9px; color:#fff; border:2px solid #1c2436; min-width:20px; text-align:center; line-height:1; z-index:3; }
+
+        /* ---------- CARDS ---------- */
+        .premium-card { background:#fff; border-radius:18px; box-shadow:0 6px 18px -8px rgba(15,23,42,.12); border:1px solid #eef2f6; }
+        .premium-shadow { box-shadow:0 6px 18px -8px rgba(15,23,42,.12); }
+        .top-card { display:flex; flex-direction:column; justify-content:space-between; min-height:108px; padding:18px; color:#fff; position:relative; overflow:hidden; cursor:pointer; border:0; transition:transform .18s; }
+        .top-card:active { transform:scale(.975); }
+        .top-card > i { position:absolute; right:-10px; top:8px; font-size:62px; opacity:.16; transform:rotate(-10deg); }
+        .card-home-rout { background:linear-gradient(135deg,#3b82f6,#2563eb); }
+        .card-home-del  { background:linear-gradient(135deg,#f97316,#ea580c); }
+        .card-home-rev  { background:linear-gradient(135deg,#fbbf24,#f59e0b); }
+        .card-home-done { background:linear-gradient(135deg,#10b981,#059669); }
+
+        .task-card { background:#fff; border-radius:18px; padding:20px; margin-bottom:16px; position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border:1px solid #f1f5f9; }
+        .task-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:18px 0 0 18px; }
+        .card-blue::before   { background:var(--blue); }
+        .card-orange::before { background:var(--orange); }
+        .card-yellow::before { background:var(--amber); }
+        .card-green::before  { background:var(--green); }
+        .card-gray::before   { background:#cbd5e1; }
+        .card-red::before    { background:#ef4444; }
+
+        .btn-outline { background:#f8fafc; border:1px solid #cbd5e1; color:#475569; font-weight:800; font-size:12px; padding:12px 0; border-radius:12px; text-transform:uppercase; letter-spacing:.5px; display:flex; justify-content:center; align-items:center; gap:6px; transition:.2s; cursor:pointer; }
+        .btn-outline:active { background:#e2e8f0; transform:scale(.97); }
+        .btn-outline:disabled { opacity:0.6; pointer-events:none; }
+        .btn-done { background:linear-gradient(135deg,#1e293b,#0f172a); border:1px solid #1e293b; color:#fff; font-weight:800; font-size:12px; padding:12px 0; border-radius:12px; text-transform:uppercase; letter-spacing:.5px; display:flex; justify-content:center; align-items:center; gap:6px; transition:.2s; cursor:pointer; }
+        .btn-done:active { transform:scale(.97); }
+        .btn-done:disabled { opacity:0.6; pointer-events:none; }
+        .btn-transfer { background:#f8fafc; border:1px solid #cbd5e1; color:#475569; border-radius:12px; font-size:15px; width:46px; min-width:46px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
+        .btn-transfer:active { background:#e2e8f0; transform:scale(.95); }
+
+        .tab-btn { background:#fff; border:1px solid #e2e8f0; color:#64748b; font-weight:800; font-size:13px; padding:12px 10px; border-radius:12px; transition:.2s; white-space:nowrap; flex:1; text-align:center; cursor:pointer; }
+        .tab-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; box-shadow:0 8px 16px -8px rgba(0,168,255,.7); }
+
+        .sir-remark { background:#fef2f2; border:1px solid #fca5a5; border-radius:10px; padding:12px; margin-bottom:16px; font-size:11px; color:#ef4444; font-weight:800; text-transform:uppercase; display:flex; align-items:flex-start; gap:6px; }
+        .extra-note { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:16px; font-size:12px; color:#475569; font-weight:700; display:flex; align-items:flex-start; gap:6px; }
+        .file-link { background:#1e293b; color:#fff; font-size:12px; font-weight:800; padding:12px; border-radius:12px; display:flex; justify-content:center; align-items:center; gap:6px; text-transform:uppercase; margin-bottom:16px; width:100%; cursor:pointer; transition:.2s; }
+        .file-link:active { background:#0f172a; }
+
+        #fileViewerModal { backdrop-filter:blur(8px); }
+        .file-iframe-container { width:100%; height:85vh; background:#fff; border-radius:22px 22px 0 0; overflow:hidden; position:absolute; bottom:0; left:0; animation:fadeUp .3s both; }
+
+        .skeleton { background:linear-gradient(90deg,#eef2f7 25%,#f8fafc 37%,#eef2f7 63%); background-size:400% 100%; animation:shimmer 1.4s infinite; border-radius:18px; height:104px; margin-bottom:16px; }
+        @keyframes shimmer { 0% { background-position:100% 0; } 100% { background-position:0 0; } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- LOGIN -->
+    <div id="loginScreen" class="fixed inset-0 z-[90] login-wrap transition-opacity duration-500" style="display:none; opacity:0;">
+        <div class="absolute top-6 right-6 z-50">
+            <button onclick="toggleLanguage()" class="lang-toggle-btn w-10 h-10 bg-white/10 rounded-xl border border-white/20 flex items-center justify-center text-white shadow-sm transition-colors font-black" title="Translate App">
+                <span class="text-[16px] notranslate">अ</span>
+            </button>
+        </div>
+        
+        <div class="login-blob blob-a"></div><div class="login-blob blob-b"></div><div class="login-blob blob-c"></div>
+        <div class="login-box">
+            <div class="login-logo"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="stagger">
+                <h1 class="text-3xl font-black text-[#1e293b] tracking-tight mb-1 notranslate">Newai.</h1>
+                <p class="text-slate-400 font-black uppercase tracking-widest text-[10px] mb-7 notranslate">Task Management System</p>
+                <div class="login-field">
+                    <i class="fa-solid fa-mobile-screen fld"></i>
+                    <input type="tel" id="mobile" placeholder="Mobile number" class="login-input notranslate" autocomplete="username">
+                </div>
+                <div class="login-field">
+                    <i class="fa-solid fa-lock fld"></i>
+                    <input type="password" id="pass" placeholder="Password" class="login-input notranslate" autocomplete="current-password">
+                    <button type="button" class="eye-btn" onclick="togglePass()" aria-label="Show password"><i id="eyeIcon" class="fa-regular fa-eye"></i></button>
+                </div>
+                <div>
+                    <div id="errorMsg" class="error-box hidden"><i class="fa-solid fa-circle-exclamation me-1"></i> <span id="errorText"></span></div>
+                    <button id="loginBtn" onclick="login()" class="login-btn"><span class="notranslate lang-text" data-en="Log in" data-hi="लॉग इन करें">Log in</span> <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                    <p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-5 notranslate">Goyal Group of Minerals &bull; 2026</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div id="drawerOverlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+    <aside id="drawer" class="drawer">
+        <div class="drawer-head">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="avatar notranslate" id="drawerAvatar">EM</div>
+                <div class="min-w-0">
+                    <p class="font-black text-[15px] uppercase truncate leading-tight notranslate" id="drawerName">Employee</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest notranslate">Newai Tasks</p>
+                </div>
+                <button onclick="closeDrawer()" class="ml-auto w-8 h-8 rounded-full bg-white/10 text-slate-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                <span id="drawerDot" class="w-2 h-2 rounded-full bg-[#22c55e] pulse-soft"></span>
+                <span id="drawerSync" class="notranslate">Live</span>
+            </div>
+        </div>
+        <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-4 pb-2 notranslate lang-text" data-en="Workspace" data-hi="वर्कस्पेस">Workspace</p>
+            <button class="drawer-item" id="drw-dashboard" onclick="switchTab('dashboard', true)"><i class="fa-solid fa-house"></i> <span class="notranslate lang-text" data-en="Home" data-hi="होम (Home)">Home</span></button>
+            <button class="drawer-item" id="drw-routine" onclick="switchTab('routine', true)"><i class="fa-solid fa-clipboard-list"></i> <span class="notranslate lang-text" data-en="Routine" data-hi="रूटीन (Routine)">Routine</span> <span class="drawer-count notranslate" id="drwCountRoutine">0</span></button>
+            <button class="drawer-item" id="drw-delegated" onclick="switchTab('delegated', true)"><i class="fa-solid fa-briefcase"></i> <span class="notranslate lang-text" data-en="Pending" data-hi="पेंडिंग (Pending)">Pending</span> <span class="drawer-count notranslate" id="drwCountDelegated">0</span></button>
+            <button class="drawer-item" id="drw-review" onclick="switchTab('review', true)"><i class="fa-solid fa-magnifying-glass"></i> <span class="notranslate lang-text" data-en="Review" data-hi="रिव्यू (Review)">Review</span> <span class="drawer-count notranslate" id="drwCountReview">0</span></button>
+            <button class="drawer-item" id="drw-completed" onclick="switchTab('completed', true)"><i class="fa-solid fa-circle-check"></i> <span class="notranslate lang-text" data-en="Done" data-hi="पूरा हुआ (Done)">Done</span> <span class="drawer-count notranslate" id="drwCountDone">0</span></button>
+            <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-4 pt-5 pb-2 notranslate lang-text" data-en="Actions" data-hi="एक्शन्स">Actions</p>
+            <button class="drawer-item" onclick="closeDrawer(); forceRefresh();"><i class="fa-solid fa-rotate-right"></i> <span class="notranslate lang-text" data-en="Refresh data" data-hi="रिफ्रेश करें (Refresh)">Refresh data</span></button>
+            <button class="drawer-item" onclick="closeDrawer(); logout();"><i class="fa-solid fa-power-off"></i> <span class="notranslate lang-text" data-en="Log out" data-hi="लॉग आउट (Logout)">Log out</span></button>
+        </nav>
+        <div class="px-6 py-5 border-t border-white/5">
+            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest notranslate">Newai Tasks &bull; 2026</p>
+        </div>
+    </aside>
+
+    <!-- MAIN APP -->
+    <div id="mainApp" class="flex flex-col relative w-full max-w-[500px] mx-auto transition-opacity duration-500" style="display:none; opacity:0;">
+        <header class="px-5 pt-8 pb-4 z-20 flex justify-between items-start sticky top-0 bg-[#f4f7f8]/95 backdrop-blur-md">
+            <div class="flex items-start gap-3 min-w-0">
+                <button onclick="openDrawer()" title="Menu" class="w-10 h-10 mt-1 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0"><i class="fa-solid fa-bars"></i></button>
+                <div class="min-w-0">
+                    <p id="greetingText" class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-0.5 notranslate">Good afternoon,</p>
+                    <h1 class="text-[26px] font-black text-[#1e293b] uppercase leading-none mb-1 tracking-tight truncate notranslate" id="welcomeName">Employee</h1>
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 mt-1">
+                        <div id="statusDot" class="w-2 h-2 rounded-full bg-[#22c55e] pulse-soft"></div>
+                        <span id="syncTimeText" class="notranslate">Live &bull; synced just now</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+                <button onclick="toggleLanguage()" class="lang-toggle-btn w-10 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0 transition-colors font-black" title="Translate App">
+                    <span class="text-[16px] notranslate">अ</span>
+                </button>
+                <button onclick="openSelfTaskModal()" title="Create Self Task" class="w-10 h-10 bg-[#ff6b00] rounded-xl flex items-center justify-center text-white shadow-sm shrink-0 hover:bg-[#ea580c] transition-colors"><i class="fa-solid fa-plus"></i></button>
+                <button onclick="forceRefresh()" title="Refresh" class="w-10 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-[#00a8ff] shadow-sm shrink-0"><i id="syncIcon" class="fa-solid fa-rotate-right"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-1 px-5 pb-36 pt-2 relative">
+            <!-- HOME -->
+            <div id="tab-dashboard" class="view-section active">
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <button type="button" class="premium-card top-card card-home-rout text-left" onclick="switchTab('routine')">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        <div class="font-black text-[11px] tracking-widest uppercase notranslate lang-text" data-en="Routine today" data-hi="आज का रूटीन">Routine today</div>
+                        <h2 class="text-5xl font-black mt-2 leading-none notranslate" id="kpiRoutine">0</h2>
+                    </button>
+                    <button type="button" class="premium-card top-card card-home-del text-left" onclick="switchTab('delegated')">
+                        <i class="fa-solid fa-briefcase"></i>
+                        <div class="font-black text-[11px] tracking-widest uppercase notranslate lang-text" data-en="Pending" data-hi="पेंडिंग (Pending)">Pending</div>
+                        <h2 class="text-5xl font-black mt-2 leading-none notranslate" id="kpiDelegated">0</h2>
+                    </button>
+                    <button type="button" class="premium-card top-card card-home-rev text-left" onclick="switchTab('review')">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <div class="font-black text-[11px] tracking-widest uppercase notranslate lang-text" data-en="In review" data-hi="रिव्यू में">In review</div>
+                        <h2 class="text-5xl font-black mt-2 leading-none notranslate" id="kpiReview">0</h2>
+                    </button>
+                    <button type="button" class="premium-card top-card card-home-done text-left" onclick="switchTab('completed')">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <div class="font-black text-[11px] tracking-widest uppercase notranslate lang-text" data-en="Done" data-hi="पूरा हुआ (Done)">Done</div>
+                        <h2 class="text-5xl font-black mt-2 leading-none notranslate" id="kpiDone">0</h2>
+                    </button>
+                </div>
+                <div class="premium-card p-4 mb-5">
+                    <h3 class="font-black text-slate-800 text-[13px] mb-3 flex items-center gap-2"><i class="fa-solid fa-chart-line text-[#00a8ff]"></i> <span class="notranslate lang-text" data-en="Performance" data-hi="परफॉरमेंस">Performance</span></h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center bg-blue-50/50 border border-blue-100 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-lg bg-[#00a8ff] text-white flex items-center justify-center text-[10px] shadow-sm"><i class="fa-solid fa-clipboard-check"></i></div>
+                                <span class="text-[9.5px] font-black text-slate-600 uppercase tracking-wider notranslate lang-text" data-en="Daily Score" data-hi="डेली स्कोर">Daily Score</span>
+                            </div>
+                            <span class="text-[14px] font-black text-[#00a8ff] notranslate" id="kpiDailyScore">0%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-purple-50/50 border border-purple-100 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-lg bg-[#a855f7] text-white flex items-center justify-center text-[10px] shadow-sm"><i class="fa-solid fa-calendar-check"></i></div>
+                                <span class="text-[9.5px] font-black text-slate-600 uppercase tracking-wider notranslate lang-text" data-en="Monthly Score" data-hi="मंथली स्कोर">Monthly Score</span>
+                            </div>
+                            <span class="text-[14px] font-black text-[#a855f7] notranslate" id="kpiMonthlyScore">0</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-orange-50/50 border border-orange-100 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-lg bg-[#ff6b00] text-white flex items-center justify-center text-[10px] shadow-sm"><i class="fa-solid fa-briefcase"></i></div>
+                                <span class="text-[9.5px] font-black text-slate-600 uppercase tracking-wider notranslate lang-text" data-en="Delegated Score" data-hi="पेंडिंग स्कोर">Delegated Score</span>
+                            </div>
+                            <span class="text-[14px] font-black text-[#ff6b00] notranslate" id="kpiDelegatedScore">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="premium-card p-5">
+                    <h3 class="font-black text-slate-800 text-[15px] mb-3 notranslate lang-text" data-en="Distribution" data-hi="टास्क डिस्ट्रीब्यूशन">Distribution</h3>
+                    <div class="relative h-40 w-full flex justify-center items-center"><canvas id="taskChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ROUTINE -->
+            <div id="tab-routine" class="view-section">
+                <!-- INLINE PREMIUM BADGE FOR BATCH UPDATES -->
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-1.5 h-7 bg-[#00a8ff] rounded-full"></div>
+                    <h2 class="text-[24px] font-black text-[#1e293b] flex items-center gap-3">
+                        <span class="notranslate lang-text" data-en="Routine" data-hi="रूटीन (Routine)">Routine</span>
+                        <span id="badge-routine" class="sync-badge hidden text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase tracking-widest border border-blue-200 shadow-sm notranslate transition-all duration-300">
+                            <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Saving <span class="batch-count">0</span>...
+                        </span>
+                    </h2>
+                </div>
+                <div class="flex gap-2 mb-6 overflow-x-auto pb-1" style="scrollbar-width: none;">
+                    <button id="pill-daily" onclick="filterRoutine('daily')" class="tab-btn active"><i class="fa-solid fa-sun mr-1.5"></i> <span class="notranslate lang-text" data-en="Today" data-hi="आज (Today)">Today</span></button>
+                    <button id="pill-wmqy" onclick="filterRoutine('wmqy')" class="tab-btn"><i class="fa-regular fa-calendar-days mr-1.5"></i> <span class="notranslate lang-text" data-en="W/M/Q/Y" data-hi="W/M/Q/Y (आगे के)">W/M/Q/Y</span></button>
+                    <button id="pill-overdue" onclick="filterRoutine('overdue')" class="tab-btn"><i class="fa-solid fa-circle-exclamation mr-1.5 text-red-500"></i> <span class="notranslate lang-text" data-en="Overdue" data-hi="लेट काम (Overdue)">Overdue</span></button>
+                </div>
+                <div id="routineList" class="pb-4"></div>
+            </div>
+
+            <!-- PENDING (DELEGATED) -->
+            <div id="tab-delegated" class="view-section">
+                <!-- INLINE PREMIUM BADGE FOR BATCH UPDATES -->
+                <div class="flex items-center gap-2 mb-5">
+                    <div class="w-1.5 h-7 bg-[#ff6b00] rounded-full"></div>
+                    <h2 class="text-[24px] font-black text-[#1e293b] flex items-center gap-3">
+                        <span class="notranslate lang-text" data-en="Pending" data-hi="पेंडिंग (Pending)">Pending</span>
+                        <span id="badge-delegated" class="sync-badge hidden text-[10px] font-black bg-orange-100 text-orange-600 px-3 py-1 rounded-full uppercase tracking-widest border border-orange-200 shadow-sm notranslate transition-all duration-300">
+                            <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Saving <span class="batch-count">0</span>...
+                        </span>
+                    </h2>
+                </div>
+                <div id="delegatedList" class="pb-4"></div>
+            </div>
+
+            <!-- REVIEW -->
+            <div id="tab-review" class="view-section">
+                <div class="flex items-center gap-2 mb-5"><div class="w-1.5 h-7 bg-[#ffb800] rounded-full"></div><h2 class="text-[24px] font-black text-[#1e293b] notranslate lang-text" data-en="In review" data-hi="रिव्यू में है">In review</h2></div>
+                <div class="bg-[#fffbeb] text-[#b45309] px-4 py-4 rounded-xl font-bold text-xs mb-5 border border-[#fef08a] flex items-start gap-2"><i class="fa-solid fa-circle-info mt-0.5"></i> <span class="notranslate lang-text" data-en="Sent to your manager. Waiting for approval." data-hi="मैनेजर को भेजा जा चुका है। चेक होने का इंतज़ार है।">Sent to your manager. Waiting for approval.</span></div>
+                <div id="reviewList" class="pb-4"></div>
+            </div>
+
+            <!-- DONE -->
+            <div id="tab-completed" class="view-section">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-2"><div class="w-1.5 h-7 bg-[#22c55e] rounded-full"></div><h2 class="text-[24px] font-black text-[#1e293b] notranslate lang-text" data-en="Done" data-hi="पूरा हुआ (Done)">Done</h2></div>
+                    <div class="flex items-center gap-1.5">
+                        <input type="date" id="doneDateFilter" onchange="applyDoneDateFilter()" class="bg-white border border-slate-200 text-slate-500 font-bold text-[10px] px-2 py-1.5 rounded-lg outline-none shadow-sm focus:border-[#22c55e]" title="Filter by Date">
+                        <button onclick="clearDoneDateFilter()" class="bg-slate-100 text-slate-400 w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                <div class="flex gap-2 mb-6 overflow-x-auto pb-1" style="scrollbar-width: none;">
+                    <button id="done-all" onclick="filterDone('all')" class="tab-btn active notranslate lang-text" data-en="All" data-hi="सभी (All)">All</button>
+                    <button id="done-routine" onclick="filterDone('routine')" class="tab-btn px-4 notranslate lang-text" data-en="Routine" data-hi="रूटीन">Routine</button>
+                    <button id="done-delegated" onclick="filterDone('delegated')" class="tab-btn px-4 notranslate lang-text" data-en="Assigned" data-hi="असाइन किये गए">Assigned</button>
+                </div>
+                <div id="completedList" class="pb-4"></div>
+            </div>
+        </main>
+
+        <!-- BOTTOM NAV -->
+        <div class="dark-nav-wrap">
+            <nav class="dark-bottom-nav" id="bottomNav">
+                <span class="nav-indicator" id="navIndicator"></span>
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="dark-nav-btn active"><i class="fa-solid fa-house"></i><span class="notranslate lang-text" data-en="Home" data-hi="होम">Home</span></button>
+                <button onclick="switchTab('routine')" id="nav-routine" class="dark-nav-btn"><i class="fa-solid fa-clipboard-list"></i><span class="notranslate lang-text" data-en="Routine" data-hi="रूटीन">Routine</span><div id="navBadgeRoutine" class="nav-badge-new bg-[#00a8ff] hidden notranslate">0</div></button>
+                <button onclick="switchTab('delegated')" id="nav-delegated" class="dark-nav-btn"><i class="fa-solid fa-briefcase"></i><span class="notranslate lang-text" data-en="Pending" data-hi="पेंडिंग">Pending</span><div id="navBadgeDelegated" class="nav-badge-new bg-[#ff6b00] hidden notranslate">0</div></button>
+                <button onclick="switchTab('review')" id="nav-review" class="dark-nav-btn"><i class="fa-solid fa-magnifying-glass"></i><span class="notranslate lang-text" data-en="Review" data-hi="रिव्यू">Review</span><div id="navBadgeReview" class="nav-badge-new bg-[#ffb800] hidden notranslate">0</div></button>
+                <button onclick="switchTab('completed')" id="nav-completed" class="dark-nav-btn"><i class="fa-solid fa-circle-check"></i><span class="notranslate lang-text" data-en="Done" data-hi="पूरा हुआ">Done</span></button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- SELF TASK MODAL -->
+    <div id="selfTaskModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[140] flex-col items-center justify-end transition-opacity duration-300 pb-8 px-4" style="display:none; opacity:0;">
+        <div class="bg-white w-full max-w-sm rounded-[1.5rem] p-6 shadow-2xl transform transition-transform duration-300 translate-y-full" id="selfTaskBox">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="font-black text-slate-800 text-[18px] notranslate lang-text" data-en="Create Self Task" data-hi="नया टास्क बनाएं">Create Self Task</h3>
+                <button onclick="closeSelfTaskModal()" class="w-8 h-8 bg-slate-100 rounded-full text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-[11px] font-bold text-slate-500 mb-4 notranslate lang-text" data-en="Add a new task for yourself." data-hi="अपने लिए खुद का एक नया काम लिखें।">Add a new task for yourself.</p>
+            <div class="mb-4">
+                <textarea id="selfTaskTitle" rows="3" placeholder="What do you need to do?" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl px-4 py-3 outline-none focus:border-[#ff6b00] text-sm resize-none"></textarea>
+            </div>
+            <div class="mb-6 relative">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 notranslate lang-text" data-en="Due Date (Optional)" data-hi="लास्ट डेट (ऑप्शनल)">Due Date (Optional)</label>
+                <input type="date" id="selfTaskDueDate" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl px-4 py-3 outline-none focus:border-[#ff6b00] text-sm notranslate">
+            </div>
+            <button id="btnCreateSelfTask" onclick="submitSelfTask()" class="w-full bg-[#1E293B] text-white py-3.5 rounded-xl font-black uppercase tracking-wider"><i class="fa-solid fa-plus mr-1.5"></i> <span class="notranslate lang-text" data-en="Add Task" data-hi="टास्क सेव करें">Add Task</span></button>
+        </div>
+    </div>
+
+    <!-- TRANSFER MODAL -->
+    <div id="transferModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[140] flex-col items-center justify-end transition-opacity duration-300 pb-8 px-4" style="display:none; opacity:0;">
+        <div class="bg-white w-full max-w-sm rounded-[1.5rem] p-6 shadow-2xl transform transition-transform duration-300 translate-y-full" id="transferBox">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="font-black text-slate-800 text-[18px] notranslate lang-text" data-en="Transfer task" data-hi="टास्क ट्रांसफर करें">Transfer task</h3>
+                <button onclick="closeTransferModal()" class="w-8 h-8 bg-slate-100 rounded-full text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-[11px] font-bold text-slate-500 mb-4 notranslate lang-text" data-en="Pick a team member. The task stays with you until they accept." data-hi="टीम मेंबर चुनें। जब तक वो एक्सेप्ट नहीं करेंगे, ये टास्क आपके पास ही रहेगा।">Pick a team member. The task stays with you until they accept.</p>
+            <div class="mb-6 relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-magnifying-glass text-slate-400"></i></div>
+                <input type="text" id="transferSearch" onkeyup="filterTransferStaff()" onfocus="filterTransferStaff()" placeholder="Search staff name" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl pl-9 pr-4 py-3 outline-none focus:border-[#00a8ff] text-sm mb-2 notranslate">
+                <div id="transferList" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 max-h-44 overflow-y-auto hidden shadow-lg text-sm font-bold text-slate-700 notranslate"></div>
+                <input type="hidden" id="activeTransferTarget">
+                <input type="hidden" id="activeTransferTaskId">
+            </div>
+            <button onclick="confirmTransfer()" class="w-full bg-[#1E293B] text-white py-3.5 rounded-xl font-black uppercase tracking-wider"><i class="fa-solid fa-paper-plane mr-1.5"></i> <span class="notranslate lang-text" data-en="Send request" data-hi="रिक्वेस्ट भेजें">Send request</span></button>
+        </div>
+    </div>
+
+    <!-- FILE VIEWER -->
+    <div id="fileViewerModal" class="fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-md flex-col transition-opacity duration-300 opacity-0" style="display:none;">
+        <div class="flex justify-between items-center p-5 mt-6">
+            <a id="fileExternalLink" href="#" target="_blank" rel="noopener" class="text-white font-black text-xs bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 flex items-center gap-2 notranslate lang-text" data-en="Open in new tab" data-hi="नये टैब में खोलें"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in new tab</a>
+            <button onclick="closeFileViewer()" class="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="file-iframe-container" id="fileIframeBox">
+            <div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-circle-notch fa-spin text-4xl text-slate-300"></i></div>
+            <iframe id="fileIframe" class="w-full h-full bg-transparent border-0 relative z-10"></iframe>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[160] opacity-0 bg-[#1E293B] text-white px-5 py-3 rounded-full shadow-2xl font-black text-[11px] flex items-center gap-2 transition-all duration-300 pointer-events-none" style="display:none;"><i id="toastIcon" class="fa-solid fa-circle-check text-[#10B981] text-[14px]"></i><span id="toastMessage" class="notranslate">Saved</span></div>
+
+<script type="text/javascript">
+    function googleTranslateElementInit() {
+        new google.translate.TranslateElement({ pageLanguage: 'en', includedLanguages: 'en,hi', autoDisplay: false }, 'google_translate_element');
+    }
+</script>
+<script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+<script>
+    /* ---------- CUSTOM HINDI TRANSLATION DICTIONARY ---------- */
+    const uiDict = {
+        "Workspace": "वर्कस्पेस", "Home": "होम", "Routine": "रूटीन", "Pending": "पेंडिंग", "Review": "रिव्यू", "Done": "पूरा हुआ", "Actions": "एक्शन्स", "Refresh data": "रिफ्रेश करें", "Log out": "लॉग आउट",
+        "Routine today": "आज का रूटीन", "In review": "रिव्यू में", "Performance": "परफॉरमेंस", "Daily Score": "डेली स्कोर", "Monthly Score": "मंथली स्कोर", "Delegated Score": "पेंडिंग स्कोर", "Distribution": "टास्क डिस्ट्रीब्यूशन",
+        "Today": "आज", "W/M/Q/Y": "W/M/Q/Y", "Overdue": "लेट काम", "Assigned": "असाइन किये गए", "All": "सभी",
+        "Sent to your manager. Waiting for approval.": "मैनेजर को भेजा जा चुका है। चेक होने का इंतज़ार है।", "Log in": "लॉग इन करें",
+        "Note": "नोट", "Cancel": "कैंसिल", "Save Note Only": "सिर्फ नोट सेव करें", "Mark Done with Note": "नोट लिखकर Done करें", "Due:": "लास्ट डेट:", "Anytime": "कभी भी", "From:": "किसने दिया:", "Submitted:": "भेजा गया:", "Reviewed:": "चेक हुआ:", "Sent back:": "वापस भेजा गया:", "Transfer from:": "इन्होने भेजा है:", "Waiting for": "इंतज़ार है:", "to accept": "के एक्सेप्ट करने का", "Cancel request": "रिक्वेस्ट कैंसिल करें", "Accept": "हाँ", "Decline": "ना", "Resend": "फिर से भेजें", "Send to Review": "चेक करने भेजें", "Saved Note:": "सेव किया नोट:", "View Admin File": "एडमिन फाइल देखें", "View Staff File": "स्टाफ फाइल देखें",
+        "Nothing due today": "आज कोई काम नहीं है", "No upcoming W/M/Q/Y tasks": "आगे का कोई काम नहीं है", "No overdue tasks. Great job!": "कोई काम लेट नहीं है. बहुत बढ़िया!", "No pending assigned tasks": "कोई पेंडिंग काम नहीं है", "Nothing waiting for approval": "कोई काम चेक के लिए नहीं है", "No finished tasks found": "कोई पूरा हुआ काम मिला",
+        "Create Self Task": "नया टास्क बनाएं", "Add a new task for yourself.": "अपने लिए खुद का एक नया काम लिखें।", "Due Date (Optional)": "लास्ट डेट (ऑप्शनल)", "Add Task": "टास्क सेव करें", "Transfer task": "टास्क ट्रांसफर करें", "Pick a team member. The task stays with you until they accept.": "टीम मेंबर चुनें। जब तक वो एक्सेप्ट नहीं करेंगे, ये टास्क  आपके पास ही रहेगा।", "Search staff name": "स्टाफ का नाम खोजें", "No staff found": "कोई स्टाफ नहीं मिला", "Send request": "रिक्वेस्ट भेजें", "Open in new tab": "नये टैब में खोलें",
+        "Adding...": "जोड़ रहे हैं...", "Checking...": "चेक कर रहे हैं...", "Please wait...": "कृपया प्रतीक्षा करें...",
+        "Please wait... Updating tasks": "प्रतीक्षा करें... काम सेव हो रहा है", "Task completed!": "काम पूरा हुआ!", "Sent for review!": "चेक करने भेज दिया गया!", "Note saved!": "नोट सेव हो गया!", "Error saving task": "सेव करने में एरर", "Please type a note to save": "कृपया सेव करने के लिए नोट लिखें", "System busy. Try again later.": "सिस्टम बिजी है। थोड़ी देर में कोशिश करें।"
+    };
+
+    function t(str) {
+        if (!str) return "";
+        const isHi = localStorage.getItem('newaiTasksLang') === 'hi';
+        return isHi ? (uiDict[str] || str) : str;
+    }
+
+    function applyTranslations() { document.querySelectorAll('[data-lang-key]').forEach(el => { el.innerHTML = t(el.getAttribute('data-lang-key')); }); }
+
+    function toggleLanguage() {
+        let currentLang = localStorage.getItem('newaiTasksLang') || 'en';
+        var targetLang = currentLang === 'en' ? 'hi' : 'en';
+        localStorage.setItem('newaiTasksLang', targetLang);
+        updateLangBtnUI(targetLang); applyTranslations();
+        if (currentEmployee) { renderUI(lastStats); }
+    }
+
+    function updateLangBtnUI(lang) {
+        var btns = document.querySelectorAll('.lang-toggle-btn');
+        btns.forEach(btn => {
+            if(lang === 'hi') {
+                btn.innerHTML = '<span class="text-[12px] font-black uppercase tracking-widest text-[#00a8ff]">EN</span>';
+                btn.classList.add('bg-blue-50', 'border-blue-200'); btn.classList.remove('bg-white/10', 'text-white', 'border-white/20', 'bg-white', 'text-slate-600', 'border-slate-200');
+            } else {
+                btn.innerHTML = '<span class="text-[16px]">अ</span>';
+                if(btn.closest('#loginScreen')) {
+                    btn.classList.add('bg-white/10', 'text-white', 'border-white/20'); btn.classList.remove('bg-blue-50', 'border-blue-200');
+                } else {
+                    btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200'); btn.classList.remove('bg-blue-50', 'border-blue-200');
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { let savedLang = localStorage.getItem('newaiTasksLang') || 'en'; updateLangBtnUI(savedLang); applyTranslations(); });
+
+    let currentEmployee = "", currentEmployeeFull = "", currentMobile = "", taskChartInstance = null;
+    let rawRoutineTasks = [], rawDelegatedTasks = [], availableStaff = [], transferView = [];
+    let currentRoutineFilter = 'daily', currentDoneFilter = 'all', currentDoneDate = "", lastStats = null;
+    let syncLocked = false, activeTab = 'dashboard';
+    const NAV_ORDER = ['dashboard','routine','delegated','review','completed'];
+    
+    const pendingActions = {}; const PENDING_TTL = 600000; 
+    let lastRenderedHash = ""; let isFilePicking = false; 
+
+    // BUGFIX: ROBUST BATCH QUEUE VARIABLES
+    let batchQueue = [];
+    let batchTimer = null;
+    let isBatchProcessing = false;
+
+    function esc(s) { return String(s == null ? "" : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function jsq(s) { return String(s == null ? "" : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/\r?\n/g,' '); }
+    function idSafe(s) { return String(s == null ? "" : s).replace(/[^A-Za-z0-9_-]/g,'_'); }
+    function formatTimeNow() { let d=new Date(),h=d.getHours(),m=d.getMinutes(),a=h>=12?'PM':'AM'; h=h%12||12; return `${h}:${String(m).padStart(2,'0')} ${a}`; }
+    function stampNow() { let d=new Date(),h=d.getHours(),m=d.getMinutes(),a=h>=12?'PM':'AM'; return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(h%12||12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${a}`; }
+
+    function dueDiff(dueStr) {
+        if(!dueStr || dueStr === "No Date") return null;
+        const p = String(dueStr).split('/'); if(p.length !== 3) return null;
+        const d = new Date(parseInt(p[2],10), parseInt(p[1],10)-1, parseInt(p[0],10));
+        if(isNaN(d.getTime())) return null;
+        const now = new Date(); now.setHours(0,0,0,0);
+        return Math.round((d.getTime() - now.getTime()) / 86400000);
+    }
+
+    function routineBucket(t_obj) {
+        if (t_obj.status !== 'pending') return null;
+        const diff = dueDiff(t_obj.dueDate);
+        const freq = String(t_obj.freq || "").toUpperCase().trim();
+        const isDaily = (t_obj.isDaily || freq === 'D' || freq === 'DAILY');
+        
+        if (diff === null) return 'wmqy';
+        
+        if (isDaily) {
+            if (diff === 0) return 'today';
+            return null;
+        } else {
+            if (diff < 0) return 'overdue';
+            if (diff === 0) return 'today'; 
+            if (diff > 0) return 'wmqy';
+        }
+    }
+
+    function countUp(el, to) {
+        if(!el) return; const from = parseInt(el.innerText, 10) || 0; if(from === to) { el.innerText = to; return; }
+        const steps = 16; let i = 0; clearInterval(el._t);
+        el._t = setInterval(() => { i++; el.innerText = Math.round(from + (to - from) * (i / steps)); if(i >= steps) { clearInterval(el._t); el.innerText = to; } }, 22);
+    }
+
+    function compressImage(file, maxDim, quality) {
+        return new Promise(function(resolve, reject) {
+            if (!file.type || !file.type.startsWith('image/')) { reject(new Error('not-image')); return; }
+            const img = new Image(); const reader = new FileReader();
+            reader.onload = function(e) {
+                img.onload = function() {
+                    let w = img.width, h = img.height;
+                    if (w > maxDim || h > maxDim) { if (w > h) { h = Math.round(h * (maxDim / w)); w = maxDim; } else { w = Math.round(w * (maxDim / h)); h = maxDim; } }
+                    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve({ data: dataUrl.substring(dataUrl.indexOf(',') + 1), mimeType: 'image/jpeg' });
+                };
+                img.onerror = function() { reject(new Error('img-load-failed')); }; img.src = e.target.result;
+            };
+            reader.onerror = function() { reject(new Error('read-failed')); }; reader.readAsDataURL(file);
+        });
+    }
+
+    function snapKey(user) { return 'newaiSnapProUltimate_' + user; }
+    function saveSnapshot() { try { if(!currentEmployee) return; localStorage.setItem(snapKey(currentEmployee), JSON.stringify({ r: rawRoutineTasks, d: rawDelegatedTasks, s: lastStats, st: availableStaff })); } catch(e) {} }
+    function loadSnapshot(user) { try { const raw = localStorage.getItem(snapKey(user)); if(!raw) return false; const snap = JSON.parse(raw); rawRoutineTasks = snap.r || []; rawDelegatedTasks = snap.d || []; lastStats = snap.s || null; availableStaff = snap.st || []; lastRenderedHash = JSON.stringify({ r: rawRoutineTasks, d: rawDelegatedTasks, s: lastStats }); renderUI(lastStats); return true; } catch(e) { return false; } }
+
+    function showToast(msg, type="success") {
+        const tObj=document.getElementById('toast'); document.getElementById('toastMessage').innerText = msg;
+        document.getElementById('toastIcon').className = type==="success" ? "fa-solid fa-circle-check text-[#10B981] text-[14px]" : "fa-solid fa-triangle-exclamation text-red-400 text-[14px]";
+        tObj.style.display='flex'; setTimeout(()=>{ tObj.style.opacity='1'; tObj.style.transform='translate(-50%, 15px)'; },10);
+        setTimeout(()=>{ tObj.style.opacity='0'; tObj.style.transform='translate(-50%, -15px)'; },4000); setTimeout(()=>{ tObj.style.display='none'; },4300);
+    }
+
+    function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); document.body.classList.add('locked'); }
+    function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); document.body.classList.remove('locked'); }
+    function togglePass() { const p = document.getElementById('pass'), i = document.getElementById('eyeIcon'); const show = p.type === 'password'; p.type = show ? 'text' : 'password'; i.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye'; }
+
+    /* ---- GGM Portal / session token ---- */
+    const PORTAL = window.PORTAL || {};
+    function newaiToken() { try { return localStorage.getItem('newaiTasksToken') || ''; } catch(e) { return ''; } }
+    function portalLoginLabels() {
+        if (!PORTAL.info || !PORTAL.info.enabled) return;
+        const m = document.getElementById('mobile');
+        if (m) { m.type = 'text'; m.placeholder = PORTAL.info.portalOnly ? 'GGM Portal username or phone' : 'Mobile number or GGM Portal username'; m.setAttribute('autocapitalize', 'none'); }
+        const p = document.getElementById('pass'); if (p) p.placeholder = PORTAL.info.portalOnly ? 'GGM Portal password' : 'Password';
+    }
+
+    function checkSession() {
+        portalLoginLabels();
+        try {
+            if (PORTAL.boot && PORTAL.boot.token) {           // opened from GGM Portal: already signed in
+                localStorage.setItem('newaiTasksUser', PORTAL.boot.name);
+                localStorage.setItem('newaiTasksUserFull', PORTAL.boot.fullName);
+                localStorage.setItem('newaiTasksMobile', PORTAL.boot.mobile || '');
+                localStorage.setItem('newaiTasksToken', PORTAL.boot.token);
+            }
+        } catch(e) {}
+        const hr = new Date().getHours(); document.getElementById('greetingText').innerText = hr < 12 ? "Good morning," : hr < 18 ? "Good afternoon," : "Good evening,";
+        try {
+            const saved = localStorage.getItem('newaiTasksUser'); const savedFull = localStorage.getItem('newaiTasksUserFull'); const savedMobile = localStorage.getItem('newaiTasksMobile');
+            if (saved && newaiToken()) {
+                currentEmployee = saved; currentEmployeeFull = savedFull || saved; currentMobile = savedMobile || ""; setIdentity(saved); document.getElementById('mainApp').style.display = 'flex';
+                setTimeout(() => { document.getElementById('mainApp').style.opacity = '1'; if(!loadSnapshot(saved)) showSkeleton(); loadAllTasks(saved, true, true); applyTranslations(); }, 50);
+            } else { document.getElementById('loginScreen').style.display = 'flex'; setTimeout(()=>{ document.getElementById('loginScreen').style.opacity='1'; },50); }
+        } catch(e) {}
+        moveIndicator('dashboard');
+    }
+
+    function setIdentity(name) {
+        document.getElementById('welcomeName').innerText = String(name).split(' ')[0]; document.getElementById('drawerName').innerText = name;
+        const parts = String(name).trim().split(/\s+/); const initials = ((parts[0]||'N')[0] + (parts[1] ? parts[1][0] : (parts[0]||'N')[1] || '')).toUpperCase(); document.getElementById('drawerAvatar').innerText = initials; document.getElementById('drawerAvatar').setAttribute('data-ggm-photo', '@me|' + name);
+    }
+
+    function showSkeleton() { const sk = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>'; ['routineList','delegatedList','reviewList','completedList'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = sk; }); }
+
+    function login() {
+        const mobile = document.getElementById('mobile').value, pass = document.getElementById('pass').value;
+        const btn = document.getElementById('loginBtn'), err = document.getElementById('errorMsg'), errTxt = document.getElementById('errorText');
+        if (!mobile || !pass) { errTxt.innerText = t("Enter your mobile number and password."); err.classList.remove('hidden'); return; }
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> ' + t('Checking...'); btn.disabled = true; err.classList.add('hidden');
+        google.script.run.withSuccessHandler((res) => {
+            btn.innerHTML = `<span data-lang-key="Log in">${t('Log in')}</span> <i class="fa-solid fa-arrow-right ml-1"></i>`; btn.disabled = false; applyTranslations();
+            if (res && res.success) {
+                currentEmployee = res.name; currentEmployeeFull = res.fullName; currentMobile = res.mobile;
+                localStorage.setItem('newaiTasksUser', res.name); localStorage.setItem('newaiTasksUserFull', res.fullName); localStorage.setItem('newaiTasksMobile', res.mobile); localStorage.setItem('newaiTasksToken', res.token || '');
+                document.getElementById('loginScreen').style.opacity = '0';
+                setTimeout(() => { document.getElementById('loginScreen').style.display = 'none'; document.getElementById('mainApp').style.display = 'flex'; setTimeout(() => { document.getElementById('mainApp').style.opacity = '1'; setIdentity(res.name); showSkeleton(); loadAllTasks(res.name, false, true); }, 50); }, 380);
+            } else { errTxt.innerText = (res && res.message) ? res.message : "Login failed."; err.classList.remove('hidden'); }
+        }).withFailureHandler(() => {
+            btn.innerHTML = `<span data-lang-key="Log in">${t('Log in')}</span> <i class="fa-solid fa-arrow-right ml-1"></i>`; btn.disabled = false; applyTranslations();
+            errTxt.innerText = "No connection. Check your internet and try again."; err.classList.remove('hidden');
+        }).checkLogin(mobile, pass);
+    }
+
+    function logout() {
+        document.getElementById('mainApp').style.opacity = '0';
+        setTimeout(() => {
+            try { localStorage.removeItem('newaiTasksUser'); localStorage.removeItem('newaiTasksUserFull'); localStorage.removeItem('newaiTasksMobile'); localStorage.removeItem('newaiTasksToken'); if(currentEmployee) localStorage.removeItem(snapKey(currentEmployee)); } catch(e) {}
+            currentEmployee=""; currentEmployeeFull=""; currentMobile=""; rawRoutineTasks=[]; rawDelegatedTasks=[]; lastStats=null; availableStaff=[]; lastRenderedHash=""; Object.keys(pendingActions).forEach(k => delete pendingActions[k]);
+            document.getElementById('mobile').value=""; document.getElementById('pass').value=""; document.getElementById('mainApp').style.display='none'; document.getElementById('loginScreen').style.display='flex';
+            setTimeout(()=>{ document.getElementById('loginScreen').style.opacity='1'; },50); if(taskChartInstance) { taskChartInstance.destroy(); taskChartInstance = null; } switchTab('dashboard');
+        }, 380);
+    }
+
+    let syncTimeoutTimer = null;
+    function setSyncing(isSyncing, isSilent = false) {
+        const icon=document.getElementById('syncIcon'), dot=document.getElementById('statusDot'), txt=document.getElementById('syncTimeText');
+        const dDot=document.getElementById('drawerDot'), dTxt=document.getElementById('drawerSync');
+        if(syncTimeoutTimer) clearTimeout(syncTimeoutTimer);
+        if(isSyncing) {
+            if(!isSilent) { icon.classList.add('spin-slow'); dot.className='w-2 h-2 rounded-full bg-[#00a8ff] pulse-soft'; txt.innerText="Syncing..."; if(dDot) dDot.className='w-2 h-2 rounded-full bg-[#00a8ff] pulse-soft'; if(dTxt) dTxt.innerText="Syncing..."; }
+            syncTimeoutTimer = setTimeout(() => { setSyncing(false); }, 35000);
+        } else {
+            icon.classList.remove('spin-slow'); dot.className='w-2 h-2 rounded-full bg-[#22c55e] pulse-soft'; txt.innerText = "Live \u2022 synced " + formatTimeNow();
+            if(dDot) dDot.className='w-2 h-2 rounded-full bg-[#22c55e] pulse-soft'; if(dTxt) dTxt.innerText = "Live \u2022 " + formatTimeNow();
+        }
+    }
+
+    function forceRefresh() { if(!currentEmployee || syncLocked || isBatchProcessing) return; loadAllTasks(currentEmployee, false, true); }
+
+    function markPending(taskId, patch) { pendingActions[String(taskId).trim().toUpperCase()] = Object.assign({ at: Date.now() }, patch); }
+    function applyPending(list) {
+        const now = Date.now();
+        list.forEach(t => {
+            const k = String(t.taskId).trim().toUpperCase(), p = pendingActions[k];
+            if(!p) return; if(now - p.at > PENDING_TTL) { delete pendingActions[k]; return; }
+            if(t.status === p.status) { delete pendingActions[k]; return; }
+            t.status = p.status; if(p.actualDate) t.actualDate = p.actualDate; if(p.staffRemark) t.staffRemark = p.staffRemark;
+        });
+    }
+
+    function loadAllTasks(userName, isSilent = false, forceFresh = false) {
+        if(syncLocked || isBatchProcessing) return; setSyncing(true, isSilent);
+        google.script.run.withSuccessHandler((result) => {
+            setSyncing(false);
+            if (result && result.sessionExpired) { logout(); return; }   // sign-in ended: back to the login screen
+            if(result) {
+                if (result.exactFullName) { currentEmployeeFull = result.exactFullName; localStorage.setItem('newaiTasksUserFull', currentEmployeeFull); }
+                if (result.routineTasks && result.delegatedTasks) {
+                    rawRoutineTasks = result.routineTasks; rawDelegatedTasks = result.delegatedTasks; availableStaff = result.staffList || []; lastStats = result.stats || lastStats;
+                    applyPending(rawRoutineTasks); applyPending(rawDelegatedTasks);
+                    const currentHash = JSON.stringify({ r: rawRoutineTasks, d: rawDelegatedTasks, s: lastStats });
+                    if (currentHash !== lastRenderedHash || forceFresh || !isSilent) { lastRenderedHash = currentHash; renderUI(lastStats); saveSnapshot(); }
+                }
+            }
+        }).withFailureHandler(() => {
+            setSyncing(false); document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-red-500"; document.getElementById('syncTimeText').innerText = "Offline \u2022 showing saved data";
+        }).getAllTasksForUser(newaiToken(), userName, currentMobile, forceFresh === true);
+    }
+
+    function openFileViewer(url) {
+        if(!url) return; let first = String(url).trim(); let embedUrl = first;
+        if(first.indexOf('drive.google.com/file/d/') > -1) embedUrl = first.replace(/\/(view|edit).*$/, '/preview');
+        document.getElementById('fileExternalLink').href = first; document.getElementById('fileIframe').src = embedUrl;
+        const modal = document.getElementById('fileViewerModal'); modal.style.display = 'flex'; setTimeout(()=>{ modal.classList.remove('opacity-0'); modal.classList.add('opacity-100'); },10);
+    }
+    function closeFileViewer() {
+        const modal = document.getElementById('fileViewerModal'); modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+        setTimeout(()=>{ modal.style.display='none'; document.getElementById('fileIframe').src=''; },300);
+    }
+
+    function openSelfTaskModal() { document.getElementById('selfTaskTitle').value = ""; document.getElementById('selfTaskDueDate').value = ""; const modal = document.getElementById('selfTaskModal'); const box = document.getElementById('selfTaskBox'); modal.style.display = 'flex'; setTimeout(() => { modal.style.opacity = '1'; box.style.transform = 'translateY(0)'; }, 10); }
+    function closeSelfTaskModal() { const modal = document.getElementById('selfTaskModal'); const box = document.getElementById('selfTaskBox'); modal.style.opacity = '0'; box.style.transform = 'translateY(100%)'; setTimeout(() => { modal.style.display = 'none'; }, 300); }
+    
+    function submitSelfTask() {
+        const title = document.getElementById('selfTaskTitle').value.trim(); const dueDateStr = document.getElementById('selfTaskDueDate').value; 
+        if(!title) { showToast(t("Please type a note to save"), "error"); return; }
+        const btn = document.getElementById('btnCreateSelfTask'); btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> ' + t('Adding...'); btn.disabled = true; setSyncing(true, true);
+        google.script.run.withSuccessHandler((res) => {
+            btn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i> <span data-lang-key="Add Task">' + t('Add Task') + '</span>'; btn.disabled = false; applyTranslations(); closeSelfTaskModal();
+            if(res && res.success) { showToast("Self task created!"); forceRefresh(); } else { showToast((res && res.message) ? res.message : "Failed to create", "error"); setSyncing(false); }
+        }).withFailureHandler(() => {
+            btn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i> <span data-lang-key="Add Task">' + t('Add Task') + '</span>'; btn.disabled = false; applyTranslations(); showToast("No connection", "error"); setSyncing(false); forceRefresh();
+        }).createSelfTask(newaiToken(), currentEmployeeFull || currentEmployee, title, dueDateStr);
+    }
+
+    function openTransferModal(taskId) {
+        document.getElementById('activeTransferTaskId').value = taskId; document.getElementById('transferSearch').value = ""; document.getElementById('activeTransferTarget').value = "";
+        const modal=document.getElementById('transferModal'), box=document.getElementById('transferBox'); modal.style.display='flex'; setTimeout(()=>{ modal.style.opacity='1'; box.style.transform='translateY(0)'; },10); renderTransferStaff(availableStaff);
+    }
+    function closeTransferModal() { const modal=document.getElementById('transferModal'), box=document.getElementById('transferBox'); modal.style.opacity='0'; box.style.transform='translateY(100%)'; setTimeout(()=>{ modal.style.display='none'; },300); }
+    function renderTransferStaff(list) {
+        transferView = list || []; let html = '';
+        transferView.forEach((s, i) => { html += `<div class="px-4 py-3 border-b border-slate-100 uppercase cursor-pointer notranslate" onclick="selectStaff(${i})">${esc(s.label)}</div>`; });
+        if(!html) html = `<div class="px-4 py-3 text-slate-400 notranslate">${t('No staff found')}</div>`; updateHTML('transferList', html); document.getElementById('transferList').classList.remove('hidden');
+    }
+    function filterTransferStaff() { const q = document.getElementById('transferSearch').value.toLowerCase(); renderTransferStaff(availableStaff.filter(s => String(s.label).toLowerCase().indexOf(q) > -1)); }
+    function selectStaff(i) { const s = transferView[i]; if(!s) return; document.getElementById('transferSearch').value = s.label; document.getElementById('activeTransferTarget').value = s.value; document.getElementById('transferList').classList.add('hidden'); }
+    function confirmTransfer() {
+        const taskId = document.getElementById('activeTransferTaskId').value; const targetStaff = document.getElementById('activeTransferTarget').value;
+        if(!targetStaff) { showToast("Select a staff name first", "error"); return; }
+        closeTransferModal(); setSyncing(true, true);
+        google.script.run.withSuccessHandler((res) => { if(res && res.success) { showToast("Transfer request sent"); loadAllTasks(currentEmployee, true, true); } else { showToast((res && res.message) ? res.message : "Could not send", "error"); setSyncing(false); loadAllTasks(currentEmployee, true, true); }
+        }).withFailureHandler(() => { showToast("No connection", "error"); setSyncing(false); loadAllTasks(currentEmployee, true, true); }).requestTransfer(newaiToken(), taskId, targetStaff);
+    }
+    
+    async function respondTransfer(taskId, action) {
+        setSyncing(true, true); flyAway(taskId); await new Promise(r => setTimeout(r, 280));
+        google.script.run.withSuccessHandler((res) => {
+            if(res && res.success) { showToast(action==='accept' ? "Task accepted" : action==='cancel' ? "Transfer cancelled" : "Task declined"); loadAllTasks(currentEmployee, true, true); } else { showToast((res && res.message) ? res.message : "Could not update", "error"); setSyncing(false); loadAllTasks(currentEmployee, true, true); }
+        }).withFailureHandler(() => { showToast("No connection", "error"); setSyncing(false); loadAllTasks(currentEmployee, true, true); }).processTransferResponse(newaiToken(), taskId, action, currentEmployeeFull || currentEmployee);
+    }
+
+    function isUserInteracting() {
+        if(isFilePicking) return true; 
+        const textareas = document.querySelectorAll('textarea'); for(let i=0; i<textareas.length; i++) { if(textareas[i].value.trim().length > 0) return true; }
+        const fileInputs = document.querySelectorAll('input[type="file"]'); for(let i=0; i<fileInputs.length; i++) { if(fileInputs[i].files && fileInputs[i].files.length > 0) return true; }
+        return false;
+    }
+
+    function toggleRemark(taskId) {
+        const box = document.getElementById('remark-box-' + idSafe(taskId));
+        if(box) { box.classList.toggle('hidden'); if(!box.classList.contains('hidden')) { const ta = box.querySelector('textarea'); if(ta) ta.focus(); } }
+    }
+    
+    function triggerFileSelect(taskId) { isFilePicking = true; const inp = document.getElementById('file-input-' + idSafe(taskId)); if(inp) inp.click(); setTimeout(() => { isFilePicking = false; }, 120000); }
+    
+    function handleFileSelect(input, taskId) {
+        isFilePicking = false; const preview = document.getElementById('file-preview-' + idSafe(taskId)); if(!preview) return;
+        if (input.files.length > 5) { showToast("Attach max 5 files", "error"); input.value = ""; preview.classList.add('hidden'); return; }
+        if (input.files.length > 0) { preview.innerText = input.files.length + " file(s) attached"; preview.classList.remove('hidden'); } else preview.classList.add('hidden');
+    }
+    
+    async function readFiles(taskId) {
+        const out = []; const fileInput = document.getElementById('file-input-' + idSafe(taskId));
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            showToast("Processing file(s)...");
+            for(let i=0; i<fileInput.files.length; i++) {
+                const f = fileInput.files[i]; if (f.size > 50 * 1024 * 1024) { showToast(`File ${f.name} too large. Max 50MB.`, "error"); continue; }
+                try {
+                    if(f.type === 'image/jpeg' || f.type === 'image/png' || f.type === 'image/webp') {
+                        const compressed = await compressImage(f, 1280, 0.72); out.push({ filename: f.name, mimeType: compressed.mimeType, base64: compressed.data });
+                    } else {
+                        out.push(await GGMUpload.pack(f, newaiToken()));   /* over 5 MB: sent to Drive in pieces (BigUpload.js) */
+                    }
+                } catch(e) {
+                    try { out.push(await GGMUpload.pack(f, newaiToken())); } catch (e2) { showToast(String((e2 && e2.message) || e2), "error"); }
+                }
+            }
+            fileInput.value = ""; 
+        }
+        return out;
+    }
+
+    function flyAway(taskId) { const card = document.getElementById('card-' + idSafe(taskId)); if(card) { card.style.transition='all .3s cubic-bezier(.4,0,.2,1)'; card.style.transform='scale(.95)'; card.style.opacity='0'; card.style.pointerEvents='none'; setTimeout(() => { card.style.display = 'none'; }, 300); } }
+
+    /* ==========================================
+       BUGFIX: IN-LINE BATCH SYSTEM (NO MORE UI BLOCKING)
+       ========================================== */
+    function showInlineBatchPopup(count) {
+        document.querySelectorAll('.sync-badge').forEach(b => b.classList.add('hidden'));
+        const badge = document.getElementById('badge-' + activeTab);
+        if(badge) {
+            badge.querySelector('.batch-count').innerText = count;
+            badge.classList.remove('hidden');
+        }
+    }
+    
+    function hideInlineBatchPopup() {
+        document.querySelectorAll('.sync-badge').forEach(b => b.classList.add('hidden'));
+    }
+
+    // New smart queue trigger
+    function triggerBatchProcess() {
+        if (isBatchProcessing) return; // Allow current batch to finish silently, no error banner
+        if (batchTimer) clearTimeout(batchTimer);
+        batchTimer = setTimeout(processBatchQueue, 1500); // Wait 1.5s for rapid taps
+    }
+
+    async function submitTask(taskId, type, isJustNote = false) {
+        const strictIdStr = String(taskId).trim().toUpperCase(); 
+        const sid = idSafe(taskId); 
+        
+        // BUGFIX: Removed isBatchProcessing block! Users can keep adding tasks without waiting.
+        if (pendingActions[strictIdStr] && pendingActions[strictIdStr].processing) return;
+
+        const input = document.getElementById('remark-input-' + sid); 
+        const remarkText = input ? input.value.trim() : "";
+        if (isJustNote && !remarkText) { showToast(t("Please type a note to save"), "error"); return; }
+        
+        const tsUI = stampNow(); 
+        let filesData = []; 
+        if (!isJustNote) { filesData = await readFiles(taskId); }
+        
+        const list = (type === 'routine') ? rawRoutineTasks : rawDelegatedTasks; 
+        const index = list.findIndex(x => String(x.taskId).trim().toUpperCase() === strictIdStr); 
+        
+        let taskTitle = ""; let taskDueDate = "";
+        if (index > -1) { taskTitle = list[index].title; taskDueDate = list[index].dueDate; }
+        const doerName = currentEmployeeFull || currentEmployee;
+
+        // INSTANT HIDE UI
+        flyAway(taskId); 
+        if (!isJustNote) {
+            try { confetti({ particleCount: 40, spread: 50, origin: { y: .6 }, colors: (type==='routine')?['#00a8ff','#22c55e']:['#ff6b00','#ffb800'] }); } catch(e){}
+            const targetStatus = type === 'routine' ? 'completed' : 'review'; 
+            markPending(strictIdStr, { status: targetStatus, actualDate: tsUI, staffRemark: remarkText, processing: true });
+            if(index > -1) { list[index].status = targetStatus; list[index].actualDate = tsUI; if(remarkText) list[index].staffRemark = remarkText; }
+        } else {
+            toggleRemark(taskId); markPending(strictIdStr, { processing: true });
+            if(index > -1 && remarkText) { list[index].staffRemark = remarkText; }
+        }
+
+        // ADD TO BATCH QUEUE
+        batchQueue.push({
+            taskId: strictIdStr, type: type, isJustNote: isJustNote, remarkText: remarkText,
+            fileDataArray: filesData, taskTitle: taskTitle, doerName: doerName, taskDueDate: taskDueDate
+        });
+
+        showInlineBatchPopup(batchQueue.length);
+        lastRenderedHash = JSON.stringify({ r: rawRoutineTasks, d: rawDelegatedTasks, s: lastStats }); renderUI(lastStats); saveSnapshot();
+
+        // SMART BATCHING TRIGGER
+        triggerBatchProcess();
+    }
+
+    function processBatchQueue() {
+        if (batchQueue.length === 0) return;
+        isBatchProcessing = true; setSyncing(true, true);
+
+        const tasksToSend = [...batchQueue];
+        batchQueue = []; // Clear queue so users can immediately add new ones
+
+        google.script.run.withSuccessHandler((res) => {
+            isBatchProcessing = false; setSyncing(false); hideInlineBatchPopup();
+            if (res && res.success) {
+                showToast(`${tasksToSend.length} task${tasksToSend.length > 1 ? 's' : ''} updated!`);
+                loadAllTasks(currentEmployee, true, true);
+            } else {
+                showToast((res && res.message) ? res.message : "Error updating sheet.", "error");
+                tasksToSend.forEach(t => delete pendingActions[t.taskId]);
+                loadAllTasks(currentEmployee, true, true);
+            }
+            if (batchQueue.length > 0) triggerBatchProcess(); // Process leftovers immediately
+        }).withFailureHandler((err) => {
+            isBatchProcessing = false; setSyncing(false); hideInlineBatchPopup();
+            showToast("Network error. Try again.", "error");
+            tasksToSend.forEach(t => delete pendingActions[t.taskId]);
+            loadAllTasks(currentEmployee, true, true);
+            if (batchQueue.length > 0) triggerBatchProcess(); // Process leftovers immediately
+        }).batchUpdateTasks(newaiToken(), tasksToSend);
+    }
+
+    function filterRoutine(type) {
+        currentRoutineFilter = type;
+        document.getElementById('pill-daily').className = 'tab-btn' + (type==='daily' ? ' active' : ''); const pillWmqy = document.getElementById('pill-wmqy'); if(pillWmqy) pillWmqy.className = 'tab-btn' + (type==='wmqy' ? ' active' : '');
+        const pillOverdue = document.getElementById('pill-overdue');
+        if(pillOverdue) {
+            if(type === 'overdue') { pillOverdue.className = 'tab-btn bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/30'; pillOverdue.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-1.5"></i> <span data-lang-key="Overdue">' + t('Overdue') + '</span>'; } else { pillOverdue.className = 'tab-btn'; pillOverdue.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-1.5 text-red-500"></i> <span data-lang-key="Overdue">' + t('Overdue') + '</span>'; }
+        }
+        renderRoutineList(); applyTranslations();
+    }
+    
+    function filterDone(type) { currentDoneFilter = type; ['all','routine','delegated'].forEach(id => { const el = document.getElementById('done-' + id); if(!el) return; el.className = 'tab-btn lang-text' + (type===id ? ' active' : '') + (id==='all' ? '' : ' px-4'); }); renderCompletedList(); applyTranslations(); }
+    function applyDoneDateFilter() { currentDoneDate = document.getElementById('doneDateFilter').value; renderCompletedList(); applyTranslations(); }
+    function clearDoneDateFilter() { document.getElementById('doneDateFilter').value = ""; applyDoneDateFilter(); }
+    function updateHTML(id, newHTML) { const el = document.getElementById(id); if (el && el.innerHTML !== newHTML) el.innerHTML = newHTML; }
+
+    const emptyState = (msg, icon, col) => `<div class="text-center py-10 px-6 bg-white rounded-2xl border border-slate-100 premium-shadow mt-2"><div class="w-16 h-16 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-4"><i class="fa-solid ${icon} text-3xl ${col} opacity-60"></i></div><p class="text-[11px] font-black text-slate-400 uppercase tracking-widest notranslate">${msg}</p></div>`;
+
+    function dateSorter(a, b) {
+        if(a.dueDate === "No Date") return -1; if(b.dueDate === "No Date") return 1;
+        const pA=a.dueDate.split('/'), pB=b.dueDate.split('/'); if(pA.length===3 && pB.length===3) return new Date(pA[2],pA[1]-1,pA[0]).getTime() - new Date(pB[2],pB[1]-1,pB[0]).getTime(); return 0;
+    }
+
+    function renderRoutineList() {
+        let html = ''; const mappedFilter = (currentRoutineFilter === 'daily') ? 'today' : currentRoutineFilter;
+        const filtered = rawRoutineTasks.filter(t_obj => routineBucket(t_obj) === mappedFilter); filtered.sort(dateSorter); const isHi = localStorage.getItem('newaiTasksLang') === 'hi';
+
+        if(filtered.length === 0) {
+            let msg = t("Nothing due today"); if(currentRoutineFilter === 'wmqy') msg = t("No upcoming W/M/Q/Y tasks"); if(currentRoutineFilter === 'overdue') msg = t("No overdue tasks. Great job!");
+            let icon = currentRoutineFilter === 'overdue' ? "fa-glass-cheers" : "fa-mug-hot"; let col = currentRoutineFilter === 'overdue' ? "text-[#22c55e]" : "text-[#00a8ff]";
+            html = emptyState(msg, icon, col);
+        } else {
+            filtered.forEach((t_obj) => {
+                const sid = idSafe(t_obj.taskId), jid = jsq(t_obj.taskId); const letter = t_obj.freq ? String(t_obj.freq).charAt(0).toUpperCase() : 'N'; const diff = dueDiff(t_obj.dueDate);
+                let badge = ''; let cardClass = 'card-blue';
+
+                if(diff === 0) badge = `<span class="bg-[#00a8ff] text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle notranslate">${isHi ? 'आज (Today)' : 'Today'}</span>`;
+                else if(diff !== null && diff > 0) badge = `<span class="bg-slate-100 text-slate-500 text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle notranslate">${isHi ? diff+' दिन बचे हैं' : 'In '+diff+'d'}</span>`;
+                else if(diff !== null && diff < 0) { badge = `<span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle notranslate">${Math.abs(diff)}${isHi ? ' दिन लेट (Late)' : 'd Overdue'}</span>`; cardClass = 'card-red bg-red-50/30'; }
+
+                html += `
+                <div id="card-${sid}" class="premium-card task-card ${cardClass}">
+                    <div class="flex justify-between items-start mb-3 pl-2 gap-2">
+                        <h3 class="font-black text-slate-800 text-[14px] uppercase leading-snug flex-1">${esc(t_obj.title)} ${badge}</h3>
+                        <span class="w-7 h-7 shrink-0 flex items-center justify-center bg-[#e0f2fe] text-[#00a8ff] text-[11px] font-black rounded-full notranslate">${esc(letter)}</span>
+                    </div>
+                    ${t_obj.staffRemark ? `<div class="ml-2 mb-3 p-2 bg-blue-50 border border-blue-100 rounded-lg text-[10px] text-blue-600 font-bold uppercase notranslate"><i class="fa-solid fa-comment-dots mr-1 text-[#00a8ff]"></i> ${t("Saved Note:")} ${esc(t_obj.staffRemark)}</div>` : ''}
+                    <div class="mb-5 pl-2 text-[11px] font-bold text-slate-500 uppercase notranslate">
+                        <i class="fa-regular fa-calendar ${diff !== null && diff < 0 ? 'text-red-500' : 'text-[#00a8ff]'} mr-1.5"></i> ${t("Due:")} ${t_obj.dueDate === "No Date" ? t("Anytime") : esc(t_obj.dueDate)}
+                    </div>
+                    <div class="flex gap-3 border-t border-slate-100 pt-4">
+                        <button onclick="toggleRemark('${jid}')" class="btn-outline flex-1 notranslate"><i class="fa-regular fa-comment-dots mr-1.5"></i> ${t("Note")}</button>
+                        <button onclick="submitTask('${jid}', 'routine', false)" class="btn-done flex-1 notranslate"><i class="fa-solid fa-check text-[#00a8ff] mr-1.5"></i> ${t("Done")}</button>
+                    </div>
+                    <div id="remark-box-${sid}" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <textarea id="remark-input-${sid}" rows="2" placeholder="What happened with this task?" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-3 text-xs font-bold text-slate-700 outline-none focus:border-blue-400 resize-none mb-3 notranslate"></textarea>
+                        <div class="flex gap-2 mb-2">
+                            <button onclick="toggleRemark('${jid}')" class="w-1/3 bg-slate-200 text-slate-600 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-slate-300 notranslate">${t("Cancel")}</button>
+                            <button onclick="submitTask('${jid}', 'routine', true)" class="w-2/3 bg-blue-100 text-blue-600 border border-blue-200 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-blue-200 notranslate"><i class="fa-solid fa-save mr-1.5"></i> ${t("Save Note Only")}</button>
+                        </div>
+                        <button onclick="submitTask('${jid}', 'routine', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md notranslate"><i class="fa-solid fa-check-double mr-1.5"></i> ${t("Mark Done with Note")}</button>
+                    </div>
+                </div>`;
+            });
+        }
+        updateHTML('routineList', html);
+    }
+
+    function renderCompletedList() {
+        let combined = [];
+        if(currentDoneFilter==='all' || currentDoneFilter==='routine') combined = combined.concat(rawRoutineTasks.filter(t => t.status==='completed'));
+        if(currentDoneFilter==='all' || currentDoneFilter==='delegated') combined = combined.concat(rawDelegatedTasks.filter(t => t.status==='completed'));
+
+        if(currentDoneDate) {
+            const parts = currentDoneDate.split('-'); 
+            if(parts.length === 3) {
+                const targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                combined = combined.filter(t => {
+                    const actualDStr = t.actualDate ? t.actualDate.split(' ')[0] : ""; const dueDStr = t.dueDate ? t.dueDate.split(' ')[0] : "";
+                    return actualDStr === targetDate || (!actualDStr && dueDStr === targetDate);
+                });
+            }
+        }
+
+        const toMs = (s) => {
+            if(!s) return 0; const p = String(s).split(' '); const d = p[0].split('/'); if(d.length !== 3) return 0;
+            let h = 0, m = 0;
+            if(p.length >= 2 && p[1].indexOf(':') > -1) {
+                const tm = p[1].split(':'); h = parseInt(tm[0],10)||0; m = parseInt(tm[1],10)||0;
+                if(p[2] === 'PM' && h !== 12) h += 12; if(p[2] === 'AM' && h === 12) h = 0;
+            }
+            return new Date(d[2], d[1]-1, d[0], h, m).getTime();
+        };
+        combined.sort((a,b) => toMs(b.actualDate || b.dueDate) - toMs(a.actualDate || a.dueDate));
+
+        let html = '';
+        if(combined.length === 0) html = emptyState(t("No finished tasks found"), "fa-box-open", "text-[#22c55e]");
+        else combined.forEach((t_obj) => {
+            const isDelegated = t_obj.type === 'delegated'; const subLabel = isDelegated ? t('Submitted:') : t('Done'); const iconName = isDelegated ? 'fa-upload' : 'fa-check-circle'; const colorClass = isDelegated ? 'text-[#ffb800]' : 'text-[#22c55e]';
+            const sub = t_obj.actualDate ? `<br><span class="${colorClass} mt-1.5 inline-block notranslate"><i class="fa-solid ${iconName} mr-1"></i> ${subLabel} ${esc(t_obj.actualDate)}</span>` : '';
+            const appr = (isDelegated && t_obj.approvalDate) ? `<br><span class="text-[#22c55e] mt-1.5 inline-block notranslate"><i class="fa-solid fa-check-double mr-1"></i> ${t('Reviewed:')} ${esc(t_obj.approvalDate)}</span>` : '';
+            const rem = t_obj.staffRemark ? `<br><span class="text-slate-500 mt-1.5 inline-block font-medium notranslate"><i class="fa-regular fa-comment-dots mr-1"></i> ${t('Note')} ${esc(t_obj.staffRemark)}</span>` : '';
+            
+            let adminFile = '';
+            if(t_obj.photoLink) { let links = t_obj.photoLink.split(',').filter(l=>l.trim().length>0); links.forEach((l,i) => { adminFile += `<br><span onclick="openFileViewer('${jsq(l.trim())}')" class="text-[#ff6b00] cursor-pointer mt-1.5 inline-block font-bold notranslate"><i class="fa-solid fa-paperclip"></i> ${t('View Admin File')} ${links.length>1?i+1:''}</span>`; }); }
+            
+            let staffFile = '';
+            if(t_obj.staffFileUrl) { let links = t_obj.staffFileUrl.split(',').filter(l=>l.trim().length>0); links.forEach((l,i) => { staffFile += `<br><span onclick="openFileViewer('${jsq(l.trim())}')" class="text-blue-500 cursor-pointer mt-1.5 inline-block font-bold notranslate"><i class="fa-solid fa-paperclip"></i> ${t('View Staff File')} ${links.length>1?i+1:''}</span>`; }); }
+
+            html += `
+            <div class="premium-card task-card card-green opacity-75">
+                <h3 class="font-black text-slate-500 line-through text-[12px] mb-3 uppercase pl-2">${esc(t_obj.title)}</h3>
+                <div class="flex justify-between items-end text-[10px] font-bold uppercase tracking-wider pl-2 gap-2">
+                    <span class="text-slate-400 leading-relaxed notranslate"><i class="fa-regular fa-calendar mr-1"></i> ${t("Due:")} ${esc(t_obj.dueDate)} ${sub}${appr}${rem}${adminFile}${staffFile}</span>
+                    <span class="text-[#22c55e] bg-[#e6f4ea] px-3 py-1.5 rounded-lg border border-[#a3e635] shrink-0 notranslate"><i class="fa-solid fa-check mr-1"></i> ${t("Done")}</span>
+                </div>
+            </div>`;
+        });
+        updateHTML('completedList', html);
+    }
+
+    function renderUI(stats) {
+        let delPendingHTML = '', reviewHTML = ''; let cRout = 0, cRoutSoon = 0, cDelPend = 0, cRev = 0, cComp = 0; const isHi = localStorage.getItem('newaiTasksLang') === 'hi';
+
+        rawRoutineTasks.forEach(t_obj => {
+            const sid = idSafe(t_obj.taskId);
+            if(t_obj.status === 'completed') { cComp++; return; }
+            if(t_obj.status === 'review') {
+                cRev++; const myRemark = t_obj.staffRemark ? `<div class="sir-remark bg-white text-[#b45309] border-yellow-200 notranslate"><i class="fa-solid fa-quote-left mr-1.5 mt-0.5"></i> ${esc(t_obj.staffRemark)}</div>` : '';
+                reviewHTML += `
+                <div id="card-${sid}" class="premium-card task-card card-yellow bg-[#fffbeb]">
+                    <h3 class="font-black text-slate-800 text-[14px] mb-4 uppercase pl-2">${esc(t_obj.title)}</h3>
+                    ${myRemark}
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-4 pl-2 uppercase gap-2 notranslate">
+                        <span><i class="fa-regular fa-calendar text-[#ffb800] mr-1.5"></i> ${t("Due:")} ${t_obj.dueDate === "No Date" ? t("Anytime") : esc(t_obj.dueDate)}</span>
+                        <span class="bg-white px-2.5 py-1 rounded border border-yellow-200 text-[#b45309] shrink-0">Routine</span>
+                    </div>
+                    <div class="border-t border-yellow-200 pt-3 text-center text-[#d97706] text-[10px] font-black uppercase tracking-wider notranslate"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i> ${t("Submitted:")} ${esc(t_obj.actualDate || t_obj.dueDate)}</div>
+                </div>`;
+                return;
+            }
+            const b = routineBucket(t_obj); if(b === 'today' || b === 'overdue') cRout++; else if(b === 'wmqy') cRoutSoon++;
+        });
+
+        rawDelegatedTasks.slice().sort(dateSorter).forEach((t_obj) => {
+            const sid = idSafe(t_obj.taskId), jid = jsq(t_obj.taskId);
+            if(t_obj.status === 'completed') { cComp++; return; }
+            if(t_obj.status === 'review') {
+                cRev++; const myRemark = t_obj.staffRemark ? `<div class="sir-remark bg-white text-[#b45309] border-yellow-200 notranslate"><i class="fa-solid fa-quote-left mr-1.5 mt-0.5"></i> ${esc(t_obj.staffRemark)}</div>` : '';
+                let adminFile = '';
+                if(t_obj.photoLink) { let links = t_obj.photoLink.split(',').filter(l=>l.trim().length>0); links.forEach((l,i) => { adminFile += `<div class="mb-3 pl-2 notranslate"><div onclick="openFileViewer('${jsq(l.trim())}')" class="text-[#ff6b00] text-[12px] font-bold cursor-pointer uppercase"><i class="fa-solid fa-paperclip"></i> ${t("View Admin File")} ${links.length>1?i+1:''}</div></div>`; }); }
+                let staffFile = '';
+                if(t_obj.staffFileUrl) { let links = t_obj.staffFileUrl.split(',').filter(l=>l.trim().length>0); links.forEach((l,i) => { staffFile += `<div class="mb-3 pl-2 notranslate"><div onclick="openFileViewer('${jsq(l.trim())}')" class="text-blue-600 text-[12px] font-bold cursor-pointer uppercase"><i class="fa-solid fa-paperclip"></i> ${t("View Staff File")} ${links.length>1?i+1:''}</div></div>`; }); }
+
+                reviewHTML += `
+                <div id="card-${sid}" class="premium-card task-card card-yellow bg-[#fffbeb]">
+                    <h3 class="font-black text-slate-800 text-[14px] mb-4 uppercase pl-2">${esc(t_obj.title)}</h3>
+                    ${myRemark}${adminFile}${staffFile}
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-4 pl-2 uppercase gap-2 notranslate">
+                        <span><i class="fa-regular fa-calendar text-[#ffb800] mr-1.5"></i> ${t("Due:")} ${t_obj.dueDate === "No Date" ? t("Anytime") : esc(t_obj.dueDate)}</span>
+                        <span class="bg-white px-2.5 py-1 rounded border border-yellow-200 text-slate-500 shrink-0">${t("From:")} ${esc(t_obj.givenBy)}</span>
+                    </div>
+                    <div class="border-t border-yellow-200 pt-3 text-center text-[#d97706] text-[10px] font-black uppercase tracking-wider notranslate"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i> ${t("Submitted:")} ${esc(t_obj.actualDate || t_obj.dueDate)}</div>
+                </div>`;
+                return;
+            }
+
+            cDelPend++;
+
+            if (t_obj.transferStatus === 'incoming') {
+                delPendingHTML += `
+                <div id="card-${sid}" class="premium-card task-card card-blue bg-blue-50/50">
+                    <div class="sir-remark text-blue-600 bg-blue-100 border-blue-200 notranslate"><i class="fa-solid fa-share mr-1.5 mt-0.5"></i> ${t("Transfer from:")} ${esc(t_obj.originalOwner)}</div>
+                    <h3 class="font-black text-slate-800 text-[14px] mb-3 uppercase pl-2">${esc(t_obj.title)}</h3>
+                    <div class="text-[11px] font-bold text-slate-500 mb-4 pl-2 uppercase notranslate"><i class="fa-regular fa-calendar text-[#00a8ff] mr-1.5"></i> ${t("Due:")} ${esc(t_obj.dueDate)}</div>
+                    <div class="flex gap-3 border-t border-blue-100 pt-4">
+                        <button onclick="respondTransfer('${jid}', 'accept')" class="w-1/2 bg-[#00a8ff] text-white rounded-xl py-3 font-black text-xs uppercase notranslate"><i class="fa-solid fa-check mr-1.5"></i> ${t("Accept")}</button>
+                        <button onclick="respondTransfer('${jid}', 'reject')" class="w-1/2 bg-white border border-red-200 text-red-500 rounded-xl py-3 font-black text-xs uppercase notranslate"><i class="fa-solid fa-xmark mr-1.5"></i> ${t("Decline")}</button>
+                    </div>
+                </div>`;
+                return;
+            }
+            if (t_obj.transferStatus === 'outgoing') {
+                delPendingHTML += `
+                <div id="card-${sid}" class="premium-card task-card card-gray bg-slate-50 opacity-90">
+                    <h3 class="font-black text-slate-500 text-[14px] mb-2 uppercase pl-2">${esc(t_obj.title)}</h3>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase mb-5 pl-2 notranslate"><i class="fa-solid fa-clock mr-1.5"></i> ${t("Waiting for")} ${esc(String(t_obj.transferTo).split('(')[0].trim())} ${t("to accept")}</div>
+                    <div class="border-t border-slate-200 pt-4">
+                        <button onclick="respondTransfer('${jid}', 'cancel')" class="w-full bg-white border border-slate-300 text-slate-500 py-3 rounded-xl font-black text-xs uppercase notranslate"><i class="fa-solid fa-ban mr-1.5"></i> ${t("Cancel request")}</button>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            const isRej = t_obj.status === 'rejected'; const diff = dueDiff(t_obj.dueDate); let badge = '';
+            if(!isRej && diff !== null && diff < 0) badge = `<span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle notranslate">${Math.abs(diff)}${isHi ? ' दिन लेट (Late)' : 'd Overdue'}</span>`;
+            else if(!isRej && diff === 0) badge = `<span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle notranslate">${isHi ? 'आज (Today)' : 'Today'}</span>`;
+            
+            let rejDateStr = t_obj.approvalDate ? ` <span class="opacity-75 font-normal ml-1">(${esc(t_obj.approvalDate)})</span>` : '';
+            const rem = (isRej && t_obj.remark) ? `<div class="sir-remark notranslate"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i> <span>${t("Sent back:")} ${esc(t_obj.remark)}${rejDateStr}</span></div>` : '';
+            const extNote = t_obj.extraNote ? `<div class="extra-note"><i class="fa-solid fa-thumbtack mt-0.5"></i> <span>${esc(t_obj.extraNote)}</span></div>` : '';
+            
+            let adminFile = '';
+            if(t_obj.photoLink) { let links = t_obj.photoLink.split(',').filter(l=>l.trim().length>0); links.forEach((l,i) => { adminFile += `<div onclick="openFileViewer('${jsq(l.trim())}')" class="file-link notranslate"><i class="fa-solid fa-paperclip text-[#ff6b00]"></i> ${t("View Admin File")} ${links.length>1?i+1:''}</div>`; }); }
+
+            delPendingHTML += `
+            <div id="card-${sid}" class="premium-card task-card ${isRej ? 'card-red bg-red-50/30' : 'card-orange'}">
+                <h3 class="font-black text-slate-800 text-[14px] mb-4 uppercase leading-snug pl-2">${esc(t_obj.title)} ${badge}</h3>
+                ${extNote}${rem}${adminFile}
+                ${t_obj.staffRemark ? `<div class="ml-2 mb-3 p-2 bg-orange-50 border border-orange-100 rounded-lg text-[10px] text-orange-600 font-bold uppercase notranslate"><i class="fa-solid fa-comment-dots mr-1 text-[#ff6b00]"></i> ${t("Saved Note:")} ${esc(t_obj.staffRemark)}</div>` : ''}
+                <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-5 pl-2 uppercase gap-2 notranslate">
+                    <span><i class="fa-regular fa-calendar text-[#ff6b00] mr-1.5"></i> ${t("Due:")} ${t_obj.dueDate === "No Date" ? t("Anytime") : esc(t_obj.dueDate)}</span>
+                    <span class="bg-slate-50 px-2.5 py-1 rounded border border-slate-200 shrink-0">${t("From:")} ${esc(t_obj.givenBy)}</span>
+                </div>
+                <div class="flex gap-2 border-t border-slate-100 pt-4">
+                    <button onclick="openTransferModal('${jid}')" class="btn-transfer notranslate" title="${t("Transfer")}"><i class="fa-regular fa-paper-plane"></i></button>
+                    <button onclick="triggerFileSelect('${jid}')" class="btn-transfer notranslate" title="${t("Attach Files")}"><i class="fa-solid fa-paperclip text-[#ff6b00]"></i></button>
+                    <button onclick="toggleRemark('${jid}')" class="btn-outline flex-1 notranslate"><i class="fa-regular fa-comment-dots mr-1.5"></i> ${t("Note")}</button>
+                    <button onclick="submitTask('${jid}', 'delegated', false)" class="btn-done flex-1 notranslate"><i class="fa-solid ${isRej ? 'fa-upload text-yellow-400' : 'fa-check text-[#ff6b00]'} mr-1.5"></i> ${isRej ? t('Resend') : t('Done')}</button>
+                </div>
+                <input type="file" id="file-input-${sid}" multiple accept="*/*" class="hidden notranslate" onchange="handleFileSelect(this, '${jid}')">
+                <div id="file-preview-${sid}" class="hidden text-[10px] bg-blue-50 text-blue-600 p-2 rounded-lg font-bold mt-3 text-center w-full uppercase notranslate"></div>
+                <div id="remark-box-${sid}" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <textarea id="remark-input-${sid}" rows="2" placeholder="Type your note here..." class="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:border-[#ff6b00] resize-none mb-3 notranslate"></textarea>
+                    <div class="flex gap-2 mb-2">
+                        <button onclick="toggleRemark('${jid}')" class="w-1/3 bg-slate-200 text-slate-600 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-slate-300 notranslate">${t("Cancel")}</button>
+                        <button onclick="submitTask('${jid}', 'delegated', true)" class="w-2/3 bg-orange-100 text-orange-600 border border-orange-200 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-orange-200 notranslate"><i class="fa-solid fa-save mr-1.5"></i> ${t("Save Note Only")}</button>
+                    </div>
+                    <button onclick="submitTask('${jid}', 'delegated', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md notranslate"><i class="fa-solid fa-paper-plane mr-1.5"></i> ${t("Send to Review")}</button>
+                </div>
+            </div>`;
+        });
+
+        updateHTML('delegatedList', delPendingHTML || emptyState(t("No pending assigned tasks"), "fa-briefcase", "text-[#ff6b00]"));
+        updateHTML('reviewList', reviewHTML || emptyState(t("Nothing waiting for approval"), "fa-hourglass-half", "text-[#ffb800]"));
+        renderRoutineList(); renderCompletedList();
+
+        countUp(document.getElementById('kpiRoutine'), cRout); countUp(document.getElementById('kpiDelegated'), cDelPend); countUp(document.getElementById('kpiReview'), cRev); countUp(document.getElementById('kpiDone'), cComp);
+
+        const setBadge = (id, n) => { const el = document.getElementById(id); if(!el) return; if(n > 0) { el.innerText = n > 99 ? '99+' : n; el.classList.remove('hidden'); } else el.classList.add('hidden'); };
+        setBadge('navBadgeRoutine', cRout); setBadge('navBadgeDelegated', cDelPend); setBadge('navBadgeReview', cRev);
+        const setCount = (id, n) => { const el = document.getElementById(id); if(el) el.innerText = n; };
+        setCount('drwCountRoutine', cRout); setCount('drwCountDelegated', cDelPend); setCount('drwCountReview', cRev); setCount('drwCountDone', cComp);
+
+        const safeDaily = (stats && stats.dailyScore !== undefined && stats.dailyScore !== "") ? stats.dailyScore : "0%";
+        const safeMonthly = (stats && stats.monthlyScore !== undefined && stats.monthlyScore !== "") ? stats.monthlyScore : "0";
+        
+        let dynamicDelegatedScore = "0";
+        if(rawDelegatedTasks.length > 0) {
+            let latePenalty = 0; const nowD = new Date(); const cm = nowD.getMonth(); const cy = nowD.getFullYear();
+            rawDelegatedTasks.forEach(t => {
+                if(t.status === 'completed' && t.dueDate !== "No Date" && t.actualDate) {
+                    const aP = t.actualDate.split(' ')[0].split('/');
+                    if(aP.length === 3) {
+                        const aD = new Date(parseInt(aP[2],10), parseInt(aP[1],10)-1, parseInt(aP[0],10));
+                        if(aD.getMonth() === cm && aD.getFullYear() === cy) {
+                            const dP = t.dueDate.split('/');
+                            if(dP.length === 3) { const dD = new Date(parseInt(dP[2],10), parseInt(dP[1],10)-1, parseInt(dP[0],10)); aD.setHours(0,0,0,0); dD.setHours(0,0,0,0); const diffDays = Math.round((aD.getTime() - dD.getTime()) / 86400000); latePenalty -= diffDays; }
+                        }
+                    }
+                }
+            });
+            dynamicDelegatedScore = latePenalty > 0 ? "+" + latePenalty : String(latePenalty);
+        }
+
+        const elDaily = document.getElementById('kpiDailyScore'); const elMonthly = document.getElementById('kpiMonthlyScore'); const elDelegated = document.getElementById('kpiDelegatedScore');
+        if(elDaily) elDaily.innerText = safeDaily; if(elMonthly) elMonthly.innerText = safeMonthly; if(elDelegated) elDelegated.innerText = dynamicDelegatedScore;
+
+        try {
+            const canvas = document.getElementById('taskChart');
+            if(canvas) {
+                const dt = [cRout, cDelPend, cRev, cComp]; const hasData = dt.some(v => v > 0);
+                if(taskChartInstance) { taskChartInstance.destroy(); taskChartInstance = null; }
+                taskChartInstance = new Chart(canvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: ['Routine','Pending','Review','Done'], datasets: [{ data: hasData ? dt : [1], backgroundColor: hasData ? ['#00a8ff','#ff6b00','#ffb800','#22c55e'] : ['#F1F5F9'], borderWidth: 0, hoverOffset: 1, borderRadius: 2 }] },
+                    options: { responsive:true, maintainAspectRatio:false, animation:false, cutout:'72%', plugins:{ legend:{ position:'Center', labels:{ usePointStyle:true, padding:12, font:{ family:"'Inter'", size:10, weight:'800' }, color:'#475569' } } } }
+                });
+            }
+        } catch(e) {}
+        
+        applyTranslations();
+    }
+
+    function moveIndicator(tabId) { const i = NAV_ORDER.indexOf(tabId); const nav = document.getElementById('bottomNav'); if(nav && i > -1) nav.style.setProperty('--nav-i', i); }
+    function switchTab(tabId, fromDrawer) {
+        activeTab = tabId; document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active')); document.querySelectorAll('.dark-nav-btn').forEach(el => el.classList.remove('active')); document.querySelectorAll('.drawer-item').forEach(el => el.classList.remove('active'));
+        const view = document.getElementById('tab-' + tabId); if (view) view.classList.add('active'); const nav = document.getElementById('nav-' + tabId); if (nav) nav.classList.add('active'); const drw = document.getElementById('drw-' + tabId); if (drw) drw.classList.add('active');
+        moveIndicator(tabId); if(fromDrawer) closeDrawer(); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) { window.scrollTo(0,0); }
+    }
+
+    setInterval(() => { if(currentEmployee && !syncLocked && document.visibilityState === 'visible' && !isUserInteracting()) loadAllTasks(currentEmployee, true); }, 60000);
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && currentEmployee && !syncLocked && !isUserInteracting()) loadAllTasks(currentEmployee, true); });
+    document.addEventListener('click', (e) => { const box = document.getElementById('transferList'); if(box && !box.classList.contains('hidden') && !e.target.closest('#transferBox')) box.classList.add('hidden'); });
+    document.getElementById('pass').addEventListener('keyup', (e) => { if(e.key === 'Enter') login(); });
+    window.onload = checkSession;
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="theme-color" content="#6366F1">
+  <title>Plant Indent &amp; Procurement System</title>
+  <?!= include('Styles'); ?>
+  <?!= include('Lang'); ?>
+</head>
+<body>
+
+  <!-- ===================== ambient background ===================== -->
+  <div class="aurora">
+    <span class="blob b1"></span><span class="blob b2"></span>
+    <span class="blob b3"></span><span class="blob b4"></span>
+  </div>
+
+  <!-- ===================== boot splash ============================ -->
+  <div id="boot" class="boot">
+    <div class="boot-card">
+      <div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <p class="boot-text">Starting Indent Flow…</p>
+    </div>
+  </div>
+
+  <!-- ===================== login ================================== -->
+  <section id="loginView" class="login hidden">
+    <div class="login-card tilt">
+      <div class="brand-mark"><span>IF</span></div>
+      <h1 class="login-title">Indent&nbsp;Flow</h1>
+      <p class="login-sub" id="loginOrg">Plant Indent &amp; Procurement System</p>
+
+      <form id="loginForm" autocomplete="off">
+        <label class="field">
+          <span class="field-label" data-i18n="User ID">User ID</span>
+          <input id="loginId" class="input" type="text" placeholder="e.g. SONU" autocapitalize="characters" required>
+        </label>
+        <label class="field">
+          <span class="field-label" data-i18n="PIN">PIN</span>
+          <input id="loginPin" class="input" type="password" inputmode="numeric" placeholder="••••" required>
+        </label>
+        <div id="loginError" class="form-error hidden"></div>
+        <button class="btn btn-primary btn-block btn-3d" type="submit" id="loginBtn">
+          <span>Sign In</span>
+        </button>
+      </form>
+      <p class="login-hint">First time? Ask your administrator for your User&nbsp;ID and PIN.</p>
+    </div>
+  </section>
+
+  <!-- ===================== app shell ============================== -->
+  <div id="app" class="app hidden">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="logo-dot"></div>
+        <div>
+          <div class="topbar-title" id="orgName">GG Minerals</div>
+          <div class="topbar-sub">Indent &amp; Procurement</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" id="refreshBtn" title="Refresh">
+          <svg viewBox="0 0 24 24"><path d="M20 11A8 8 0 1 0 18 16.5"/><polyline points="20 5 20 11 14 11"/></svg>
+        </button>
+        <button class="user-chip" id="userChip" title="Account & language">
+          <div class="avatar" id="avatar">U</div>
+          <div class="user-meta">
+            <div class="user-name" id="userName">User</div>
+            <div class="role-pill" id="userRole">USER</div>
+          </div>
+        </button>
+        <button class="icon-btn" id="menuBtn" title="Menu">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="shell">
+      <nav class="sidenav" id="sideNav"></nav>
+      <main class="main" id="main"></main>
+    </div>
+
+    <nav class="bottomnav" id="bottomNav"></nav>
+  </div>
+
+  <!-- ===================== overlays =============================== -->
+  <div id="drawer" class="drawer hidden">
+    <div class="drawer-scrim" data-close="drawer"></div>
+    <aside class="drawer-panel" id="drawerPanel"></aside>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-scrim" data-close="modal"></div>
+    <div class="modal-card" id="modalCard"></div>
+  </div>
+
+  <div id="celebrate" class="celebrate hidden">
+    <canvas id="confetti"></canvas>
+    <div class="celebrate-badge">
+      <div class="badge-3d">
+        <svg class="tick" viewBox="0 0 52 52">
+          <circle class="tick-ring" cx="26" cy="26" r="23"/>
+          <path class="tick-path" d="M14 27 l8 8 l16 -18"/>
+        </svg>
+      </div>
+      <div class="celebrate-title" id="celebrateTitle">Step complete</div>
+      <div class="celebrate-sub" id="celebrateSub"></div>
+    </div>
+  </div>
+
+  <div id="syncFlash" class="sync-flash hidden"><span class="sync-dot"></span>Updated</div>
+  <div id="toasts" class="toasts"></div>
+  <div id="busy" class="busy hidden"><div class="busy-ring"></div></div>
+
+  <?!= include('Scripts'); ?>
+</body>
+</html>

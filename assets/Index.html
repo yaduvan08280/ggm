@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GGM Assets — Enterprise Command Center</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg:        #F1F5F9;       
+      --surface:   #FFFFFF;       
+      --panel:     #FFFFFF;       
+      --border:    #E2E8F0;       
+      --border-hi: #CBD5E1;       
+      --text:      #0F172A;       
+      --muted:     #64748B;       
+      --accent:    #D97706;       
+      --accent2:   #2563EB;       
+      --green:     #059669;       
+      --red:       #DC2626;       
+      --font-ui:   'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+    /* ── LOGIN OVERLAY ── */
+    #loginOverlay { position: fixed; inset: 0; z-index: 999999; background: var(--bg); display: flex; align-items: center; justify-content: center; transition: opacity 0.5s ease, visibility 0.5s ease; }
+    .login-box { background: var(--surface); padding: 40px; border-radius: 24px; width: 100%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); border: 1px solid var(--border); text-align: center; margin: 20px; }
+    .login-logo { margin-bottom: 24px; display: inline-flex; align-items: center; gap: 12px; }
+    .login-logo .icon { width: 52px; height: 52px; background: linear-gradient(135deg, var(--accent2), #3B82F6); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3); }
+    .login-logo .text { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+    .login-logo .text span { color: var(--accent2); }
+    .login-subtitle { color: var(--muted); margin-bottom: 30px; font-size: 15px; }
+    .login-input-group { position: relative; margin-bottom: 16px; text-align: left; }
+    .login-input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+    .login-input { width: 100%; padding: 14px 14px 14px 46px; border: 1px solid var(--border); border-radius: 14px; font-family: var(--font-ui); font-size: 15px; outline: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .login-input:focus { border-color: var(--accent2); box-shadow: 0 0 0 4px rgba(37,99,235,0.1); transform: translateY(-1px); }
+    .login-btn { width: 100%; padding: 16px; background: var(--text); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 10px; }
+    .login-btn:hover { background: #1E293B; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.15); }
+    .login-btn:active { transform: scale(0.96); }
+    .login-error { color: var(--red); font-size: 14px; font-weight: 500; margin-top: 16px; display: none; }
+
+    /* ── BASE APP & ANIMATIONS ── */
+    .app { display: flex; height: 100vh; overflow: hidden; opacity: 0; transition: opacity 0.6s ease; }
+    .app.ready { opacity: 1; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; transition: background 0.2s; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    
+    @keyframes fadeInRow { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
+    .fade-in { animation: fadeInRow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+    @keyframes floatUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── SIDEBAR ── */
+    .sidebar { width: 260px; min-width: 260px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 40; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .sidebar-logo-container { padding: 24px 24px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .sidebar-logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent2), #3B82F6); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
+    .sidebar-logo-text { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
+    .sidebar-logo-text span { color: var(--accent2); }
+
+    .sidebar-section { padding: 24px 24px 8px; font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin: 2px 16px; border-radius: 10px; cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 500; transition: all 0.2s ease; text-decoration: none; }
+    .nav-item:hover { background: #F1F5F9; color: var(--text); transform: translateX(6px); }
+    .nav-item.active { background: rgba(37, 99, 235, 0.08); color: var(--accent2); font-weight: 600; transform: translateX(6px); }
+    .nav-item i { width: 18px; text-align: center; font-size: 16px; transition: transform 0.2s; }
+    .nav-item:hover i { transform: scale(1.1); }
+
+    .sidebar-bottom { margin-top: auto; padding: 20px 16px; border-top: 1px solid var(--border); background: #F8FAFC; display: flex; align-items: center; justify-content: space-between; }
+    .admin-card-inner { display: flex; align-items: center; gap: 12px; }
+    .admin-avatar { width: 36px; height: 36px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--text); flex-shrink: 0; }
+    .admin-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .admin-role { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 5px; margin-top: 1px; font-weight: 500; }
+    .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s ease-in-out infinite; }
+    .btn-logout { background: transparent; border: 1px solid var(--border-hi); color: var(--red); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+    .btn-logout:hover { background: #FEF2F2; border-color: #FECACA; transform: translateY(-2px); }
+    .btn-logout:active { transform: scale(0.92); }
+
+    /* ── MAIN CONTENT & TOPBAR ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; z-index: 10; }
+    .topbar-left { display: flex; align-items: center; gap: 16px; min-width:0; }
+    .hamburger { background: none; border: none; color: var(--text); cursor: pointer; font-size: 20px; display: none; }
+    .page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+    
+    .page-sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); display:flex; align-items:center; gap:8px;}
+    .live-badge { display: flex; align-items: center; gap: 6px; background: #E6F4EA; color: var(--green); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 99px; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(5,150,105,0.1); }
+    
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .btn-top-action { width: 38px; height: 38px; border-radius: 10px; cursor: pointer; border: none; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+    .btn-top-action:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    .btn-top-action:active { transform: scale(0.92); }
+    .btn-top-dispatch { background: var(--accent2); }
+    .btn-top-receive { background: var(--green); }
+    .btn-sync { background: var(--text); }
+
+    .content { flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 28px; position: relative; }
+    .tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 12px 2px; font-size: 15px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s ease; margin-bottom: -1px; white-space: nowrap; flex-shrink: 0; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent2); border-bottom-color: var(--accent2); font-weight: 600; }
+
+    .section { display: none; }
+    .section.active { display: flex; flex-direction: column; gap: 28px; animation: slideInFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+    /* ── ULTRA-PREMIUM KPI CARDS ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    
+    .kpi-card { 
+        background: #ffffff; 
+        border: 1px solid var(--border); 
+        border-radius: 20px; 
+        padding: 24px; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 14px; 
+        box-shadow: 0 10px 20px -10px rgba(0,0,0,0.05); 
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
+        cursor: pointer; 
+        position: relative; 
+        overflow: hidden; 
+        z-index: 1;
+        animation: floatUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; 
+    }
+    
+    .kpi-card::before {
+      content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+      background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 100%);
+      transform: skewX(-25deg); transition: all 0.6s ease; z-index: 2; pointer-events: none;
+    }
+    .kpi-card:hover::before { left: 200%; }
+    
+    .kpi-card:hover { 
+        transform: translateY(-8px); 
+        box-shadow: 0 20px 30px -10px rgba(0,0,0,0.12); 
+    }
+    
+    .kpi-card .bg-icon {
+      position: absolute; right: -15px; bottom: -15px; font-size: 100px; z-index: -1;
+      opacity: 0.04; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .kpi-card:hover .bg-icon { transform: scale(1.15) rotate(-10deg); opacity: 0.08; }
+
+    .kpi-card.blue { border-bottom: 4px solid var(--accent2); background: linear-gradient(145deg, #ffffff, #f0f7ff); }
+    .kpi-card.green { border-bottom: 4px solid var(--green); background: linear-gradient(145deg, #ffffff, #f2fcf7); }
+    .kpi-card.amber { border-bottom: 4px solid var(--accent); background: linear-gradient(145deg, #ffffff, #fffdf0); }
+    .kpi-card.red { border-bottom: 4px solid var(--red); background: linear-gradient(145deg, #ffffff, #fff5f5); }
+
+    .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+    .kpi-card:nth-child(2) { animation-delay: 0.1s; }
+    .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+    .kpi-card:nth-child(4) { animation-delay: 0.2s; }
+    
+    .kpi-header { display: flex; align-items: center; justify-content: space-between; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    .kpi-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .kpi-card:hover .kpi-icon { transform: scale(1.15) rotate(5deg); }
+    .kpi-card.blue .kpi-icon { background: linear-gradient(135deg, #EFF6FF, #DBEAFE); color: var(--accent2); }
+    .kpi-card.green .kpi-icon { background: linear-gradient(135deg, #ECFDF5, #D1FAE5); color: var(--green); }
+    .kpi-card.amber .kpi-icon { background: linear-gradient(135deg, #FFFBEB, #FEF3C7); color: var(--accent); }
+    .kpi-card.red .kpi-icon { background: linear-gradient(135deg, #FEF2F2, #FEE2E2); color: var(--red); }
+    
+    .kpi-value { font-size: 38px; font-weight: 700; color: var(--text); letter-spacing: -1px; line-height: 1; }
+    .kpi-footer { font-size: 12px; color: var(--muted); border-top: 1px solid rgba(0,0,0,0.05); padding-top: 12px; display: flex; align-items: center; gap: 6px; font-weight: 500; transition: color 0.2s; }
+    .kpi-card:hover .kpi-footer { color: var(--text); }
+
+    .grid-2-1 { display: grid; grid-template-columns: 1fr 400px; gap: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+    /* ── CARDS & TABLES ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03); transition: box-shadow 0.3s ease; }
+    .card:hover { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08); }
+    .card-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: rgba(248,250,252,0.6); backdrop-filter: blur(8px); }
+    .card-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .card-badge { font-size: 12px; padding: 4px 10px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+    .card-body { padding: 24px; flex: 1; overflow: hidden; }
+    .card-scroll { flex: 1; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .data-table th { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); padding: 14px 20px; background: rgba(248,250,252,0.9); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border); white-space: nowrap; backdrop-filter: blur(4px); }
+    .data-table td { padding: 16px 20px; border-bottom: 1px solid #F1F5F9; font-size: 14px; color: var(--text); white-space: nowrap; transition: all 0.2s; }
+    .data-table tbody tr { animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: all 0.2s; }
+    .data-table tbody tr:hover { background: #FFFFFF; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transform: translateY(-1px); z-index: 10; position: relative; }
+    
+    .cursor-pointer:hover { background: #FFFFFF !important; transform: scale(1.005); box-shadow: inset 3px 0 0 var(--accent2), 0 4px 15px rgba(0,0,0,0.05); }
+
+    .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 9999px; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .badge.transit { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .badge.base { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
+    
+    .btn-cancel-mini { background: #fff; color: var(--red); border: 1px solid #FECACA; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 10px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .btn-cancel-mini:hover { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 0 4px 8px rgba(220, 38, 38, 0.25); transform: translateY(-2px); }
+    .btn-cancel-mini:active { transform: scale(0.92); }
+    
+    .btn-trans-mini { background: #fff; color: var(--accent2); border: 1px solid #BFDBFE; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 10px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .btn-trans-mini:hover { background: var(--accent2); color: #fff; border-color: var(--accent2); box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25); transform: translateY(-2px); }
+    .btn-trans-mini:active { transform: scale(0.92); }
+
+    .btn-rec-mini { background: #fff; color: var(--green); border: 1px solid #A7F3D0; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 10px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .btn-rec-mini:hover { background: var(--green); color: #fff; border-color: var(--green); box-shadow: 0 4px 8px rgba(5, 150, 105, 0.25); transform: translateY(-2px); }
+    .btn-rec-mini:active { transform: scale(0.92); }
+
+    .mono { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+    .route { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+    .route-loc { background: #F1F5F9; border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; font-weight: 500; color: var(--text); font-size: 13px; white-space: nowrap; }
+    .route-arrow { color: var(--muted); font-size: 11px; }
+
+    .chart-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
+    .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; pointer-events: none; }
+    .donut-center .val { font-size: 34px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+    .donut-center .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: -2px; }
+    
+    .legend { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+    .legend-item { display: grid; grid-template-columns: 130px 1fr 30px; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; transition: background 0.2s, transform 0.2s; cursor: pointer; }
+    .legend-item:hover { background: #F1F5F9; transform: translateX(5px); }
+    .legend-left { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--text); }
+    .legend-left-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5); }
+    .legend-count { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--text); text-align: right; }
+    
+    .cat-breakdown-item { display:flex; flex-direction:column; padding:10px 14px; border-radius:10px; cursor:pointer; transition:all 0.2s; margin-bottom:6px; }
+    .cat-breakdown-item:hover { background: #F1F5F9; transform: scale(1.02); }
+
+    .loc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .loc-card { background: linear-gradient(145deg, #ffffff, #fcfcfc); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .loc-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.08); border-color: var(--border-hi); }
+    .loc-name { font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+    .loc-name i { color: var(--accent2); font-size: 14px; }
+    .loc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .loc-stat { background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 8px; padding: 12px; transition: background 0.2s; }
+    .loc-card:hover .loc-stat { background: #F1F5F9; border-color: #E2E8F0; }
+    .loc-stat-val { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .loc-stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 500; text-transform: uppercase; }
+
+    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .filter-select, .filter-input { background: #fff; border: 1px solid var(--border); color: var(--text); font-family: var(--font-ui); font-size: 14px; padding: 10px 16px; border-radius: 10px; outline: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .filter-select:focus, .filter-input:focus { border-color: var(--accent2); box-shadow: 0 0 0 4px rgba(37,99,235,0.1); transform: translateY(-1px); }
+    .filter-btn { background: #fff; border: 1px solid var(--border); color: var(--text); font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+    .filter-btn:hover { background: #F1F5F9; border-color: var(--border-hi); }
+    .filter-btn:active { transform: scale(0.95); }
+
+    .empty-state, .loading-state { text-align: center; padding: 60px 48px; color: var(--muted); }
+    .empty-state i { font-size: 48px; margin-bottom: 20px; opacity: 0.2; display: block; color: var(--text); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid #E2E8F0; border-top-color: var(--accent2); border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; margin-bottom: 12px; }
+
+    .progress-bar { height: 6px; border-radius: 99px; background: #E2E8F0; overflow: hidden; margin-top: 2px; width: 100%; }
+    .progress-fill { height: 100%; border-radius: 99px; transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    #toast-container { position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; }
+    .toast { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 320px; display: flex; align-items: flex-start; gap: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); transform: translateX(120%); opacity: 0; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .toast.show { transform: translateX(0); opacity: 1; }
+    .toast.hide { transform: translateX(120%); opacity: 0; }
+    .toast-icon { font-size: 18px; margin-top: 1px; }
+    .toast-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .toast-msg { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── CUSTOM MODALS & FORM GRID ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px); z-index: 999999; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.3s ease; padding: 20px; }
+    .modal-overlay.open { opacity: 1; visibility: visible; }
+    .modal-card { background: #fff; border-radius: 20px; width: 100%; max-width: 420px; padding: 32px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.9) translateY(30px); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); max-height: 90vh; overflow-y: auto; }
+    .modal-overlay.open .modal-card { transform: scale(1) translateY(0); }
+    .modal-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 20px; }
+    .modal-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .modal-text { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+    
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; text-align: left; }
+    .form-grid .full-width { grid-column: 1 / -1; }
+    
+    .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .modal-btn { flex: 1; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border: none; }
+    .modal-btn:active { transform: scale(0.95); }
+    .modal-btn-sec { background: #F1F5F9; color: var(--text); }
+    .modal-btn-sec:hover { background: #E2E8F0; }
+    .modal-btn-pri { background: var(--accent2); color: #fff; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2); }
+    .modal-btn-pri:hover { background: #1D4ED8; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3); }
+    .modal-btn-dan { background: var(--red); color: #fff; box-shadow: 0 4px 6px rgba(220,38,38,0.2); }
+    .modal-btn-dan:hover { background: #B91C1C; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(220,38,38,0.3); }
+    .modal-btn-grn { background: var(--green); color: #fff; box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2); }
+    .modal-btn-grn:hover { background: #047857; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(5, 150, 105, 0.3); }
+
+    .form-group { text-align: left; margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-label span.req { color: var(--red); margin-left: 3px; font-size: 14px; }
+    .form-control { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-family: var(--font-ui); font-size: 14px; outline: none; background: #fff; color: var(--text); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .form-control:focus { border-color: var(--accent2); box-shadow: 0 0 0 4px rgba(37,99,235,0.1); transform: translateY(-1px); }
+    .form-control:disabled { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
+
+    /* File Badge Style for Multi-Upload */
+    .file-badge { background: #F8FAFC; border: 1px solid #CBD5E1; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text); display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); max-width: 100%; overflow: hidden; }
+    .file-badge span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-badge i { color: var(--red); cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s; }
+    .file-badge i:hover { background: #FEE2E2; }
+
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 39; backdrop-filter: blur(4px); transition: all 0.3s ease; }
+    .sidebar-overlay.active { display: block; }
+
+    .detail-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 440px; background: #fff; border-left: 1px solid var(--border); z-index: 50; transform: translateX(100%); transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.1); }
+    .detail-panel.open { transform: translateX(0); }
+    .detail-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; }
+    .detail-title { font-size: 18px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 10px; }
+    .detail-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; transition: color 0.2s, transform 0.2s; }
+    .detail-close:hover { color: var(--red); transform: scale(1.1); }
+    .detail-body { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .detail-row { background: #FFF; border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: transform 0.2s, box-shadow 0.2s; }
+    .detail-row:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .detail-row-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+    .detail-row-val { font-size: 15px; font-weight: 600; color: var(--text); }
+    
+    .mobile-handle { display: none; width: 40px; height: 5px; background: #CBD5E1; border-radius: 99px; margin: 12px auto 0; }
+
+    /* ── RESPONSIVE TABLE FIXES ── */
+    .matrix-table { min-width: 850px; } 
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes slideInFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 1250px) { .grid-2-1 { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    
+    @media (max-width: 768px) {
+      html, body { overflow: auto; height: auto; min-height: 100vh; }
+      .app, .main { display: block; height: auto; overflow: visible; }
+      .content { overflow: visible; padding: 16px 14px 40px; gap: 20px; }
+      .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); height: 100vh; }
+      .sidebar.open { transform: translateX(0); }
+      
+      .topbar { padding: 12px 14px; flex-wrap: nowrap; gap: 8px; display: flex; align-items: center; }
+      .topbar-left { flex: 1; min-width: 0; gap: 10px; overflow: hidden; display:flex; align-items:center; }
+      .hamburger { display: block; padding-right: 4px; font-size: 18px; margin:0; }
+      .page-title { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 
+      .page-sub { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0; }
+      
+      .topbar-right { gap: 6px; flex-wrap: nowrap; display: flex; align-items: center; }
+      .btn-top-action { padding: 0 !important; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+      .live-badge { padding: 4px 6px; font-size: 10px; border-radius: 6px; }
+
+      .tabs { position: sticky; top: 0; background: var(--bg); z-index: 35; padding-top: 12px; padding-bottom: 12px; margin-top: -4px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } 
+      .kpi-card { padding: 16px 14px; gap: 10px; border-radius: 12px; }
+      .kpi-value { font-size: 26px; letter-spacing: -0.5px;} .kpi-label { font-size: 11px; }
+      .loc-grid, .grid-3 { grid-template-columns: 1fr; gap: 14px; }
+      .filter-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .filter-select, .filter-input, .filter-btn { width: 100%; font-size: 13px; padding: 10px 12px; border-radius: 8px; }
+      .filter-input, .filter-btn { grid-column: span 2; }
+      
+      .list-table, .list-table tbody, .list-table tr, .list-table td { display: block !important; width: 100% !important; }
+      .list-table thead { display: none !important; }
+      .list-table tr { background: #FFFFFF !important; border: 1px solid var(--border) !important; border-radius: 14px !important; margin-bottom: 12px !important; padding: 14px 16px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; }
+      .list-table td { padding: 8px 0 !important; border-bottom: none !important; white-space: normal !important; font-size: 14px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; flex-wrap: wrap; gap: 8px; }
+      .hide-desktop { display: inline-block !important; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+      
+      .detail-panel { top: auto !important; bottom: 0 !important; right: 0 !important; left: 0 !important; width: 100% !important; height: auto !important; max-height: 75vh !important; border-left: none !important; border-top: 1px solid var(--border) !important; border-radius: 24px 24px 0 0 !important; transform: translateY(100%) !important; box-shadow: 0 -10px 30px rgba(0,0,0,0.1) !important; }
+      .detail-panel.open { transform: translateY(0) !important; }
+      .mobile-handle { display: block; }
+      .detail-header { padding: 12px 24px 18px; border-bottom: 1px solid var(--border); }
+      .card-header { padding: 16px; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+      .card-title { font-size: 15px; } .card-body { padding: 16px; }
+
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 769px) { .hide-desktop { display: none !important; } }
+
+    /* ── Add button (top right) and floating reload (bottom left) ── */
+    .btn-top-add { background: #F59E0B; }
+    .fab-sync { position: fixed; left: 276px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 38;
+      width: 50px; height: 50px; border-radius: 50%; border: none; cursor: pointer; background: var(--text); color: #fff; font-size: 18px;
+      display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.32); transition: transform 0.2s; }
+    .fab-sync:active { transform: scale(0.9); }
+
+    /* ── Own vehicle / Contractor ── */
+    .own-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .own-opt { border: 1.5px solid #CBD5E1; background: #F8FAFC; color: var(--muted); border-radius: 12px; padding: 12px 10px; font-size: 14px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; transition: all 0.2s; }
+    .own-opt.active { border-color: var(--accent2); background: #EFF6FF; color: var(--accent2); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+    .own-opt[data-own="CONTRACTOR"].active { border-color: #D97706; background: #FFFBEB; color: #B45309; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.12); }
+    .own-hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-align: left; }
+    .own-chip { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px;
+      border-radius: 6px; background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; margin-left: 6px; vertical-align: middle; }
+
+    /* ── Phones ── */
+    @media (max-width: 768px) {
+      .fab-sync { left: 16px; }
+      .content { padding-bottom: 96px; }
+      .tabs { gap: 18px; }
+      .tab { font-size: 13.5px; padding: 8px 2px; }
+      .card-add-btn { display: none !important; }
+      .card-header .card-badge { font-size: 11px; }
+      /* fleet cards: name first, no row-number line, tighter lines */
+      #fleetBody td:first-child { display: none !important; }
+      #fleetBody tr { padding: 12px 14px !important; }
+      #fleetBody td { padding: 5px 0 !important; font-size: 13.5px !important; }
+      #fleetBody td:nth-child(2) .hide-desktop { display: none !important; }
+      #fleetBody td:nth-child(2) { font-size: 15px !important; padding-bottom: 8px !important; border-bottom: 1px dashed var(--border) !important; margin-bottom: 4px; }
+      #fleetBody td:last-child > div { justify-content: flex-start !important; }
+      #fleetBody .hide-desktop { font-size: 11px !important; }
+      /* forms open as a sheet from the bottom, inputs big enough not to zoom */
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal-card { border-radius: 22px 22px 0 0 !important; max-width: 100% !important; max-height: 92vh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)) !important; }
+      .modal-card .form-control, .modal-card select, .modal-card input, .modal-card textarea { font-size: 16px !important; }
+      .modal-actions { position: sticky; bottom: -20px; background: #fff; padding-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeAllModals()"></div>
+
+<!-- ── CUSTOM ACTION MODALS ── -->
+<div id="customConfirmModal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-icon" style="background:#FEF2F2; color:var(--red);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div class="modal-title">Cancel Transfer?</div>
+    <div class="modal-text">Are you sure you want to cancel this transfer? The asset will instantly return perfectly to its original location.</div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-sec" onclick="closeModals()">Go Back</button>
+      <button class="modal-btn modal-btn-dan" id="confirmCancelBtn">Yes, Cancel Transfer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── REMOVE ASSET (admin / boss only) ── -->
+<div id="modalRemoveAsset" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-icon" style="background:#FEF2F2; color:var(--red);"><i class="fa-solid fa-trash-can"></i></div>
+    <div class="modal-title">Remove this asset?</div>
+    <div class="modal-text" id="removeAssetText" style="margin-bottom:14px"></div>
+    <div class="form-group" style="text-align:left">
+      <label class="form-label">Reason<span class="req">*</span></label>
+      <textarea id="removeAssetReason" class="form-control" rows="3" placeholder="e.g. sold, scrapped, contract ended"></textarea>
+    </div>
+    <div class="own-hint">It is taken off the sheet and kept on record in the "Removed Assets" tab.</div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-sec" onclick="closeModals()">Keep it</button>
+      <button class="modal-btn modal-btn-dan" id="btnConfirmRemove" onclick="submitRemoveAsset()">Remove asset</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SMART ADD ASSET MODAL ── -->
+<div id="modalAddAsset" class="modal-overlay">
+  <div class="modal-card" style="max-width: 520px; padding: 24px;">
+    <div class="modal-icon" style="background:#EFF6FF; color:var(--accent2); width: 48px; height: 48px; font-size: 20px; margin-bottom: 16px;"><i class="fa-solid fa-layer-group"></i></div>
+    <div class="modal-title" style="font-size: 18px;">Register New Asset</div>
+    <div class="modal-text" style="font-size: 12px; margin-bottom: 16px;">Add to hub & automatically sync with Enterprise Vehicle Database.</div>
+    
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label class="form-label">Vehicle belongs to<span class="req">*</span></label>
+        <div class="own-toggle">
+          <button type="button" class="own-opt active" data-own="OWN" onclick="setOwnership('OWN')"><i class="fa-solid fa-building"></i> Own vehicle</button>
+          <button type="button" class="own-opt" data-own="CONTRACTOR" onclick="setOwnership('CONTRACTOR')"><i class="fa-solid fa-handshake"></i> Contractor</button>
+        </div>
+        <div class="own-hint" id="ownHint">Added under <b>Own vehicles</b> in the sheet.</div>
+      </div>
+
+      <div class="form-group full-width">
+        <label class="form-label">Asset Category<span class="req">*</span></label>
+        <select id="addAssetCat" class="form-control" onchange="addCatChanged()">
+          <option value="DUMPERS">Dumpers</option>
+          <option value="TRACTORS">Tractors</option>
+          <option value="JCB">JCB</option>
+          <option value="EXCAVATOR">Excavator / Machine</option>
+          <option value="CRAWLER/ COMP.">Crawler / Comp.</option>
+          <option value="VAN & TANKERS">Van & Tankers</option>
+          <option value="MISC." id="addCatMisc">Misc.</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Stationed Hub<span class="req">*</span></label>
+        <select id="addAssetLoc" class="form-control"></select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Name / Tag<span class="req">*</span></label>
+        <input type="text" id="addAssetName" class="form-control" placeholder="Required for tracking" autocomplete="off">
+      </div>
+
+      <div class="form-group" id="wrapAddReg">
+        <label class="form-label" id="lblAddReg">Registration No.</label>
+        <input type="text" id="addAssetReg" class="form-control" placeholder="Optional" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Model No.</label>
+        <input type="text" id="addAssetModel" class="form-control" placeholder="Optional" autocomplete="off">
+      </div>
+
+      <div class="form-group" id="wrapAddChasis">
+        <label class="form-label">Chassis No.</label>
+        <input type="text" id="addAssetChasis" class="form-control" placeholder="Optional" autocomplete="off">
+      </div>
+
+      <div class="form-group" id="wrapAddEngine">
+        <label class="form-label">Engine No.</label>
+        <input type="text" id="addAssetEngine" class="form-control" placeholder="Optional" autocomplete="off">
+      </div>
+
+      <div class="form-group" id="wrapAddMotor">
+        <label class="form-label">Motor No.</label>
+        <input type="text" id="addAssetMotor" class="form-control" placeholder="Optional" autocomplete="off">
+      </div>
+
+      <!-- DUAL BUTTON FOR CAMERA & GALLERY (ADD ASSET) -->
+      <div class="form-group full-width">
+        <label class="form-label">Photo Attach <span style="font-weight:400;color:var(--accent2)">(Max 5 Photos)</span></label>
+        <div style="display:flex; gap:10px;">
+          <label class="modal-btn modal-btn-sec" style="flex:1; margin:0; padding:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:1px solid #CBD5E1; background:#F8FAFC;">
+            <i class="fa-solid fa-camera" style="color:var(--accent2)"></i> Camera
+            <input type="file" id="addAssetCamera" accept="image/*" capture="environment" style="display:none;" onchange="handleFileSelection(event)">
+          </label>
+          <label class="modal-btn modal-btn-sec" style="flex:1; margin:0; padding:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:1px solid #CBD5E1; background:#F8FAFC;">
+            <i class="fa-solid fa-images" style="color:var(--green)"></i> Gallery
+            <input type="file" id="addAssetGallery" accept="image/*" multiple style="display:none;" onchange="handleFileSelection(event)">
+          </label>
+        </div>
+        <div id="filePreviewContainer" style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-sec" onclick="closeModals()">Discard</button>
+      <button class="modal-btn modal-btn-pri" id="btnSubmitAddAsset" onclick="submitAddAsset()">Add & Sync Record</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TRANSFER MODAL ── -->
+<div id="modalTransfer" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-icon" style="background:#EFF6FF; color:var(--accent2);"><i class="fa-solid fa-paper-plane"></i></div>
+    <div class="modal-title">Initiate Transfer</div>
+    
+    <div class="form-group">
+      <label class="form-label">Dispatching From<span class="req">*</span></label>
+      <select id="transSourceLoc" class="form-control" onchange="transSourceChanged()"></select>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Asset Category<span class="req">*</span></label>
+      <select id="transAssetCat" class="form-control" onchange="transCatChanged()">
+        <option value="">-- Select Category --</option>
+        <option value="EXCAVATOR">Excavator</option><option value="TRACTORS">Tractors</option><option value="VAN & TANKERS">Van & Tankers</option><option value="JCB">JCB</option><option value="DUMPERS">Dumpers</option><option value="CRAWLER/ COMP.">Crawler / Comp.</option><option value="MISC.">Misc.</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Select Asset to Dispatch<span class="req">*</span></label>
+      <select id="transAssetSelect" class="form-control" disabled><option value="">-- Select Category First --</option></select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Target Destination<span class="req">*</span></label>
+      <select id="transDestLoc" class="form-control"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Driver Name / Vehicle No.</label>
+      <input type="text" id="transDriver" class="form-control" placeholder="Optional" autocomplete="off">
+    </div>
+    
+    <!-- DUAL BUTTON FOR CAMERA & GALLERY (TRANSFER) -->
+    <div class="form-group full-width">
+      <label class="form-label">Photo of Asset <span style="font-weight:400;color:var(--accent2)">(Max 5 Photos)</span></label>
+      <div style="display:flex; gap:10px;">
+        <label class="modal-btn modal-btn-sec" style="flex:1; margin:0; padding:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:1px solid #CBD5E1; background:#F8FAFC;">
+          <i class="fa-solid fa-camera" style="color:var(--accent2)"></i> Camera
+          <input type="file" id="transCamera" accept="image/*" capture="environment" style="display:none;" onchange="handleTransFileSelection(event)">
+        </label>
+        <label class="modal-btn modal-btn-sec" style="flex:1; margin:0; padding:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:1px solid #CBD5E1; background:#F8FAFC;">
+          <i class="fa-solid fa-images" style="color:var(--green)"></i> Gallery
+          <input type="file" id="transGallery" accept="image/*" multiple style="display:none;" onchange="handleTransFileSelection(event)">
+        </label>
+      </div>
+      <div id="transFilePreviewContainer" style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;"></div>
+    </div>
+    
+    <div class="form-group full-width">
+      <label class="form-label">Remarks</label>
+      <input type="text" id="transRemark" class="form-control" placeholder="Optional" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-sec" onclick="closeModals()">Discard</button>
+      <button class="modal-btn modal-btn-pri" id="btnSubmitTransfer" onclick="submitTransfer()">Dispatch Asset</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECEIVE MODAL ── -->
+<div id="modalReceive" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-icon" style="background:#ECFDF5; color:var(--green);"><i class="fa-solid fa-boxes-packing"></i></div>
+    <div class="modal-title">Receive Asset</div>
+    
+    <div class="form-group">
+      <label class="form-label">Receiving Base<span class="req">*</span></label>
+      <select id="recDestLoc" class="form-control" onchange="recDestChanged()"></select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Select Inbound Asset<span class="req">*</span></label>
+      <select id="recAssetSelect" class="form-control" onchange="handleRecAssetChange()"><option value="">-- Select Asset --</option></select>
+      <input type="hidden" id="recAssetCat">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Driver Name</label>
+      <input type="text" id="recDriver" class="form-control" placeholder="Optional" autocomplete="off">
+    </div>
+    
+    <!-- DUAL BUTTON FOR CAMERA & GALLERY (RECEIVE) -->
+    <div class="form-group full-width">
+      <label class="form-label">Photo of Asset <span style="font-weight:400;color:var(--accent2)">(Max 5 Photos)</span></label>
+      <div style="display:flex; gap:10px;">
+        <label class="modal-btn modal-btn-sec" style="flex:1; margin:0; padding:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:1px solid #CBD5E1; background:#F8FAFC;">
+          <i class="fa-solid fa-camera" style="color:var(--accent2)"></i> Camera
+          <input type="file" id="recCamera" accept="image/*" capture="environment" style="display:none;" onchange="handleRecFileSelection(event)">
+        </label>
+        <label class="modal-btn modal-btn-sec" style="flex:1; margin:0; padding:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:1px solid #CBD5E1; background:#F8FAFC;">
+          <i class="fa-solid fa-images" style="color:var(--green)"></i> Gallery
+          <input type="file" id="recGallery" accept="image/*" multiple style="display:none;" onchange="handleRecFileSelection(event)">
+        </label>
+      </div>
+      <div id="recFilePreviewContainer" style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;"></div>
+    </div>
+    
+    <div class="form-group full-width">
+      <label class="form-label">Remarks</label>
+      <input type="text" id="recRemark" class="form-control" placeholder="Optional" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-sec" onclick="closeModals()">Discard</button>
+      <button class="modal-btn modal-btn-grn" id="btnSubmitReceive" onclick="submitReceive()">Confirm Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── LOGIN OVERLAY ── -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo"><div class="icon"><i class="fa-solid fa-truck-moving"></i></div><div class="text">GGM <span>Assets</span></div></div>
+    <div class="login-subtitle">Secure Gateway Access</div>
+    <div class="login-input-group"><i class="fa-solid fa-map-pin"></i><input type="text" id="loginUser" class="login-input" placeholder="Site Name (e.g. TONK)" autocomplete="off"></div>
+    <div class="login-input-group"><i class="fa-solid fa-lock"></i><input type="password" id="loginPass" class="login-input" placeholder="Password"></div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()"><span>Enter Command Center</span><i class="fa-solid fa-arrow-right-to-bracket"></i></button>
+    <div id="loginError" class="login-error">Invalid Site Name or Password</div>
+  </div>
+</div>
+
+<div class="detail-panel" id="detailPanel">
+  <div class="mobile-handle"></div>
+  <div class="detail-header"><span class="detail-title" id="detailTitle">Asset Details</span><button class="detail-close" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<div class="app" id="mainApp">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo-container"><div class="sidebar-logo-icon"><i class="fa-solid fa-truck-moving"></i></div><div class="sidebar-logo-text">GGM <span>Assets</span></div></div>
+    <p class="sidebar-section">Navigation</p>
+    <a class="nav-item active" onclick="showSection('overview')"><i class="fa-solid fa-chart-line"></i> Overview</a>
+    <a class="nav-item" onclick="showSection('fleet')"><i class="fa-solid fa-truck-fast"></i> Fleet Tracker</a>
+    <a class="nav-item" onclick="showSection('locations')"><i class="fa-solid fa-map-location-dot"></i> Locations Matrix</a>
+    <a class="nav-item" onclick="showSection('history')"><i class="fa-solid fa-clock-rotate-left"></i> History Logs</a>
+    <a class="nav-item" onclick="showSection('analytics')"><i class="fa-solid fa-chart-pie"></i> Intelligence</a>
+    <div class="sidebar-bottom">
+      <div class="admin-card-inner"><div class="admin-avatar"><i class="fa-solid fa-user-shield"></i></div><div><div class="admin-name" id="loggedInName">Admin</div><div class="admin-role"><span class="pulse"></span> System Online</div></div></div>
+      <button class="btn-logout" onclick="doLogout()" title="Logout"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
+        <div>
+          <div class="page-title">Enterprise Command Center</div>
+          <div class="page-sub">
+            <span class="live-badge"><span class="pulse"></span> LIVE</span>
+            <span id="realtime-clock" style="margin-left: 6px;">--:--:-- --</span>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-top-action btn-top-dispatch" onclick="openGlobalTransferModal()" title="Dispatch Asset"><i class="fa-solid fa-paper-plane"></i></button>
+        <button class="btn-top-action btn-top-receive" onclick="openGlobalReceiveModal()" title="Receive Asset"><i class="fa-solid fa-boxes-packing"></i></button>
+        <button class="btn-top-action btn-top-add" onclick="openAddAssetModal()" title="Add Asset" aria-label="Add asset"><i class="fa-solid fa-plus"></i></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="tabs" id="tabsRow">
+        <div class="tab active" onclick="switchTab(this,'overview')">Overview</div>
+        <div class="tab" onclick="switchTab(this,'fleet')">Fleet Tracker</div>
+        <div class="tab" onclick="switchTab(this,'locations')">Locations Matrix</div>
+        <div class="tab" onclick="switchTab(this,'history')">History Logs</div>
+        <div class="tab" onclick="switchTab(this,'analytics')">Intelligence Analytics</div>
+      </div>
+
+      <div class="section active" id="sec-overview">
+        <div class="kpi-grid">
+          <div class="kpi-card blue" onclick="navigateToTab('fleet', '', '')">
+            <i class="fa-solid fa-boxes-stacked bg-icon"></i>
+            <div class="kpi-header"><span class="kpi-label">Total Fleet Size</span><div class="kpi-icon blue"><i class="fa-solid fa-boxes-stacked"></i></div></div>
+            <div class="kpi-value" id="kpiTotal">—</div>
+            <div class="kpi-footer"><i class="fa-solid fa-arrow-right" style="color:var(--accent2)"></i> View registry</div>
+          </div>
+          <div class="kpi-card green" onclick="navigateToTab('fleet', 'AT_BASE', '')">
+            <i class="fa-solid fa-warehouse bg-icon"></i>
+            <div class="kpi-header"><span class="kpi-label">Assets At Base</span><div class="kpi-icon green"><i class="fa-solid fa-warehouse"></i></div></div>
+            <div class="kpi-value" id="kpiBase">—</div>
+            <div class="kpi-footer"><i class="fa-solid fa-arrow-right" style="color:var(--green)"></i> View stationed</div>
+          </div>
+          <div class="kpi-card amber" onclick="navigateToTab('fleet', 'IN_TRANSIT', '')">
+            <i class="fa-solid fa-truck-fast bg-icon"></i>
+            <div class="kpi-header"><span class="kpi-label">Assets In Transit</span><div class="kpi-icon amber"><i class="fa-solid fa-truck-fast"></i></div></div>
+            <div class="kpi-value" id="kpiTransit">—</div>
+            <div class="kpi-footer"><i class="fa-solid fa-arrow-right" style="color:var(--accent)"></i> Track moving</div>
+          </div>
+          <div class="kpi-card red" onclick="navigateToTab('locations', '', '')">
+            <i class="fa-solid fa-map-pin bg-icon"></i>
+            <div class="kpi-header"><span class="kpi-label" id="kpiLocationLabel">Operational Sites</span><div class="kpi-icon red"><i class="fa-solid fa-map-pin"></i></div></div>
+            <div class="kpi-value" id="kpiLocations">—</div>
+            <div class="kpi-footer"><i class="fa-solid fa-arrow-right" style="color:var(--red)"></i> View matrix</div>
+          </div>
+        </div>
+
+        <div class="grid-2-1">
+          <div class="card" style="max-height: 480px;">
+            <div class="card-header"><span class="card-title">Live Operations Ledger</span><span class="card-badge" style="background:#EFF6FF; color:var(--accent2)"><i class="fa-solid fa-bolt"></i> Realtime Streams</span></div>
+            <div class="card-scroll"><table class="data-table list-table"><thead><tr><th>Timestamp</th><th>Asset Name</th><th>Route Map / Hub</th><th style="text-align:right">Current Status</th></tr></thead><tbody id="ledgerBody"><tr><td colspan="4"><div class="loading-state"><div class="spinner"></div><p>Synchronizing Ledger…</p></div></td></tr></tbody></table></div>
+          </div>
+          <div class="card"><div class="card-header"><span class="card-title">Category Mapping</span></div><div class="card-body"><div class="chart-wrap" style="height:210px;"><canvas id="donutChart"></canvas><div class="donut-center"><div class="val" id="donutTotal">0</div><div class="lbl">Assets</div></div></div><div class="legend" id="chartLegend"></div></div></div>
+        </div>
+        <div class="card"><div class="card-header"><span class="card-title">Regional Location Metrics</span><span class="card-badge" style="background:#F1F5F9; color:var(--muted)" id="lastSyncTime">Awaiting Sync...</span></div><div class="card-body"><div class="loc-grid" id="locationGrid"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div><p>Parsing regional data boundaries…</p></div></div></div></div>
+      </div>
+
+      <div class="section" id="sec-fleet">
+        <div class="filter-row">
+          <select class="filter-select" id="fleetFilterLoc" onchange="renderFleetTable()"><option value="">All Regions</option></select>
+          <select class="filter-select" id="fleetFilterCat" onchange="renderFleetTable()"><option value="">All Asset Classes</option><option>EXCAVATOR</option><option>TRACTORS</option><option>JCB</option><option>DUMPERS</option><option>VAN & TANKERS</option><option>CRAWLER/ COMP.</option><option>MISC.</option></select>
+          <select class="filter-select" id="fleetFilterStatus" onchange="renderFleetTable()"><option value="">All Statuses</option><option value="AT_BASE">At Base</option><option value="IN_TRANSIT">In Transit</option></select>
+          <select class="filter-select" id="fleetFilterOwner" onchange="renderFleetTable()"><option value="">Own + Contractor</option><option value="OWN">Own vehicles</option><option value="CONTRACTOR">Contractors</option></select>
+          <input class="filter-input" placeholder="Search parameters by name…" id="fleetSearch" oninput="renderFleetTable()" />
+          <button class="filter-btn" onclick="resetFleetFilters()"><i class="fa-solid fa-filter-circle-xmark"></i> Clear Filters</button>
+        </div>
+        <div class="card" style="flex:1;">
+          <div class="card-header">
+            <span class="card-title">Asset Registry Index</span>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="card-badge" style="background:#F1F5F9; color:var(--text)" id="fleetCount">0 assets cataloged</span>
+              <button class="btn-top-action btn-sync card-add-btn" style="margin:0; width:auto; padding:0 12px !important;" onclick="openAddAssetModal()"><i class="fa-solid fa-plus"></i> <span style="display:inline; margin-left:6px; font-family:var(--font-ui)">Add Asset</span></button>
+            </div>
+          </div>
+          <div class="card-scroll"><table class="data-table list-table"><thead><tr><th>#</th><th>Asset Name</th><th>Category Class</th><th>Current Hub Location</th><th>Transit Target Destination</th><th style="text-align:right">Status & Action</th></tr></thead><tbody id="fleetBody"><tr><td colspan="6"><div class="loading-state"><div class="spinner"></div><p>Parsing registry indexes…</p></div></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="section" id="sec-locations"><div class="grid-3" id="locationDetailGrid"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div><p>Mapping geographical matrices…</p></div></div></div>
+      
+      <div class="section" id="sec-history">
+        <div class="filter-row"><select class="filter-select" id="histFilterType" onchange="renderHistoryTable()"><option value="">All Fleet Operations</option><option value="TRANSFER">Transfers (Outgoing)</option><option value="RECEIVE">Receiving (Incoming)</option></select><select class="filter-select" id="histFilterLoc" onchange="renderHistoryTable()"><option value="">All Locations</option></select><input class="filter-input" placeholder="Filter asset logs…" id="histSearch" oninput="renderHistoryTable()" /><button class="filter-btn" onclick="resetHistFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Logs</button></div>
+        <div class="card" style="flex:1;"><div class="card-header"><span class="card-title">Movement Log Archive</span><span class="card-badge" style="background:#F1F5F9; color:var(--muted)" id="histCount">0 records encrypted</span></div><div class="card-scroll"><table class="data-table list-table"><thead><tr><th>Date & Timestamp</th><th>Asset Name</th><th>Operation Type</th><th>Source Hub</th><th>Target Destination / Terminal At</th></tr></thead><tbody id="historyBody"><tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><p>Decrypting movement parameters…</p></div></td></tr></tbody></table></div></div>
+      </div>
+
+      <div class="section" id="sec-analytics">
+        <div class="grid-3"><div class="card"><div class="card-header"><span class="card-title">Asset Deployment Metrics</span></div><div class="card-body" style="height:320px;"><canvas id="barChart"></canvas></div></div><div class="card"><div class="card-header"><span class="card-title">Deployment Proportions</span></div><div class="card-body" style="height:320px;"><canvas id="pieChart"></canvas></div></div><div class="card"><div class="card-header"><span class="card-title">System Density Class Breakdown</span></div><div class="card-body" style="min-height:320px;" id="catBreakdown"></div></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Regional Infrastructure Comparison Matrix</span></div><div class="card-scroll"><table class="data-table matrix-table" id="locMatrixTable"><thead><tr><th>Target Hub</th><th style="text-align:center">Excavator</th><th style="text-align:center">Tractors</th><th style="text-align:center">JCB</th><th style="text-align:center">Dumpers</th><th style="text-align:center">Van & Tankers</th><th style="text-align:center">Crawler</th><th style="text-align:center">Misc</th><th style="text-align:center; color:var(--accent)">In Transit</th><th style="text-align:center; color:var(--accent2)">Total Assets</th></tr></thead><tbody id="locMatrixBody"><tr><td colspan="10"><div class="loading-state"><p>Awaiting payload stream synchronization…</p></div></td></tr></tbody></table></div></div>
+      </div>
+    </div>
+  </div>
+  <button class="fab-sync" onclick="fetchData(true)" title="Reload" aria-label="Reload"><i class="fa-solid fa-rotate" id="syncIcon"></i></button>
+</div>
+
+<script>
+var pendingCancelData = null; 
+var SYSTEM_LOCATIONS = ['TONK', 'SANWARIYA', 'KHAKHUNDA', 'NEWAI', 'AMARGARH', 'KACHOLA FACTORY'];
+
+var addAssetSelectedFiles = []; 
+var transSelectedFiles = []; 
+var recSelectedFiles = []; 
+
+function getCatIcon(cat) {
+  var icons = { 'EXCAVATOR': 'fa-snowplow', 'TRACTORS': 'fa-tractor', 'VAN & TANKERS': 'fa-truck-droplet', 'JCB': 'fa-truck-pickup', 'DUMPERS': 'fa-truck-fast', 'CRAWLER/ COMP.': 'fa-truck-monster', 'MISC.': 'fa-box' };
+  return icons[cat] || 'fa-truck';
+}
+
+/* ---- GGM Portal / session helpers ---- */
+var PORTAL = window.PORTAL || {};
+function assetsToken() { try { return localStorage.getItem('assetsToken') || ''; } catch (e) { return ''; } }
+function isExpired(msg) { return String(msg || '').indexOf('SESSION_EXPIRED') > -1; }
+function saveLogin(site, token, name) {
+  localStorage.setItem('loggedInSite', site);
+  localStorage.setItem('assetsToken', token || '');
+  localStorage.setItem('assetsUserName', name || '');
+}
+function sessionEnded() {
+  doLogout();
+  toast('Signed out', 'Your sign-in has ended. Please sign in again.', 'error');
+}
+function portalLoginLabels() {
+  if (!PORTAL.info || !PORTAL.info.enabled) return;
+  var both = !PORTAL.info.portalOnly;   // Portal-only OFF: the old site login works too
+  var u = document.getElementById('loginUser');
+  if (u) { u.placeholder = both ? 'Site name or GGM Portal username' : 'GGM Portal username or phone'; var i = u.previousElementSibling; if (i && !both) i.className = 'fa-solid fa-user'; }
+  var pw = document.getElementById('loginPass'); if (pw) pw.placeholder = both ? 'Password' : 'GGM Portal password';
+}
+
+function doLogin() {
+  var user = document.getElementById('loginUser').value.trim();
+  var pass = document.getElementById('loginPass').value.trim();
+  var btn = document.getElementById('loginBtn');
+  var err = document.getElementById('loginError');
+  if (!user || !pass) { err.style.display = 'block'; err.textContent = "Please fill all fields!"; return; }
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying...';
+  err.style.display = 'none';
+  google.script.run.withSuccessHandler(function(response) {
+    if (response.success) { 
+      saveLogin(response.siteName, response.token, response.userName); 
+      startApp(response.siteName); 
+    } 
+    else { 
+      btn.innerHTML = '<span>Enter Command Center</span><i class="fa-solid fa-arrow-right-to-bracket"></i>'; 
+      err.style.display = 'block'; 
+      err.textContent = response.message; 
+    }
+  }).verifyUserLogin(user, pass);
+}
+
+function doLogout() {
+  localStorage.removeItem("loggedInSite"); localStorage.removeItem('assetsToken'); localStorage.removeItem('assetsUserName'); 
+  document.getElementById('loginUser').value = ''; 
+  document.getElementById('loginPass').value = ''; 
+  document.getElementById('loginBtn').innerHTML = '<span>Enter Command Center</span><i class="fa-solid fa-arrow-right-to-bracket"></i>'; 
+  document.getElementById('mainApp').classList.remove('ready');
+  setTimeout(function() { document.getElementById('loginOverlay').style.opacity = '1'; document.getElementById('loginOverlay').style.visibility = 'visible'; }, 300);
+}
+
+function startApp(siteName) {
+  var nameUpper = siteName.toUpperCase();
+  var person = localStorage.getItem('assetsUserName') || '';
+  document.getElementById('loggedInName').textContent = (person && person.toUpperCase() !== nameUpper)
+    ? person + ' · ' + (nameUpper === 'BOSS' ? 'All sites' : nameUpper) : nameUpper + " Site"; 
+  // profile photo from GGM Portal (the signed-in person; site logins have none)
+  var av = document.querySelector('.admin-avatar'); if (av) av.setAttribute('data-ggm-photo', '@me|' + person);
+  var titleEl = document.querySelector('.page-title');
+  if (nameUpper === 'BOSS' || nameUpper === 'ADMIN' || nameUpper === 'MAIN') { titleEl.textContent = 'GGM Assets'; } else { titleEl.textContent = nameUpper + ' Assets'; }
+  document.getElementById('loginOverlay').style.opacity = '0';
+  setTimeout(function() { document.getElementById('loginOverlay').style.visibility = 'hidden'; }, 400); document.getElementById('mainApp').classList.add('ready'); fetchData(true);
+}
+
+window.onload = function() {
+  startClock(); 
+  portalLoginLabels();
+  if (PORTAL.boot && PORTAL.boot.token) saveLogin(PORTAL.boot.site, PORTAL.boot.token, PORTAL.boot.name);   // opened from GGM Portal
+  var savedSite = localStorage.getItem("loggedInSite");
+  if (savedSite && assetsToken()) { startApp(savedSite); } 
+  else { document.getElementById('loginOverlay').style.opacity = '1'; document.getElementById('loginOverlay').style.visibility = 'visible'; }
+  setInterval(function() { if(localStorage.getItem("loggedInSite")) fetchData(false); }, 60000);   
+};
+
+var APP = { assets: {}, history: [], vehicles: {}, lastSync: null };
+var CAT_COLORS = { 'EXCAVATOR': '#2563EB', 'TRACTORS': '#059669', 'JCB': '#D97706', 'DUMPERS': '#DC2626', 'VAN & TANKERS': '#7C3AED', 'CRAWLER/ COMP.': '#0891B2', 'MISC.': '#475569' };
+var CHART_INSTANCES = {};
+
+function startClock() {
+  function tick() { var now = new Date(); var t = now.toLocaleTimeString('en-IN', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' }); var d = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    var el = document.getElementById('realtime-clock'); if (el) el.textContent = d + ' · ' + t; }
+  tick(); setInterval(tick, 1000);
+}
+
+var currentSection = 'overview';
+function showSection(name) {
+  currentSection = name; document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+  var sec = document.getElementById('sec-' + name); if (sec) sec.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.toggle('active', n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + name + "'")); });
+  closeSidebar(); if (name === 'analytics') renderAnalytics();
+}
+
+function switchTab(el, name) { 
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); }); 
+  el.classList.add('active'); 
+  showSection(name); 
+}
+
+function navigateToTab(tabId, statusFilter, catFilter) {
+  var tabs = document.querySelectorAll('.tab');
+  var idx = tabId === 'fleet' ? 1 : (tabId === 'locations' ? 2 : 0);
+  switchTab(tabs[idx], tabId);
+  
+  if (tabId === 'fleet') {
+    document.getElementById('fleetFilterLoc').value = '';
+    document.getElementById('fleetFilterCat').value = catFilter || '';
+    document.getElementById('fleetFilterStatus').value = statusFilter || '';
+    document.getElementById('fleetSearch').value = '';
+    renderFleetTable();
+  }
+}
+
+function applyFleetFilters(loc, cat, status) {
+  document.getElementById('fleetFilterLoc').value = loc || '';
+  document.getElementById('fleetFilterCat').value = cat || '';
+  document.getElementById('fleetFilterStatus').value = status || '';
+  var tabs = document.querySelectorAll('.tab');
+  switchTab(tabs[1], 'fleet');
+  renderFleetTable();
+}
+
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); var overlay = document.getElementById('sidebarOverlay'); overlay.style.display = 'block'; setTimeout(function(){ overlay.classList.add('active'); }, 10); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); var overlay = document.getElementById('sidebarOverlay'); if (!document.getElementById('detailPanel').classList.contains('open') && !document.querySelector('.modal-overlay.open')) { overlay.classList.remove('active'); setTimeout(function(){ overlay.style.display = 'none'; }, 300); } }
+function closeAllModals() { closeSidebar(); closeDetail(); closeModals(); }
+
+function toast(title, msg, type) {
+  var c = document.getElementById('toast-container'); var t = document.createElement('div'); t.className = 'toast'; var icon = type === 'error' ? 'fa-solid fa-triangle-exclamation' : type === 'warn' ? 'fa-solid fa-clock' : 'fa-solid fa-circle-check'; var color = type === 'error' ? 'var(--red)' : type === 'warn' ? 'var(--accent)' : 'var(--green)';
+  t.innerHTML = '<i class="fa ' + icon + ' toast-icon" style="color:' + color + '"></i><div><div class="toast-title">' + title + '</div><div class="toast-msg">' + msg + '</div></div>'; c.appendChild(t);
+  requestAnimationFrame(function() { t.classList.add('show'); }); setTimeout(function() { t.classList.remove('show'); t.classList.add('hide'); setTimeout(function() { t.remove(); }, 4000); }, 4000);
+}
+
+function animNum(id, end, dur) {
+  var el = document.getElementById(id); if (!el) return; var start = parseInt(el.textContent) || 0; var t0 = null;
+  function step(ts) { if (!t0) t0 = ts; var p = Math.min((ts - t0) / (dur || 800), 1); var ease = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(start + (end - start) * ease); if (p < 1) requestAnimationFrame(step); }
+  requestAnimationFrame(step);
+}
+
+Chart.defaults.color = '#64748B'; Chart.defaults.font.family = "'Inter', sans-serif"; Chart.defaults.font.size = 12;
+
+function makeDonut(cats, counts, total) {
+  var ctx = document.getElementById('donutChart'); if (!ctx) return; if (CHART_INSTANCES.donut) CHART_INSTANCES.donut.destroy(); var labels = Object.keys(cats); var data = labels.map(function(k) { return cats[k]; }); var colors = labels.map(function(k) { return CAT_COLORS[k] || '#64748B'; });
+  CHART_INSTANCES.donut = new Chart(ctx, { type: 'doughnut', data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2, hoverOffset: 4 }] }, options: { cutout: '78%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return ' ' + c.label + ': ' + c.raw; } } } }, maintainAspectRatio: false, animation: { duration: 1200, easing: 'easeOutQuart' } } });
+  document.getElementById('donutTotal').textContent = total; var leg = document.getElementById('chartLegend'); leg.innerHTML = '';
+  labels.forEach(function(k, i) { 
+    if (!data[i]) return; 
+    var pct = total ? Math.round(data[i] / total * 100) : 0; 
+    var row = document.createElement('div'); 
+    row.className = 'legend-item fade-in'; 
+    row.style.animationDelay = (i * 0.1) + 's'; 
+    row.innerHTML = '<div class="legend-left" title="' + k + '"><span class="legend-dot" style="background:' + colors[i] + '"></span><span class="legend-left-text">' + k + '</span></div><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%;background:' + colors[i] + '"></div></div><div class="legend-count">' + data[i] + '</div>'; 
+    row.onclick = function() { navigateToTab('fleet', '', k); };
+    leg.appendChild(row); 
+  });
+}
+
+function makeBarChart(locData) {
+  var ctx = document.getElementById('barChart'); if (!ctx) return; if (CHART_INSTANCES.bar) CHART_INSTANCES.bar.destroy(); var locs = Object.keys(locData);
+  CHART_INSTANCES.bar = new Chart(ctx, { type: 'bar', data: { labels: locs, datasets: [ { label: 'At Base', data: locs.map(function(l) { return locData[l].base; }), backgroundColor: '#059669', borderRadius: 6 }, { label: 'In Transit', data: locs.map(function(l) { return locData[l].transit; }), backgroundColor: '#D97706', borderRadius: 6 } ] }, options: { animation: { duration: 1000 }, responsive: true, maintainAspectRatio: false, scales: { x: { grid: { color: '#F1F5F9' } }, y: { grid: { color: '#F1F5F9' }, beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 16 } } } } });
+}
+function makePieChart(base, transit) {
+  var ctx = document.getElementById('pieChart'); if (!ctx) return; if (CHART_INSTANCES.pie) CHART_INSTANCES.pie.destroy();
+  CHART_INSTANCES.pie = new Chart(ctx, { type: 'pie', data: { labels: ['At Base', 'In Transit'], datasets: [{ data: [base, transit], backgroundColor: ['#059669', '#D97706'], borderColor: '#ffffff', borderWidth: 2 }] }, options: { animation: { duration: 1000 }, responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10 } } } } });
+}
+
+function processData(data) {
+  APP.assets = data.assets || {}; APP.history = data.history || []; APP.lastSync = new Date();
+  APP.vehicles = data.vehicles || {};
+  
+  var loggedIn = (localStorage.getItem("loggedInSite") || "").toUpperCase();
+  var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+  
+  var allowedLocs = isBoss ? SYSTEM_LOCATIONS : (SYSTEM_LOCATIONS.includes(loggedIn) ? [loggedIn] : []);
+  
+  var total = 0, base = 0, transit = 0; var cats = {}; 
+  var locs = {};
+  
+  allowedLocs.forEach(function(l) { locs[l] = { base: 0, transit: 0, cats: {} }; });
+  
+  Object.keys(APP.assets).forEach(function(name) { 
+    var a = APP.assets[name]; 
+    total++; 
+    if (a.status === 'AT_BASE') base++; else transit++; 
+    cats[a.cat] = (cats[a.cat] || 0) + 1; 
+    
+    if (!locs[a.location]) {
+        if (allowedLocs.includes(a.location)) {
+            locs[a.location] = { base: 0, transit: 0, cats: {} }; 
+        }
+    }
+    
+    if (locs[a.location]) {
+        if (a.status === 'AT_BASE') locs[a.location].base++; else locs[a.location].transit++; 
+        locs[a.location].cats[a.cat] = (locs[a.location].cats[a.cat] || 0) + 1; 
+    }
+  });
+  
+  animNum('kpiTotal', total); animNum('kpiBase', base); animNum('kpiTransit', transit); animNum('kpiLocations', allowedLocs.length);
+  
+  var kpiLabelEl = document.getElementById('kpiLocationLabel');
+  if(kpiLabelEl) { kpiLabelEl.textContent = isBoss ? 'Operational Sites' : 'Assigned Site'; }
+
+  makeDonut(cats, cats, total); renderLedger(); renderLocationGrid(locs);
+  var el = document.getElementById('lastSyncTime'); if (el) el.textContent = 'Sync at: ' + APP.lastSync.toLocaleTimeString('en-IN', { hour12: true });
+  populateLocationDropdowns(Object.keys(locs)); renderFleetTable(); renderHistoryTable(); if (currentSection === 'analytics') renderAnalytics(); renderLocationDetail(locs);
+}
+
+function populateLocationDropdowns(locs) {
+  ['fleetFilterLoc', 'histFilterLoc'].forEach(function(id) { var sel = document.getElementById(id); if (!sel) return; var val = sel.value; while (sel.options.length > 1) sel.remove(1); locs.forEach(function(l) { var o = document.createElement('option'); o.value = l; o.textContent = l; sel.appendChild(o); }); sel.value = val; });
+}
+
+function renderLedger() {
+  var body = document.getElementById('ledgerBody'); if (!body) return;
+  if (!APP.history.length) { body.innerHTML = '<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No transactions parsed yet.</p></div></td></tr>'; return; }
+  var html = '';
+  
+  APP.history.slice(0, 30).forEach(function(row, idx) {
+    var hasTransfer = row[0] && row[0] !== '-'; var hasReceive = row[5] && row[5] !== '-'; if (!hasTransfer && !hasReceive) return;
+    var date = hasTransfer ? row[0] : row[5]; var asset = hasTransfer ? row[1] : row[6]; var route = ''; var badge = '';
+    
+    var assetStatus = APP.assets[asset] ? APP.assets[asset].status : '';
+    var aCat = APP.assets[asset] ? APP.assets[asset].cat : 'MISC.';
+    var iconClass = getCatIcon(aCat);
+    
+    var loggedIn = localStorage.getItem("loggedInSite").toUpperCase();
+    var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+
+    if (hasTransfer) {
+      if (hasReceive) { route = '<div class="route"><span class="route-loc">' + row[2] + '</span><span class="route-arrow"><i class="fa-solid fa-arrow-right"></i></span><span class="route-loc" style="font-weight:600;color:var(--green)">' + row[7] + '</span></div>'; badge = '<span class="badge base"><i class="fa-solid fa-circle-check"></i> Received</span>'; } 
+      else {
+        route = '<div class="route"><span class="route-loc">' + row[2] + '</span><span class="route-arrow"><i class="fa-solid fa-arrow-right"></i></span><span class="route-loc" style="font-weight:600;color:var(--accent)">' + row[3] + '</span></div>';
+        badge = '<span class="badge transit"><i class="fa-solid fa-truck-fast"></i> In Transit</span>';
+        
+        if (assetStatus === 'IN_TRANSIT') {
+          if (isBoss || loggedIn === row[3].toUpperCase()) {
+             badge += '<button onclick="event.stopPropagation(); openReceiveModal(\'' + encodeURIComponent(asset) + '\', \'' + aCat + '\', \'' + row[3].toUpperCase() + '\')" class="btn-rec-mini" title="Receive this asset"><i class="fa-solid fa-boxes-packing"></i> Receive</button>';
+          }
+          if (isBoss || loggedIn === row[2].toUpperCase()) { 
+             badge += '<button onclick="openConfirmModal(event, \'' + encodeURIComponent(asset) + '\')" class="btn-cancel-mini" title="Cancel this transfer"><i class="fa-solid fa-xmark"></i> Cancel</button>'; 
+          }
+        }
+      }
+    } else { route = '<div class="route"><i class="fa-solid fa-location-dot" style="color:var(--green)"></i> <span style="font-weight:600; margin-left:4px">' + row[7] + '</span></div>'; badge = '<span class="badge base"><i class="fa-solid fa-warehouse"></i> Received</span>'; }
+    
+    html += '<tr class="fade-in cursor-pointer" style="animation-delay:'+(idx*0.02)+'s" onclick="showAssetDetail(\'' + encodeURIComponent(asset) + '\')"><td><span class="hide-desktop">Timestamp</span><span class="mono">' + date + '</span></td><td><span class="hide-desktop">Asset Name</span><span style="font-weight:600; display:flex; align-items:center; gap:8px"><i class="fa ' + iconClass + '" style="color:var(--muted)"></i>' + asset + '</span></td><td><span class="hide-desktop">Route / Hub</span>' + route + '</td><td style="text-align:right"><span class="hide-desktop">Status</span><div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">' + badge + '</div></td></tr>';
+  });
+  body.innerHTML = html;
+}
+
+function renderFleetTable() {
+  var body = document.getElementById('fleetBody'); if (!body) return;
+  var locF = (document.getElementById('fleetFilterLoc') || {}).value || ''; var catF = (document.getElementById('fleetFilterCat') || {}).value || ''; var stF  = (document.getElementById('fleetFilterStatus') || {}).value || ''; var q = ((document.getElementById('fleetSearch') || {}).value || '').toLowerCase().trim();
+  var ownF = (document.getElementById('fleetFilterOwner') || {}).value || '';
+  var rows = Object.keys(APP.assets).map(function(n) { return Object.assign({ name: n }, APP.assets[n]); });
+  rows = rows.filter(function(r) { if (ownF && (r.owner || 'OWN') !== ownF) return false; if (locF && r.location !== locF) return false; if (catF && r.cat !== catF) return false; if (stF && r.status !== stF) return false; if (q && r.name.toLowerCase().indexOf(q) === -1) return false; return true; });
+  
+  rows.sort(function(a, b) { return a.name.toUpperCase().localeCompare(b.name.toUpperCase()); });
+  
+  var countEl = document.getElementById('fleetCount'); if (countEl) countEl.textContent = rows.length + ' active elements found';
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-magnifying-glass"></i><p>No tracked assets found.</p></div></td></tr>'; return; }
+  
+  var loggedIn = localStorage.getItem("loggedInSite").toUpperCase();
+  var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+
+  var html = '';
+  rows.forEach(function(r, i) {
+    var dotColor = CAT_COLORS[r.cat] || '#64748B'; var badge = ''; var actionBtn = '';
+    var iconClass = getCatIcon(r.cat);
+    
+    if (r.status === 'AT_BASE') { 
+      badge = '<span class="badge base"><i class="fa-solid fa-circle-check"></i> Base</span>'; 
+      if (isBoss || loggedIn === (r.location || '').toUpperCase()) {
+         actionBtn += '<button onclick="event.stopPropagation(); openTransferModal(\'' + encodeURIComponent(r.name) + '\', \'' + r.cat + '\', \'' + r.location + '\')" class="btn-trans-mini"><i class="fa-solid fa-paper-plane"></i> Transfer</button>';
+      }
+    } else { 
+      badge = '<span class="badge transit"><i class="fa-solid fa-truck-fast"></i> Transit</span>'; 
+      if (isBoss || loggedIn === (r.dest || '').toUpperCase()) {
+         actionBtn += '<button onclick="event.stopPropagation(); openReceiveModal(\'' + encodeURIComponent(r.name) + '\', \'' + r.cat + '\', \'' + r.dest + '\')" class="btn-rec-mini"><i class="fa-solid fa-boxes-packing"></i> Receive</button>';
+      }
+      if (isBoss || loggedIn === (r.location || '').toUpperCase()) {
+         actionBtn += '<button onclick="openConfirmModal(event, \'' + encodeURIComponent(r.name) + '\')" class="btn-cancel-mini" title="Cancel this transfer"><i class="fa-solid fa-xmark"></i> Cancel</button>'; 
+      }
+    }
+    
+    var dest = r.status === 'IN_TRANSIT' && r.dest ? '<span class="route-loc">' + r.dest + '</span>' : '<span style="color:var(--muted)">—</span>';
+    html += '<tr class="fade-in cursor-pointer" style="animation-delay:'+(i*0.02)+'s" onclick="showAssetDetail(\'' + encodeURIComponent(r.name) + '\')"><td><span class="hide-desktop">#</span><span class="mono">' + (i + 1) + '</span></td><td><span class="hide-desktop">Asset Name</span><span style="font-weight:600; display:flex; align-items:center; gap:8px"><i class="fa ' + iconClass + '" style="color:' + dotColor + '"></i>' + r.name + (r.owner === 'CONTRACTOR' ? '<span class="own-chip">Contractor</span>' : '') + '</span></td><td><span class="hide-desktop">Category Class</span><span style="font-size:13px">' + r.cat + '</span></td><td><span class="hide-desktop">Current Hub</span>' + (r.location || '—') + '</td><td><span class="hide-desktop">Destination</span>' + dest + '</td><td style="text-align:right"><span class="hide-desktop">Status</span><div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap">' + badge + actionBtn + '</div></td></tr>';
+  });
+  body.innerHTML = html;
+}
+function resetFleetFilters() { ['fleetFilterLoc','fleetFilterCat','fleetFilterStatus','fleetFilterOwner'].forEach(function(id) { var el = document.getElementById(id); if(el) el.value = ''; }); var s = document.getElementById('fleetSearch'); if(s) s.value = ''; renderFleetTable(); }
+
+function renderHistoryTable() {
+  var body = document.getElementById('historyBody'); if (!body) return;
+  var typeF = (document.getElementById('histFilterType') || {}).value || ''; var locF = (document.getElementById('histFilterLoc') || {}).value || ''; var q = ((document.getElementById('histSearch') || {}).value || '').toLowerCase().trim();
+  var rows = [];
+  APP.history.forEach(function(row) { var isTransfer = row[0] && row[0] !== '-'; var isReceive  = row[5] && row[5] !== '-'; var asset = isTransfer ? row[1] : row[6]; var date = isTransfer ? row[0] : row[5]; var from = isTransfer ? row[2] : null; var to = isTransfer ? row[3] : row[7]; var type = isTransfer ? 'TRANSFER' : (isReceive ? 'RECEIVE' : null); if (!type || !asset || asset === '-') return; if (typeF && type !== typeF) return; if (q && asset.toLowerCase().indexOf(q) === -1) return; if (locF && from !== locF && to !== locF) return; rows.push({ date: date, asset: asset, type: type, from: from, to: to }); });
+  var cntEl = document.getElementById('histCount'); if (cntEl) cntEl.textContent = rows.length + ' logs encrypted';
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>Log archives empty under filters.</p></div></td></tr>'; return; }
+  var html = '';
+  rows.forEach(function(r, idx) {
+    var typeBadge = r.type === 'TRANSFER' ? '<span class="badge transit"><i class="fa-solid fa-paper-plane"></i> Outbound</span>' : '<span class="badge base"><i class="fa-solid fa-boxes-packing"></i> Inbound</span>'; var from = r.from ? '<span class="route-loc">' + r.from + '</span>' : '<span style="color:var(--muted)">—</span>'; var to = r.to ? '<span class="route-loc" style="font-weight:600">' + r.to + '</span>' : '<span style="color:var(--muted)">—</span>';
+    var aCat = APP.assets[r.asset] ? APP.assets[r.asset].cat : 'MISC.';
+    var iconClass = getCatIcon(aCat);
+    html += '<tr class="fade-in" style="animation-delay:'+(idx*0.02)+'s"><td><span class="hide-desktop">Timestamp</span><span class="mono">' + (r.date || '—') + '</span></td><td><span class="hide-desktop">Asset Name</span><span style="font-weight:700; display:flex; align-items:center; gap:8px"><i class="fa ' + iconClass + '" style="color:var(--muted)"></i>' + r.asset + '</span></td><td><span class="hide-desktop">Operation</span>' + typeBadge + '</td><td><span class="hide-desktop">Source</span>' + from + '</td><td><span class="hide-desktop">Terminal</span>' + to + '</td></tr>';
+  });
+  body.innerHTML = html;
+}
+function resetHistFilters() { ['histFilterType','histFilterLoc'].forEach(function(id) { var el = document.getElementById(id); if(el) el.value = ''; }); var s = document.getElementById('histSearch'); if(s) s.value = ''; renderHistoryTable(); }
+
+function renderLocationGrid(locs) {
+  var grid = document.getElementById('locationGrid'); if (!grid) return; var locKeys = Object.keys(locs);
+  if (!locKeys.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fa-solid fa-map-pin"></i><p>Regional assets map empty.</p></div>'; return; }
+  var html = '';
+  locKeys.forEach(function(loc, idx) { var d = locs[loc]; var total = d.base + d.transit; var pct = total ? Math.round(d.base / total * 100) : 0;
+    html += '<div class="loc-card fade-in" style="animation-delay:'+(idx*0.1)+'s"><div class="loc-name"><i class="fa-solid fa-location-dot"></i>' + loc + '</div><div class="loc-stats"><div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">' + d.base + '</div><div class="loc-stat-lbl">At Base</div></div><div class="loc-stat"><div class="loc-stat-val" style="color:var(--accent)">' + d.transit + '</div><div class="loc-stat-lbl">Transit</div></div></div><div style="margin-top:14px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500;"><span>' + pct + '% stability matrix</span><span>' + total + ' total</span></div><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%;background:var(--green)"></div></div></div></div>'; });
+  grid.innerHTML = html;
+}
+
+function renderLocationDetail(locs) {
+  var grid = document.getElementById('locationDetailGrid'); if (!grid) return; var locKeys = Object.keys(locs);
+  if (!locKeys.length) { grid.innerHTML = '<div class="loading-state">Empty logs.</div>'; return; }
+  var html = ''; var CAT_KEYS = ['EXCAVATOR','TRACTORS','JCB','DUMPERS','VAN & TANKERS','CRAWLER/ COMP.','MISC.'];
+  locKeys.forEach(function(loc, idx) { var d = locs[loc]; var total = d.base + d.transit;
+    html += '<div class="card fade-in" style="animation-delay:'+(idx*0.1)+'s"><div class="card-header"><span class="card-title"><i class="fa-solid fa-location-dot" style="color:var(--accent2)"></i> ' + loc + '</span><span class="card-badge" style="background:#F1F5F9; color:var(--muted)">' + total + ' total</span></div><div class="card-body" style="display:flex;flex-direction:column;gap:12px">';
+    CAT_KEYS.forEach(function(cat) { var n = d.cats[cat] || 0; if (!n) return; var color = CAT_COLORS[cat] || '#64748B'; var iconClass = getCatIcon(cat);
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;font-size:14px;cursor:pointer;padding:6px;border-radius:8px;transition:all 0.2s" onmouseover="this.style.background=\'#F1F5F9\'; this.style.transform=\'translateX(4px)\'" onmouseout="this.style.background=\'transparent\'; this.style.transform=\'none\'" onclick="applyFleetFilters(\'' + loc + '\', \'' + cat + '\', \'\')"><span style="display:flex;align-items:center;gap:8px;color:var(--text);font-weight:500;"><i class="fa ' + iconClass + '" style="color:' + color + '"></i>' + cat + '</span><span style="font-weight:700;font-family:var(--font-mono)">' + n + '</span></div>'; 
+    });
+    html += '<div style="border-top:1px solid #F1F5F9;padding-top:14px;margin-top:6px;display:flex;gap:24px"><div><div style="font-size:22px;font-weight:700;color:var(--green)">' + d.base + '</div><div style="font-size:10px;color:var(--muted);font-weight:600;">AT BASE</div></div><div><div style="font-size:22px;font-weight:700;color:var(--accent)">' + d.transit + '</div><div style="font-size:10px;color:var(--muted);font-weight:600;">TRANSIT</div></div></div></div></div>'; });
+  grid.innerHTML = html;
+}
+
+function renderAnalytics() {
+  var loggedIn = (localStorage.getItem("loggedInSite") || "").toUpperCase();
+  var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+  var allowedLocs = isBoss ? SYSTEM_LOCATIONS : (SYSTEM_LOCATIONS.includes(loggedIn) ? [loggedIn] : []);
+  
+  var locs = {}; var cats = {}; var base = 0, transit = 0; var CAT_KEYS = ['EXCAVATOR','TRACTORS','JCB','DUMPERS','VAN & TANKERS','CRAWLER/ COMP.','MISC.'];
+  
+  allowedLocs.forEach(function(l) { locs[l] = { base: 0, transit: 0, cats: {} }; });
+  
+  Object.keys(APP.assets).forEach(function(name) { 
+    var a = APP.assets[name]; 
+    if (!locs[a.location]) {
+      if(allowedLocs.includes(a.location)) locs[a.location] = { base: 0, transit: 0, cats: {} }; 
+    }
+    if(locs[a.location]) {
+      if (a.status === 'AT_BASE') { locs[a.location].base++; base++; } 
+      else { locs[a.location].transit++; transit++; } 
+      locs[a.location].cats[a.cat] = (locs[a.location].cats[a.cat] || 0) + 1; 
+      cats[a.cat] = (cats[a.cat] || 0) + 1; 
+    }
+  });
+  
+  makeBarChart(locs); makePieChart(base, transit);
+  
+  var cb = document.getElementById('catBreakdown'); if (cb) { var total = base + transit; var html = '<div style="display:flex;flex-direction:column;gap:14px;padding:4px 0">'; CAT_KEYS.forEach(function(cat) { var n = cats[cat] || 0; if (!n) return; var pct = total ? Math.round(n / total * 100) : 0; var color = CAT_COLORS[cat] || '#64748B'; var iconClass = getCatIcon(cat); html += '<div class="fade-in cat-breakdown-item" onclick="navigateToTab(\'fleet\', \'\', \'' + cat + '\')"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;font-weight:500;"><span style="display:flex;align-items:center;gap:8px;color:var(--text)"><i class="fa ' + iconClass + '" style="color:' + color + '"></i>' + cat + '</span><span style="font-weight:700;font-family:var(--font-mono)">' + n + ' <span style="color:var(--muted);font-weight:400;font-family:var(--font-ui)">(' + pct + '%)</span></span></div><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%;background:' + color + '"></div></div></div>'; }); html += '</div>'; cb.innerHTML = html; }
+  var matBody = document.getElementById('locMatrixBody');
+  if (matBody) { 
+    var locKeys = Object.keys(locs); 
+    if (!locKeys.length) { matBody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">Matrix payloads missing</td></tr>'; return; } 
+    var html = ''; 
+    locKeys.forEach(function(loc, idx) { 
+      var d = locs[loc]; var total = d.base + d.transit; 
+      html += '<tr class="fade-in" style="animation-delay:'+(idx*0.05)+'s"><td style="font-weight:600;"><i class="fa-solid fa-location-dot" style="color:var(--accent2); margin-right:6px"></i>' + loc + '</td>'; 
+      ['EXCAVATOR','TRACTORS','JCB','DUMPERS','VAN & TANKERS','CRAWLER/ COMP.','MISC.'].forEach(function(cat) { var n = d.cats[cat.toUpperCase()] || 0; html += '<td class="mono" style="text-align:center;color:' + (n ? 'var(--text)' : 'var(--muted)') + '">' + (n || '—') + '</td>'; }); 
+      html += '<td class="mono" style="text-align:center;color:var(--accent);font-weight:600">' + (d.transit || '—') + '</td><td class="mono" style="text-align:center;font-weight:700;color:var(--accent2)">' + total + '</td></tr>'; 
+    }); 
+    matBody.innerHTML = html; 
+  }
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('open'); });
+  pendingCancelData = null;
+}
+
+function populateLocDropdown(selectId) {
+  var sel = document.getElementById(selectId);
+  sel.innerHTML = '';
+  SYSTEM_LOCATIONS.forEach(function(loc) { var o = document.createElement('option'); o.value = loc; o.textContent = loc; sel.appendChild(o); });
+}
+
+function addCatChanged() {
+  var cat = document.getElementById('addAssetCat').value;
+  var wrapReg = document.getElementById('wrapAddReg'); 
+  var wrapChasis = document.getElementById('wrapAddChasis');
+  var wrapEngine = document.getElementById('wrapAddEngine');
+  var wrapMotor = document.getElementById('wrapAddMotor');
+  
+  wrapReg.style.display = 'block';
+  wrapChasis.style.display = 'block';
+  wrapEngine.style.display = 'block';
+  wrapMotor.style.display = 'block';
+
+  if (cat === 'CRAWLER/ COMP.' || cat === 'EXCAVATOR') { 
+      wrapChasis.style.display = 'none';
+      wrapEngine.style.display = 'none';
+  } else if (cat === 'JCB') {
+      wrapEngine.style.display = 'none';
+      wrapMotor.style.display = 'none';
+  } else if (cat === 'MISC.') {
+      wrapReg.style.display = 'none'; 
+      wrapChasis.style.display = 'none';
+      wrapEngine.style.display = 'none';
+      wrapMotor.style.display = 'none';
+  }
+}
+
+// ── SMART MULTI-FILE ACCUMULATORS ──
+function handleFileSelection(event) {
+  var newFiles = event.target.files;
+  for (var i = 0; i < newFiles.length; i++) {
+    if (addAssetSelectedFiles.length < 5) { addAssetSelectedFiles.push(newFiles[i]); } 
+    else { toast('Info', 'Maximum 5 photos allowed. Extra files ignored.', 'warn'); break; }
+  }
+  renderFilePreviews('filePreviewContainer', addAssetSelectedFiles, 'add');
+  event.target.value = ''; 
+}
+
+function handleTransFileSelection(event) {
+  var newFiles = event.target.files;
+  for (var i = 0; i < newFiles.length; i++) {
+    if (transSelectedFiles.length < 5) { transSelectedFiles.push(newFiles[i]); } 
+    else { toast('Info', 'Maximum 5 photos allowed. Extra files ignored.', 'warn'); break; }
+  }
+  renderFilePreviews('transFilePreviewContainer', transSelectedFiles, 'trans');
+  event.target.value = ''; 
+}
+
+function handleRecFileSelection(event) {
+  var newFiles = event.target.files;
+  for (var i = 0; i < newFiles.length; i++) {
+    if (recSelectedFiles.length < 5) { recSelectedFiles.push(newFiles[i]); } 
+    else { toast('Info', 'Maximum 5 photos allowed. Extra files ignored.', 'warn'); break; }
+  }
+  renderFilePreviews('recFilePreviewContainer', recSelectedFiles, 'rec');
+  event.target.value = ''; 
+}
+
+function renderFilePreviews(containerId, fileArray, type) {
+  var container = document.getElementById(containerId);
+  container.innerHTML = '';
+  fileArray.forEach(function(file, index) {
+    var badge = document.createElement('div');
+    badge.className = 'file-badge fade-in';
+    badge.innerHTML = '<span><i class="fa-solid fa-image" style="color:var(--muted); margin-right:4px;"></i>' + file.name + '</span><i class="fa-solid fa-xmark" onclick="removeSelectedFile(' + index + ', \'' + type + '\')"></i>';
+    container.appendChild(badge);
+  });
+}
+
+function removeSelectedFile(index, type) {
+  if (type === 'add') { addAssetSelectedFiles.splice(index, 1); renderFilePreviews('filePreviewContainer', addAssetSelectedFiles, 'add'); }
+  if (type === 'trans') { transSelectedFiles.splice(index, 1); renderFilePreviews('transFilePreviewContainer', transSelectedFiles, 'trans'); }
+  if (type === 'rec') { recSelectedFiles.splice(index, 1); renderFilePreviews('recFilePreviewContainer', recSelectedFiles, 'rec'); }
+}
+
+function getMultipleFilesBase64(fileList) {
+  var promises = [];
+  for (var i = 0; i < fileList.length && i < 5; i++) { 
+    promises.push(getFileBase64(fileList[i]));
+  }
+  return Promise.all(promises);
+}
+
+function getFileBase64(file) {
+  return new Promise(function(resolve, reject) {
+    if (!file) { resolve(null); return; }
+    var reader = new FileReader();
+    // photos are shrunk to 1024px JPEG before upload (restored from version 61: full-size
+    // phone photos made dispatch / receive slow and could fail on a weak signal)
+    reader.onload = function(e) {
+      if (file.type && file.type.indexOf('image/') !== -1) {
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          var MAX_WIDTH = 1024;
+          var MAX_HEIGHT = 1024;
+          var width = img.width;
+          var height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) { height = Math.round(height * (MAX_WIDTH / width)); width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width = Math.round(width * (MAX_HEIGHT / height)); height = MAX_HEIGHT; }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          var compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6); 
+          resolve({ name: file.name, mimeType: 'image/jpeg', data: compressedDataUrl.split(",")[1] });
+        };
+        img.onerror = function() { 
+          resolve({ name: file.name, mimeType: file.type || 'image/jpeg', data: e.target.result.split(",")[1] }); 
+        };
+        img.src = e.target.result;
+      } else {
+        resolve({ name: file.name, mimeType: file.type || 'application/octet-stream', data: e.target.result.split(",")[1] });
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── SUBMISSION HANDLERS ──
+function openAddAssetModal() {
+  var loggedIn = localStorage.getItem("loggedInSite").toUpperCase();
+  var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+  populateLocDropdown('addAssetLoc');
+  
+  ['addAssetName', 'addAssetReg', 'addAssetModel', 'addAssetChasis', 'addAssetEngine', 'addAssetMotor'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  
+  addAssetSelectedFiles = [];
+  document.getElementById('addAssetCamera').value = '';
+  document.getElementById('addAssetGallery').value = '';
+  renderFilePreviews('filePreviewContainer', addAssetSelectedFiles, 'add');
+  
+  var locSelect = document.getElementById('addAssetLoc');
+  if (!isBoss && SYSTEM_LOCATIONS.includes(loggedIn)) { locSelect.value = loggedIn; locSelect.disabled = true; } else { locSelect.disabled = false; }
+  
+  document.getElementById('addAssetCat').value = 'DUMPERS';
+  setOwnership('OWN');
+  addCatChanged(); 
+
+  document.getElementById('modalAddAsset').classList.add('open');
+}
+
+/* Own vehicle or contractor: decides which section of the sheet it is added to.
+   The Contractors section has no Misc. column, so Misc. is not offered there. */
+var addOwnership = 'OWN';
+function setOwnership(v) {
+  addOwnership = v === 'CONTRACTOR' ? 'CONTRACTOR' : 'OWN';
+  document.querySelectorAll('.own-opt').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-own') === addOwnership); });
+  var misc = document.getElementById('addCatMisc'), cat = document.getElementById('addAssetCat');
+  if (misc) { misc.disabled = addOwnership === 'CONTRACTOR'; misc.hidden = addOwnership === 'CONTRACTOR'; }
+  if (addOwnership === 'CONTRACTOR' && cat.value === 'MISC.') { cat.value = 'DUMPERS'; addCatChanged(); }
+  var hint = document.getElementById('ownHint');
+  if (hint) hint.innerHTML = addOwnership === 'CONTRACTOR' ? 'Added under <b>Contractors</b> in the sheet.' : 'Added under <b>Own vehicles</b> in the sheet.';
+}
+
+function submitAddAsset() {
+  var data = {
+    name: document.getElementById('addAssetName').value.trim(),
+    cat: document.getElementById('addAssetCat').value,
+    loc: document.getElementById('addAssetLoc').value,
+    regNo: document.getElementById('addAssetReg').value.trim(),
+    model: document.getElementById('addAssetModel').value.trim(),
+    chasis: document.getElementById('addAssetChasis').value.trim(),
+    engine: document.getElementById('addAssetEngine').value.trim(),
+    motor: document.getElementById('addAssetMotor').value.trim(),
+    date: new Date().toLocaleDateString('en-GB').replace(/\//g, '.'), 
+    company: '',
+    owner: '',
+    ownership: addOwnership
+  };
+
+  if (!data.cat || !data.loc || !data.name) { toast('Error', 'Please fill Category, Hub, and Name (*)', 'error'); return; }
+  if (addAssetSelectedFiles.length > 5) { toast('Error', 'Maximum 5 photos allowed!', 'error'); return; }
+
+  var btn = document.getElementById('btnSubmitAddAsset');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...'; btn.disabled = true;
+
+  getMultipleFilesBase64(addAssetSelectedFiles).then(function(fileArray) {
+    data.files = fileArray; 
+    google.script.run.withSuccessHandler(function(res){
+      btn.innerHTML = 'Add & Sync Record'; btn.disabled = false;
+      if(res.success){ toast('Success', res.message, 'success'); closeModals(); fetchData(false); }
+      else { toast('Error', res.message, 'error'); }
+    }).withFailureHandler(function(err){
+      btn.innerHTML = 'Add & Sync Record'; btn.disabled = false; toast('Error', 'Connection failed', 'error');
+    }).processAddNewAsset(assetsToken(), data);
+  });
+}
+
+function openGlobalTransferModal() {
+  var loggedIn = localStorage.getItem("loggedInSite").toUpperCase();
+  var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+  
+  var srcSel = document.getElementById('transSourceLoc');
+  srcSel.innerHTML = '';
+  SYSTEM_LOCATIONS.forEach(function(loc) { var o = document.createElement('option'); o.value = loc; o.textContent = loc; srcSel.appendChild(o); });
+
+  if (!isBoss && SYSTEM_LOCATIONS.includes(loggedIn)) { srcSel.value = loggedIn; srcSel.disabled = true; } 
+  else { srcSel.disabled = false; srcSel.value = SYSTEM_LOCATIONS[0]; }
+
+  var catSel = document.getElementById('transAssetCat'); catSel.value = ''; catSel.disabled = false; 
+  var assetSel = document.getElementById('transAssetSelect'); assetSel.innerHTML = '<option value="">-- Select Category First --</option>'; assetSel.disabled = true;
+
+  document.getElementById('transDriver').value = ''; document.getElementById('transRemark').value = '';
+  
+  transSelectedFiles = [];
+  document.getElementById('transCamera').value = '';
+  document.getElementById('transGallery').value = '';
+  renderFilePreviews('transFilePreviewContainer', transSelectedFiles, 'trans');
+
+  transSourceChanged(); document.getElementById('modalTransfer').classList.add('open');
+}
+
+function transSourceChanged() {
+  var src = document.getElementById('transSourceLoc').value;
+  var destSel = document.getElementById('transDestLoc');
+  destSel.innerHTML = '<option value="">-- Select Destination --</option>';
+  SYSTEM_LOCATIONS.forEach(function(loc) { if (loc !== src) { var o = document.createElement('option'); o.value = loc; o.textContent = loc; destSel.appendChild(o); } });
+  transCatChanged(); 
+}
+
+function transCatChanged() {
+  var src = document.getElementById('transSourceLoc').value;
+  var cat = document.getElementById('transAssetCat').value;
+  var assetSel = document.getElementById('transAssetSelect');
+
+  if (!cat) { assetSel.innerHTML = '<option value="">-- Select Category First --</option>'; assetSel.disabled = true; return; }
+  assetSel.innerHTML = '<option value="">-- Select Asset --</option>'; assetSel.disabled = false;
+
+  var count = 0;
+  for (var key in APP.assets) {
+    var a = APP.assets[key];
+    if (a.status === 'AT_BASE' && a.location === src && a.cat === cat) { assetSel.innerHTML += '<option value="'+key+'">'+key+'</option>'; count++; }
+  }
+  if (count === 0) { assetSel.innerHTML = '<option value="">-- No ' + cat + ' at ' + src + ' --</option>'; assetSel.disabled = true; }
+}
+
+function openTransferModal(name, cat, source) {
+  var cleanName = decodeURIComponent(name);
+  var srcSel = document.getElementById('transSourceLoc'); srcSel.innerHTML = '<option value="'+source+'">'+source+'</option>'; srcSel.value = source; srcSel.disabled = true;
+  var destSel = document.getElementById('transDestLoc'); destSel.innerHTML = '<option value="">-- Select Destination --</option>';
+  SYSTEM_LOCATIONS.forEach(function(loc) { if (loc !== source) { var o = document.createElement('option'); o.value = loc; o.textContent = loc; destSel.appendChild(o); } });
+  var catSel = document.getElementById('transAssetCat'); catSel.value = cat; catSel.disabled = true;
+  var assetSel = document.getElementById('transAssetSelect'); assetSel.innerHTML = '<option value="'+cleanName+'">'+cleanName+'</option>'; assetSel.value = cleanName; assetSel.disabled = true;
+
+  document.getElementById('transDriver').value = ''; document.getElementById('transRemark').value = '';
+  
+  transSelectedFiles = [];
+  document.getElementById('transCamera').value = '';
+  document.getElementById('transGallery').value = '';
+  renderFilePreviews('transFilePreviewContainer', transSelectedFiles, 'trans');
+
+  document.getElementById('modalTransfer').classList.add('open');
+}
+
+function submitTransfer() {
+  var name = document.getElementById('transAssetSelect').value;
+  var cat = document.getElementById('transAssetCat').value;
+  var src = document.getElementById('transSourceLoc').value;
+  var dst = document.getElementById('transDestLoc').value;
+  var driver = document.getElementById('transDriver').value.trim();
+  var remark = document.getElementById('transRemark').value.trim();
+  var loggedInUser = localStorage.getItem("loggedInSite") || "";
+  
+  if(!cat || !name || !dst) { toast('Error', 'Please fill all required fields!', 'error'); return; }
+  if (transSelectedFiles.length > 5) { toast('Error', 'Maximum 5 photos allowed!', 'error'); return; }
+  
+  var btn = document.getElementById('btnSubmitTransfer');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching...'; btn.disabled = true;
+
+  getMultipleFilesBase64(transSelectedFiles).then(function(fileArray) {
+    google.script.run.withSuccessHandler(function(res){
+      btn.innerHTML = 'Dispatch Asset'; btn.disabled = false;
+      if(res.success){ toast('Success', res.message, 'success'); closeModals(); closeDetail(); fetchData(false); }
+      else { toast('Error', res.message, 'error'); }
+    }).withFailureHandler(function(err){ btn.innerHTML = 'Dispatch Asset'; btn.disabled = false; toast('Error', 'Connection failed', 'error');
+    }).processWebTransfer(assetsToken(), name, cat, src, dst, driver, fileArray, remark, loggedInUser);
+  });
+}
+
+function openGlobalReceiveModal() {
+  var loggedIn = localStorage.getItem("loggedInSite").toUpperCase();
+  var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+  var destSel = document.getElementById('recDestLoc'); destSel.innerHTML = '';
+  SYSTEM_LOCATIONS.forEach(function(loc) { var o = document.createElement('option'); o.value = loc; o.textContent = loc; destSel.appendChild(o); });
+
+  if (!isBoss && SYSTEM_LOCATIONS.includes(loggedIn)) { destSel.value = loggedIn; destSel.disabled = true; } else { destSel.disabled = false; destSel.value = SYSTEM_LOCATIONS[0]; }
+  var assetSel = document.getElementById('recAssetSelect'); assetSel.innerHTML = '<option value="">-- Select Inbound Asset --</option>'; assetSel.disabled = false;
+
+  document.getElementById('recAssetCat').value = ''; document.getElementById('recDriver').value = ''; document.getElementById('recRemark').value = '';
+  
+  recSelectedFiles = [];
+  document.getElementById('recCamera').value = '';
+  document.getElementById('recGallery').value = '';
+  renderFilePreviews('recFilePreviewContainer', recSelectedFiles, 'rec');
+
+  recDestChanged(); document.getElementById('modalReceive').classList.add('open');
+}
+
+function recDestChanged() {
+  var dest = document.getElementById('recDestLoc').value;
+  var assetSel = document.getElementById('recAssetSelect'); assetSel.innerHTML = '<option value="">-- Select Inbound Asset --</option>'; document.getElementById('recAssetCat').value = '';
+
+  var count = 0;
+  for (var key in APP.assets) { var a = APP.assets[key]; if (a.status === 'IN_TRANSIT' && a.dest === dest) { assetSel.innerHTML += '<option value="'+key+'" data-cat="'+a.cat+'">'+key+' (From: '+a.location+')</option>'; count++; } }
+  if (count === 0) { assetSel.innerHTML = '<option value="">-- No Incoming Assets for '+dest+' --</option>'; assetSel.disabled = true; } else { assetSel.disabled = false; }
+}
+
+function handleRecAssetChange() {
+  var sel = document.getElementById('recAssetSelect');
+  if(!sel.value) return; var opt = sel.options[sel.selectedIndex]; document.getElementById('recAssetCat').value = opt.getAttribute('data-cat');
+}
+
+function openReceiveModal(name, cat, dest) {
+  var cleanName = decodeURIComponent(name);
+  var destSel = document.getElementById('recDestLoc'); destSel.innerHTML = '<option value="'+dest+'">'+dest+'</option>'; destSel.value = dest; destSel.disabled = true;
+  var assetSel = document.getElementById('recAssetSelect'); assetSel.innerHTML = '<option value="'+cleanName+'" data-cat="'+cat+'">'+cleanName+'</option>'; assetSel.value = cleanName; assetSel.disabled = true;
+
+  document.getElementById('recAssetCat').value = cat; document.getElementById('recDriver').value = ''; document.getElementById('recRemark').value = '';
+  
+  recSelectedFiles = [];
+  document.getElementById('recCamera').value = '';
+  document.getElementById('recGallery').value = '';
+  renderFilePreviews('recFilePreviewContainer', recSelectedFiles, 'rec');
+
+  document.getElementById('modalReceive').classList.add('open');
+}
+
+function submitReceive() {
+  var name = document.getElementById('recAssetSelect').value;
+  var cat = document.getElementById('recAssetCat').value;
+  var dst = document.getElementById('recDestLoc').value;
+  var driver = document.getElementById('recDriver').value.trim();
+  var remark = document.getElementById('recRemark').value.trim();
+  var loggedInUser = localStorage.getItem("loggedInSite") || "";
+  
+  if(!name || !dst) { toast('Error', 'Please fill required fields', 'error'); return; }
+  if (recSelectedFiles.length > 5) { toast('Error', 'Maximum 5 photos allowed!', 'error'); return; }
+  
+  var btn = document.getElementById('btnSubmitReceive');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Confirming...'; btn.disabled = true;
+
+  getMultipleFilesBase64(recSelectedFiles).then(function(fileArray) {
+    google.script.run.withSuccessHandler(function(res){
+      btn.innerHTML = 'Confirm Receipt'; btn.disabled = false;
+      if(res.success){ toast('Success', res.message, 'success'); closeModals(); closeDetail(); fetchData(false); }
+      else { toast('Error', res.message, 'error'); }
+    }).withFailureHandler(function(err){ btn.innerHTML = 'Confirm Receipt'; btn.disabled = false; toast('Error', 'Connection failed', 'error');
+    }).processWebReceive(assetsToken(), name, dst, cat, driver, fileArray, remark, loggedInUser);
+  });
+}
+
+var removeAssetName = '';
+function openRemoveAssetModal(encodedName) {
+  removeAssetName = decodeURIComponent(encodedName);
+  var a = APP.assets[removeAssetName] || {};
+  document.getElementById('removeAssetText').innerHTML = '<b>' + removeAssetName.replace(/</g, '&lt;') + '</b><br>' +
+    (a.owner === 'CONTRACTOR' ? 'Contractor' : 'Own vehicle') + ' · ' + (a.cat || '') + ' · ' + (a.location || '');
+  document.getElementById('removeAssetReason').value = '';
+  closeDetail();
+  document.getElementById('modalRemoveAsset').classList.add('open');
+  setTimeout(function () { document.getElementById('removeAssetReason').focus(); }, 300);
+}
+
+function submitRemoveAsset() {
+  var reason = document.getElementById('removeAssetReason').value.trim();
+  if (!reason) { toast('Reason needed', 'Write why this asset is being removed.', 'error'); return; }
+  var btn = document.getElementById('btnConfirmRemove');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Removing...'; btn.disabled = true;
+  google.script.run.withSuccessHandler(function (res) {
+    btn.innerHTML = 'Remove asset'; btn.disabled = false;
+    if (res && res.success) { toast('Removed', res.message, 'success'); closeModals(); fetchData(false); }
+    else { toast('Not removed', (res && res.message) || 'Something went wrong.', 'error'); }
+  }).withFailureHandler(function () {
+    btn.innerHTML = 'Remove asset'; btn.disabled = false; toast('Error', 'Connection failed', 'error');
+  }).removeAsset(assetsToken(), removeAssetName, reason);
+}
+
+function openConfirmModal(event, encodedName) {
+  event.stopPropagation(); var name = decodeURIComponent(encodedName); var btn = event.currentTarget; pendingCancelData = { name: name, button: btn, originalHtml: btn.innerHTML };
+  document.getElementById('customConfirmModal').classList.add('open'); document.getElementById('confirmCancelBtn').onclick = executeCancelTransfer;
+}
+
+function executeCancelTransfer() {
+  if (!pendingCancelData) return;
+  var name = pendingCancelData.name; var btn = pendingCancelData.button; closeModals();
+  if(btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; btn.disabled = true; } toast('Processing...', 'Re-routing asset to base...', 'warn');
+
+  google.script.run.withSuccessHandler(function(response) {
+      if (response.success) { toast('Success', response.message, 'success'); if (document.getElementById('detailPanel').classList.contains('open')) closeDetail(); fetchData(false); } 
+      else { toast('Error', response.message, 'error'); if(btn) { btn.innerHTML = pendingCancelData.originalHtml; btn.disabled = false; } }
+    }).withFailureHandler(function(err) { toast('Error', 'Server connection failed.', 'error'); if(btn) { btn.innerHTML = pendingCancelData.originalHtml; btn.disabled = false; }
+    }).cancelAssetTransfer(assetsToken(), name);
+}
+
+function showAssetDetail(encodedName) {
+  var name = decodeURIComponent(encodedName); var a = APP.assets[name]; if (!a) return;
+  var color = CAT_COLORS[a.cat] || '#64748B';
+  var iconClass = getCatIcon(a.cat);
+  var badge = a.status === 'AT_BASE' ? '<span class="badge base"><i class="fa-solid fa-warehouse"></i> Base</span>' : '<span class="badge transit"><i class="fa-solid fa-truck-fast"></i> Transit</span>';
+  var panel = document.getElementById('detailPanel'); var overlay = document.getElementById('sidebarOverlay'); var title = document.getElementById('detailTitle'); var body  = document.getElementById('detailBody'); 
+  
+  title.innerHTML = '<i class="fa ' + iconClass + '" style="color:var(--accent2); margin-right:10px;"></i>' + name;
+  
+  var loggedIn = localStorage.getItem("loggedInSite").toUpperCase();
+  var isBoss = (loggedIn === 'BOSS' || loggedIn === 'ADMIN' || loggedIn === 'MAIN');
+  var actionHtml = '';
+
+  if (a.status === 'AT_BASE') {
+    if (isBoss || loggedIn === a.location.toUpperCase()) {
+      actionHtml += '<button onclick="openTransferModal(\'' + encodedName + '\', \'' + a.cat + '\', \'' + a.location + '\')" style="margin-top:16px; width:100%; padding:14px; background:var(--accent2); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform 0.2s;" onmousedown="this.style.transform=\'scale(0.96)\'" onmouseup="this.style.transform=\'scale(1)\'"><i class="fa-solid fa-paper-plane"></i> Dispatch / Transfer Asset</button>';
+    }
+  }
+  // admin / boss only: take a vehicle off the list (only while it is at base)
+  if (isBoss && a.status === 'AT_BASE') {
+    actionHtml += '<button onclick="openRemoveAssetModal(\'' + encodedName + '\')" style="margin-top:10px; width:100%; padding:12px; background:#fff; color:var(--red); border:1.5px solid #FCA5A5; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="fa-solid fa-trash-can"></i> Remove asset</button>';
+  }
+  if (a.status === 'IN_TRANSIT') {
+    if (isBoss || loggedIn === a.dest.toUpperCase()) {
+       actionHtml += '<button onclick="openReceiveModal(\'' + encodedName + '\', \'' + a.cat + '\', \'' + a.dest + '\')" style="margin-top:16px; width:100%; padding:14px; background:var(--green); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform 0.2s;" onmousedown="this.style.transform=\'scale(0.96)\'" onmouseup="this.style.transform=\'scale(1)\'"><i class="fa-solid fa-boxes-packing"></i> Confirm Receipt</button>';
+    }
+    if (isBoss || loggedIn === a.location.toUpperCase()) {
+       actionHtml += '<button onclick="openConfirmModal(event, \'' + encodedName + '\')" style="margin-top:10px; width:100%; padding:12px; background:var(--red); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform 0.2s;" onmousedown="this.style.transform=\'scale(0.96)\'" onmouseup="this.style.transform=\'scale(1)\'"><i class="fa-solid fa-xmark"></i> Cancel Transfer</button>';
+    }
+  }
+
+  var v = APP.vehicles[name];
+  var vehicleHtml = '';
+  
+  if (v) {
+    var regHtml = (v.regNo && v.regNo !== '—') ? '<div><div class="detail-row-lbl">Reg No.</div><div class="detail-row-val" style="font-size:13px">' + v.regNo + '</div></div>' : '';
+    var serialHtml = (v.serialNo && v.serialNo !== '—') ? '<div><div class="detail-row-lbl">Serial No.</div><div class="detail-row-val" style="font-size:13px; font-family:var(--font-mono)">' + v.serialNo + '</div></div>' : '';
+    
+    var dateHtml = (v.date && v.date !== '—') ? '<div><div class="detail-row-lbl">Purchase Date</div><div class="detail-row-val" style="font-size:13px">' + v.date + '</div></div>' : '';
+    var compHtml = (v.company && v.company !== '—') ? '<div><div class="detail-row-lbl">Company</div><div class="detail-row-val" style="font-size:13px">' + v.company + '</div></div>' : '';
+    var modelHtml = (v.model && v.model !== '—') ? '<div><div class="detail-row-lbl">Model / Type</div><div class="detail-row-val" style="font-size:13px">' + v.model + '</div></div>' : '';
+
+    var chasisHtml = (v.chasis && v.chasis !== '—') ? '<div style="grid-column: 1 / -1;"><div class="detail-row-lbl">Chassis No.</div><div class="detail-row-val" style="font-size:13px; font-family:var(--font-mono)">' + v.chasis + '</div></div>' : '';
+    var engineHtml = (v.engine && v.engine !== '—') ? '<div style="grid-column: 1 / -1;"><div class="detail-row-lbl">Engine/Motor Details</div><div class="detail-row-val" style="font-size:13px; font-family:var(--font-mono)">' + v.engine + '</div></div>' : '';
+    var ownerHtml = (v.owner && v.owner !== '—') ? '<div style="grid-column: 1 / -1;"><div class="detail-row-lbl">Owner Name</div><div class="detail-row-val" style="font-size:13px">' + v.owner + '</div></div>' : '';
+
+    var photoHtml = '';
+    if (v.photoUrls && v.photoUrls !== '—') {
+       var links = v.photoUrls.split(' \n ');
+       photoHtml += '<div style="grid-column: 1 / -1; margin-top: 8px;"><div class="detail-row-lbl">Attached Files / Photos</div><div style="display:flex; gap:8px; flex-wrap:wrap;">';
+       links.forEach(function(link, index) {
+          if (link.trim()) {
+            photoHtml += '<a href="'+link.trim()+'" target="_blank" style="padding:6px 12px; background:#F1F5F9; color:var(--text); text-decoration:none; border-radius:8px; font-size:12px; font-weight:600; border: 1px solid var(--border); transition: all 0.2s;"><i class="fa-solid fa-file-image" style="color:var(--accent2); margin-right:4px;"></i> View File '+(index+1)+'</a>';
+          }
+       });
+       photoHtml += '</div></div>';
+    }
+
+    vehicleHtml = `
+      <div class="detail-row" style="background:#F8FAFC; border-color:#E2E8F0; margin-top:10px;">
+        <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+          <i class="fa-solid fa-truck-fast" style="color:var(--accent2)"></i> Vehicle Specs (${v.type})
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          ${regHtml}
+          ${serialHtml}
+          ${dateHtml}
+          ${compHtml}
+          ${modelHtml}
+          ${chasisHtml}
+          ${engineHtml}
+          ${ownerHtml}
+          ${photoHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  body.innerHTML = '<div class="detail-row"><div class="detail-row-lbl">Current Status</div><div class="detail-row-val">' + badge + '</div></div><div class="detail-row"><div class="detail-row-lbl">Belongs to</div><div class="detail-row-val">' + (a.owner === 'CONTRACTOR' ? '<i class="fa-solid fa-handshake" style="color:#D97706;margin-right:6px"></i>Contractor' : '<i class="fa-solid fa-building" style="color:var(--accent2);margin-right:6px"></i>Own vehicle') + '</div></div><div class="detail-row"><div class="detail-row-lbl">Asset Category</div><div class="detail-row-val" style="display:flex;align-items:center;gap:8px"><i class="fa ' + iconClass + '" style="color:' + color + '"></i>' + a.cat + '</div></div><div class="detail-row"><div class="detail-row-lbl">Hub Terminal</div><div class="detail-row-val"><i class="fa-solid fa-location-dot" style="color:var(--accent2);margin-right:6px"></i>' + (a.location || '—') + '</div></div>' + (a.status === 'IN_TRANSIT' ? '<div class="detail-row"><div class="detail-row-lbl">Target Destination</div><div class="detail-row-val"><i class="fa-solid fa-flag-checkered" style="color:var(--green);margin-right:6px"></i>' + (a.dest || '—') + '</div></div>' : '') + vehicleHtml + '<div class="detail-row" style="background:#EFF6FF; border-color:#BFDBFE; margin-top:10px;"><div class="detail-row-lbl" style="color:var(--accent2)">Encryption Note</div><div style="font-size:13px;color:var(--text);margin-top:4px">Full asset velocity streams are systematically bound to workspace configurations.</div></div>' + actionHtml;
+  
+  panel.classList.add('open'); if (window.innerWidth <= 768) { overlay.style.display = 'block'; setTimeout(function(){ overlay.classList.add('active'); }, 10); }
+}
+
+function closeDetail() { document.getElementById('detailPanel').classList.remove('open'); var overlay = document.getElementById('sidebarOverlay'); if (!document.getElementById('sidebar').classList.contains('open') && !document.querySelector('.modal-overlay.open')) { overlay.classList.remove('active'); setTimeout(function(){ overlay.style.display = 'none'; }, 300); } }
+
+function fetchData(isManual) {
+  var icon = document.getElementById('syncIcon'); icon.classList.add('fa-spin'); 
+  var site = localStorage.getItem("loggedInSite");
+  if (typeof google === 'undefined' || !google.script) { setTimeout(function() { icon.classList.remove('fa-spin'); toast('Environment Error', 'Must be served via Google Apps Script.', 'error'); }, 800); return; }
+  
+  if (isManual) {
+    google.script.run.forceBackendSync(assetsToken());
+  }
+  
+  google.script.run.withSuccessHandler(function(response) {
+    icon.classList.remove('fa-spin');
+    try { 
+      var data = JSON.parse(response); 
+      if (data.ok) { processData(data); if (isManual) { toast('Payload Synced', 'Enterprise Workspace registers verified successfully.', 'success'); } 
+      } else if (isExpired(data.error)) { sessionEnded(); 
+      } else { toast('Fetch Failed', data.error || 'Unknown parameters structural error.', 'error'); } 
+    } catch(e) { toast('Parse Error', 'Server returned invalid structured payload JSON streams.', 'error'); }
+  }).withFailureHandler(function(err) { icon.classList.remove('fa-spin'); toast('Link Fault', err.message || 'Workspace server endpoints unreachable.', 'error'); }).getDashboardDataUI(assetsToken(), site);
+}
+</script>
+</body>
+</html>

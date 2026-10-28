@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GGM Portal Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F1E9; --surface:#FCFAF5; --surface2:#FFFFFF;
+  --ink:#1B1A17; --ink-soft:#6C685D; --ink-faint:#9A968B;
+  --line:#E8E3D6; --line-soft:#F0ECE1;
+  --amber:#F2C14E; --amber-deep:#D9A52C; --amber-wash:#FBEFCB;
+  --charcoal:#232220;
+  --ok:#4F9D69; --ok-wash:#E1F0E6; --bad:#CF4F33; --bad-wash:#F8E2DB; --warn:#C98A12; --warn-wash:#FBEFCB;
+  --info:#3A6EA5; --info-wash:#E2EBF5;
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  --shadow:0 1px 2px rgba(27,26,23,.04), 0 8px 24px -12px rgba(27,26,23,.12);
+  --gs-line:#E2E3E3; --gs-head:#F8F9FA; --gs-sel:#C2DBFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono,code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.86em}
+code{background:var(--line-soft);padding:1px 6px;border-radius:6px}
+a{color:var(--info)}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 24px 90px}
+header.top{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.brand-mark{width:40px;height:40px;border-radius:11px;background:var(--amber);position:relative;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.brand-mark::before,.brand-mark::after{content:"";position:absolute;background:var(--charcoal);top:9px;width:3px;height:22px;transform:skewX(-18deg)}
+.brand-mark::before{left:12px}.brand-mark::after{left:21px}
+h1{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.lede{color:var(--ink-soft);font-size:16px;max-width:760px;margin:10px 0 26px}
+h2{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:56px 0 6px;scroll-margin-top:20px}
+h2 .n{color:var(--amber-deep);margin-right:8px}
+h3{font-size:17px;font-weight:700;margin:28px 0 8px}
+p{margin:8px 0;max-width:820px}
+ul,ol{margin:8px 0 8px 22px;max-width:840px}
+li{margin:4px 0}
+.sub{color:var(--ink-soft);margin-bottom:18px}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 8px}
+.toc a{text-decoration:none;color:var(--ink);background:var(--surface2);border:1px solid var(--line);padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600}
+.toc a:hover{border-color:var(--amber-deep)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 24px;box-shadow:var(--shadow);margin:16px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.kpi{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px}
+.kpi b{display:block;font-size:22px;letter-spacing:-.02em}
+.kpi span{color:var(--ink-soft);font-size:13px}
+.callout{border-radius:var(--r-md);padding:14px 18px;margin:14px 0;border:1px solid}
+.callout.bad{background:var(--bad-wash);border-color:#EFC3B6}
+.callout.warn{background:var(--warn-wash);border-color:#EED9A2}
+.callout.ok{background:var(--ok-wash);border-color:#BFDCC8}
+.callout.info{background:var(--info-wash);border-color:#C3D5EA}
+.callout b:first-child{display:block;margin-bottom:2px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface2);margin:14px 0}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px}
+table.t th,table.t td{padding:10px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+table.t th{background:var(--surface);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;white-space:nowrap}
+table.t tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.p-bad{background:var(--bad-wash);color:var(--bad)}
+.p-warn{background:var(--warn-wash);color:#8A5E07}
+.p-ok{background:var(--ok-wash);color:#2E6B43}
+.p-info{background:var(--info-wash);color:var(--info)}
+.p-mute{background:var(--line-soft);color:var(--ink-soft)}
+.step{display:flex;gap:14px;margin:12px 0}
+.step .num{flex:0 0 30px;height:30px;border-radius:50%;background:var(--charcoal);color:var(--amber);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+.label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin:22px 0 8px}
+figure{margin:16px 0}
+figcaption{color:var(--ink-soft);font-size:13px;margin-top:8px}
+
+/* ===== architecture svg ===== */
+.arch{width:100%;height:auto;display:block}
+.arch text{font-family:'Inter',system-ui,sans-serif}
+
+/* ===== portal mockups (hub's own look) ===== */
+.stage{background:#E9E4D6;border-radius:var(--r-lg);padding:26px;display:flex;gap:26px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.phone{width:300px;border-radius:34px;background:#111;padding:10px;box-shadow:0 20px 40px -18px rgba(0,0,0,.45)}
+.phone .scr{background:var(--bg);border-radius:26px;overflow:hidden;min-height:560px;position:relative}
+.desk{flex:1 1 640px;max-width:760px;border-radius:14px;background:#fff;box-shadow:0 20px 40px -18px rgba(0,0,0,.35);overflow:hidden;border:1px solid #d9d4c6}
+.desk .bar{height:30px;background:#ECE8DD;display:flex;align-items:center;gap:6px;padding:0 12px}
+.desk .bar i{width:10px;height:10px;border-radius:50%;background:#D5CFC0;display:block}
+.desk .bar .url{margin-left:12px;flex:1;height:18px;border-radius:9px;background:#fff;font-size:10.5px;color:#888;display:flex;align-items:center;padding:0 10px}
+.desk .scr{background:var(--bg);padding:22px 26px 30px}
+.m-top{display:flex;align-items:center;justify-content:space-between}
+.m-brand{display:flex;align-items:center;gap:9px}
+.m-brand .brand-mark{width:28px;height:28px;border-radius:8px}
+.m-brand .brand-mark::before,.m-brand .brand-mark::after{top:6px;height:16px;width:2.5px}
+.m-brand .brand-mark::before{left:8px}.m-brand .brand-mark::after{left:15px}
+.m-bn{font-weight:800;font-size:13.5px;letter-spacing:-.02em;line-height:1}
+.m-bs{font-size:8.5px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase}
+.m-acct{width:34px;height:34px;border-radius:11px;background:var(--charcoal);color:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;position:relative}
+.m-hello{margin:18px 0 12px}
+.m-hello b{font-size:19px;font-weight:800;letter-spacing:-.03em;display:block;line-height:1.15}
+.m-hello span{font-size:11.5px;color:var(--ink-soft)}
+.m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.phone .m-grid{grid-template-columns:1fr 1fr;gap:10px}
+.m-tile{position:relative;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:var(--surface);box-shadow:var(--shadow);min-height:104px;display:flex;flex-direction:column}
+.m-chip{width:32px;height:32px;border-radius:9px;background:var(--charcoal);color:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;margin-bottom:9px}
+.m-name{font-size:12px;font-weight:700;line-height:1.25}
+.m-meta{margin-top:auto;padding-top:6px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+.m-meta.hot{color:var(--bad)}
+.badge{position:absolute;top:-7px;right:-7px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--bad);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2.5px solid var(--bg);font-feature-settings:"tnum" 1}
+.badge.dot{min-width:12px;width:12px;height:12px;padding:0;top:-3px;right:-3px}
+.m-lock{position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;color:var(--ink-faint);background:var(--line-soft);padding:2px 6px;border-radius:6px}
+.m-sec{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin:16px 0 8px}
+.m-login{margin:34px 16px;background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+.m-login .h{background:var(--charcoal);color:#F4F0E5;padding:15px 16px}
+.m-login .h .m-bs{color:#9C988A}
+.m-login .b{padding:16px}
+.m-login h4{font-size:17px;font-weight:800;letter-spacing:-.02em}
+.m-login p{font-size:11px;color:var(--ink-soft);margin:2px 0 12px}
+.m-f{margin-bottom:10px}
+.m-f label{display:block;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-bottom:3px}
+.m-f div{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;background:#fff;color:var(--ink-soft)}
+.m-btn{background:var(--charcoal);color:#F6F2E7;border-radius:18px;text-align:center;padding:9px;font-size:12px;font-weight:600}
+.m-btn.amber{background:var(--amber);color:var(--charcoal)}
+.m-link{text-align:center;font-size:11px;font-weight:600;color:var(--ink-soft);margin-top:10px;text-decoration:underline}
+.otp{display:flex;gap:6px;justify-content:center;margin:6px 0 12px}
+.otp span{width:30px;height:38px;border:1.5px solid var(--line);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.otp span.f{border-color:var(--amber-deep)}
+.flow{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.flow .phone{width:250px}
+.flow .phone .scr{min-height:430px}
+.flow-cap{text-align:center;font-size:12px;font-weight:700;color:var(--ink-soft);margin-top:8px}
+.menu-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:20px 20px 0 0;padding:16px;box-shadow:0 -10px 30px -10px rgba(0,0,0,.25)}
+.menu-sheet .mb{border:1px solid var(--line);background:#fff;border-radius:14px;padding:9px 12px;font-size:11.5px;font-weight:600;margin-top:7px}
+.scrim{position:absolute;inset:0;background:rgba(27,26,23,.35)}
+
+/* ===== google sheets mockup ===== */
+.gs{border:1px solid #DADCE0;border-radius:10px;overflow:hidden;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#202124;margin:14px 0}
+.gs-toolbar{background:#F9FBFD;border-bottom:1px solid #DADCE0;padding:8px 12px;display:flex;align-items:center;gap:10px}
+.gs-toolbar .ic{width:22px;height:22px;border-radius:5px;background:#0F9D58;flex:0 0 auto;position:relative}
+.gs-toolbar .ic::after{content:"";position:absolute;inset:6px 5px;border:2px solid #fff;border-radius:1px}
+.gs-toolbar .nm{font-size:14px;color:#202124}
+.gs-toolbar .menu{margin-left:auto;background:#E8F0FE;color:#1967D2;font-weight:700;font-size:11.5px;padding:4px 10px;border-radius:14px}
+.gs-scroll{overflow-x:auto}
+table.gst{border-collapse:collapse;white-space:nowrap}
+table.gst td,table.gst th{border:1px solid var(--gs-line);padding:4px 7px;height:24px;font-weight:400}
+table.gst th.cl{background:var(--gs-head);color:#5F6368;font-size:10.5px;text-align:center;font-weight:400;padding:2px 6px}
+table.gst td.rn{background:var(--gs-head);color:#5F6368;font-size:10.5px;text-align:center;width:34px;padding:0}
+table.gst tr.h td{font-weight:700;background:#E8EAF6}
+table.gst tr.g td{font-weight:700;text-align:center;color:#fff;font-size:11px;letter-spacing:.04em}
+table.gst td.frz{background:#FAFAFA}
+table.gst td.hid{background:repeating-linear-gradient(45deg,#f3f3f3,#f3f3f3 4px,#fafafa 4px,#fafafa 8px);color:#999}
+.cb{display:inline-block;width:14px;height:14px;border:2px solid #5F6368;border-radius:2px;vertical-align:middle;position:relative}
+.cb.on{background:#1A73E8;border-color:#1A73E8}
+.cb.on::after{content:"";position:absolute;left:3px;top:0;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.dd{display:inline-flex;align-items:center;gap:4px;background:#E8EAED;border-radius:10px;padding:1px 8px;font-size:11px}
+.dd::after{content:"▾";font-size:9px;color:#5F6368}
+.dd.r{background:#FCE8E6;color:#C5221F}
+.dd.empty{background:transparent;color:#bbb;border:1px dashed #ccc}
+td.off{background:#F1F3F4!important;color:#BDC1C6}
+td.err{background:#FCE8E6!important}
+.gs-tabs{display:flex;gap:2px;background:#F1F3F4;border-top:1px solid #DADCE0;padding:0 8px;overflow-x:auto}
+.gs-tabs button{font:inherit;font-size:12px;border:0;background:none;padding:8px 14px;color:#444;cursor:pointer;white-space:nowrap;border-radius:0}
+.gs-tabs button.on{background:#fff;color:#188038;font-weight:700;box-shadow:inset 0 -3px 0 #188038}
+.gs-tabs button .h{color:#9AA0A6;font-weight:400}
+.gs-pane{display:none}
+.gs-pane.on{display:block}
+.gs-note{padding:10px 14px;background:#FEF7E0;border-top:1px solid #F6E3A8;font-size:12px;color:#5f4b00;font-family:'Inter',system-ui,sans-serif}
+.ok{color:#188038;font-weight:700}.er{color:#C5221F;font-weight:700}.pd{color:#B06000;font-weight:700}
+
+@media(max-width:820px){
+  .wrap{padding:26px 16px 70px}
+  h1{font-size:27px}
+  h2{font-size:21px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .stage{padding:14px}
+  .desk{flex-basis:100%}
+}
+@media print{ .toc{display:none} body{background:#fff} .card,.stage{box-shadow:none} }
+/* ===== additions v3 ===== */
+.sw{display:inline-flex;align-items:center;width:46px;height:26px;border-radius:13px;background:#D6D0C0;position:relative;flex:0 0 auto}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw.on{background:var(--ok)}
+.sw.on::after{left:23px}
+.adm-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.adm-row .t{flex:1;font-size:12px;line-height:1.35}
+.adm-row .t b{display:block;font-size:13px}
+.adm-apps{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:11.5px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.adm-apps span:nth-child(even){font-weight:700}
+.lock-f div{background:var(--line-soft)!important;color:var(--ink)!important;font-weight:600;display:flex;justify-content:space-between}
+.lock-f div::after{content:"🔒";font-size:10px}
+table.t td.q{font-weight:600;width:34%}
+.done-tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ok);margin-right:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand-mark"></div>
+  <div><div style="font-weight:800;letter-spacing:-.02em">GGM Portal</div><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)">Single sign-on plan · v3.1 · updated with your answers (29 Sep 2026)</div></div>
+</header>
+<h1>One login, one user list, every app</h1>
+<p class="lede">How the master sheet in <code>Main Dashboard/</code> becomes the only place users, passwords, roles and sites are managed for the five Apps Script apps, with the three public dashboards shown as tiles. <b>This plan changes no code.</b> Everything below is analysis plus a proposed build.</p>
+
+<div class="callout ok"><b>Build status (29 Sep 2026): code written, not yet deployed</b>Everything in this plan is implemented in this folder. Deployment steps, in order, are in <code>PORTAL_SETUP.md</code>. Small differences from the plan: the Apps tab has a <b>Fields</b> column (<code>role,site</code> / <code>doer</code>) that decides which dropdowns an app gets in the Access grid; dashboard tiles open in a new browser tab (those pages do not allow being shown inside the portal); new Staff Dashboard people are added to the Doer List only (no password row, because they sign in with the portal password).<br><b>Added 30 Sep:</b> two more connected apps, <b>Newai Checklist</b> (<code>NEWAI_TASKS</code>, doer-name dropdown) and <b>Tonk Checklist</b> (<code>TONK_TASKS</code>, Role DRIVER / STAFF + doer name). Both now check a session on every call; Tonk's built-in <code>Main</code> / <code>123456</code> login stops working once it is connected.</div>
+
+<nav class="toc">
+  <a href="#s0">0 · Your decisions</a>
+  <a href="#s1">1 · What exists today</a>
+  <a href="#s2">2 · App inventory</a>
+  <a href="#s3">3 · Architecture</a>
+  <a href="#s4">4 · The 6 requirements</a>
+  <a href="#s5">5 · Changes inside apps</a>
+  <a href="#s6">6 · Master sheet design</a>
+  <a href="#s7">7 · Portal screens</a>
+  <a href="#s8">8 · Public dashboards</a>
+  <a href="#s9">9 · Problems &amp; risks</a>
+  <a href="#s10">10 · Build phases</a>
+  <a href="#s11">11 · Still needed</a>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="s0"><span class="n">0</span>Your decisions (recorded)</h2>
+<p class="sub">What you answered, and what each answer changes in the build.</p>
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>Topic</th><th>Your answer</th><th>What the plan now does</th></tr>
+<tr><td class="q">The 3 dashboards (Mines, Collection, Levanto)</td><td>Leave them as they are. Too many people use them, and that changes fast.</td><td>No code change and no users created in them. They stay <b>public links</b>. The portal shows them as tiles to ticked users only (section 8).</td></tr>
+<tr><td class="q">Direct app logins after go-live</td><td>A switch in the main app, for main admin accounts. <b>OFF</b> = anyone can open each app separately with its link. <b>ON</b> = nobody can log in to an app without coming through the main app.</td><td>A new <b>Portal-only switch</b> on an Admin screen, visible only to users marked <i>Portal Admin</i>. It's pushed to all 5 apps at once (section 3). In both modes people use the <b>same portal username/phone and password</b>.</td></tr>
+<tr><td class="q">Fuel roles</td><td>No admin-specific features.</td><td>Fuel is <b>tick only</b> (no Role column). The badge shows for every Fuel user.</td></tr>
+<tr><td class="q">Fuel form "who filled"</td><td>Don't pick a name from a list. Take it from the logged-in user.</td><td>The Driver dropdown is removed from the fuel form. Column B of <code>FUEL DETAIL DRIVERS</code> gets the logged-in user's username, set on the server so it can't be faked (section 5).</td></tr>
+<tr><td class="q">Fuel service form</td><td>Yes, it should also use the logged-in user.</td><td>Same rule: the <code>s_driver</code> dropdown is removed, and column B of <code>SERVICE COST</code> = logged-in username.</td></tr>
+<tr><td class="q">Staff / Main Admin dashboards</td><td>The two were swapped. <b>Staff Dashboard</b> = where normal users log in. <b>Main Admin Dashboard</b> = main administrators only. In Main Admin, "Given By" = the logged-in username; "assign to" = picked from the list of all users; every write records the username.</td><td>Names updated throughout (they match the folders on disk since 17:21). Main Admin: Given By is locked to the logged-in user, the assign list comes from the portal user list, and new "Done By" columns are added on the right of each sheet it writes to (section 5).</td></tr>
+<tr><td class="q">Ownership</td><td>Everything is owned by <code>itadmin@ggminerals.com</code>.</td><td>One owner makes secrets, deployments and the hub reading sheets simpler. Quotas are taken as Google Workspace (the <code>@ggminerals.com</code> domain).</td></tr>
+<tr><td class="q">Username style</td><td>Accept both.</td><td>Login accepts username <i>or</i> phone (already works). The same goes for the apps' own login forms while the switch is OFF.</td></tr>
+<tr><td class="q">Assets audit + login</td><td>Yes. Users get sites assigned instead of logging in with site names. The site is recorded as before, and the workflow doesn't change.</td><td>Assets role (Site/Boss) and site are set in the Access grid. People log in as themselves. Transfer and Receive rows record the username in column B, and the site columns stay exactly as they are.</td></tr>
+<tr><td class="q">Levanto badge</td><td>Only the active slabs that need attention in the Feedback tab.</td><td>The count is read <b>read-only</b> by the hub from Levanto's source spreadsheet <b>"New Base"</b> (<code>1Cy3Li1uXx…</code>, provided). The dashboard itself stays untouched (section 8).</td></tr>
+<tr><td class="q">Mines site lock</td><td>All mines for everyone it's assigned to.</td><td>No site column for Mines (or Collection). Tick only.</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s1"><span class="n">1</span>What exists today</h2>
+<p class="sub">Most of the single-sign-on foundation is already written in the hub.</p>
+
+<div class="grid3">
+  <div class="kpi"><b>Hub · built</b><span>Login by username or phone, salted and peppered hashes, 12 h signed sessions, lockout after 5 failures, app tiles, iframe viewer, a Log tab, and <code>?app=ID</code> deep links.</span></div>
+  <div class="kpi"><b>Hub · built, unused</b><span><code>launchApp()</code> already mints a 90-second signed one-time pass (<code>?pt=…</code>) for each app with a per-app secret. <b>No app reads it yet.</b></span></div>
+  <div class="kpi"><b>Hub · missing</b><span>Email and OTP reset, role and site per app, pushing users into apps, badges, admin accounts, and the Portal-only switch.</span></div>
+</div>
+<p>The existing hub tabs are <code>Users</code>, <code>Apps</code>, <code>Access</code>, <code>App Logins</code> and <code>Log</code>. The plan keeps them and adds columns only on the right, the rule already written in the hub's header comment.</p>
+
+<!-- ============================================================ -->
+<h2 id="s2"><span class="n">2</span>App inventory: how each app logs people in today</h2>
+<p class="sub">Folder names reflect the swap you made. <code>Staff_Dashboard/</code> is now the staff app, and <code>main_admin_dashboard/</code> is the managers' panel.</p>
+
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>App (folder)</th><th>Signs in with</th><th>Stored where</th><th>Session</th><th>Roles</th><th>Sites</th><th>Server checks who is calling?</th></tr>
+<tr>
+  <td><b>Indent Flow</b><br><span class="mono">indent_flow/</span></td>
+  <td>User ID + PIN</td><td><code>Users</code> tab, SHA-256 PIN hash</td><td><code>Sessions</code> tab + cache, 12 h</td>
+  <td>ADMIN · STORE · PURCHASE · PC · USER</td>
+  <td>TONK · NEWAI · SANWARIYA · KHAKHUNDA (USER and STORE need one; the rest are stored as <code>ALL</code>)</td>
+  <td><span class="pill p-ok">Yes, every API call</span></td>
+</tr>
+<tr>
+  <td><b>Fuel &amp; Car Tasks</b><br><span class="mono">fuel_and_car_tasks/</span></td>
+  <td>Email + password</td><td><code>Users</code> tab, auth columns on the right (cols A–B are the Driver and Vehicle dropdown lists)</td><td><code>_AUTH</code> tab, <b>never expires</b></td>
+  <td>ROLE column unused. <b>Dropped</b> (your answer)</td><td>None</td>
+  <td><span class="pill p-warn">Only for task and form writes</span></td>
+</tr>
+<tr>
+  <td><b>GGM Assets</b><br><span class="mono">assets/</span></td>
+  <td>Site name + password (shared per site)</td><td><code>Users</code> tab: col A site, col B <b>plain-text password</b></td><td>None. <code>localStorage.loggedInSite</code> decides everything</td>
+  <td>Site user, or BOSS/ADMIN/MAIN</td><td>TONK · SANWARIYA · KHAKHUNDA · NEWAI · AMARGARH · KACHOLA FACTORY</td>
+  <td><span class="pill p-bad">No</span></td>
+</tr>
+<tr>
+  <td><b>Staff Dashboard</b> ("GGM Tasks")<br><span class="mono">Staff_Dashboard/</span></td>
+  <td>Mobile + password</td><td>Delegated sheet <code>Users</code>: A mobile, B <b>plain-text password</b>, C name. <code>Doer List</code> maps mobile to exact full name</td><td>None. The browser stores the name, and the server trusts it</td>
+  <td>None ("peon" guessed from the name)</td><td>Implied by name prefixes (JPR, NEWAI, KCL, SAW, KHA, FAC, AMG)</td>
+  <td><span class="pill p-bad">No</span></td>
+</tr>
+<tr>
+  <td><b>Main Admin Dashboard</b> ("GGM Tasks Dashboard")<br><span class="mono">main_admin_dashboard/</span></td>
+  <td><b>Nothing, there is no login</b></td><td>n/a</td><td>n/a</td>
+  <td>None (anyone with the link can add, edit and reject tasks, and approve leave). "Given By" is a hand-picked dropdown</td><td>Routine sheets JPR · NEWAI · TONK</td>
+  <td><span class="pill p-bad">No</span></td>
+</tr>
+</table>
+</div>
+
+<h3>The three public dashboards (<code>moredashboards.txt</code>): stay as they are</h3>
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>Dashboard</th><th>Deployment</th><th>What it shows</th><th>In the portal</th></tr>
+<tr><td><b>Mines Dashboard</b><br><span style="color:var(--ink-soft);font-size:12px">"Tonk mining operations"</span></td><td class="mono" style="font-size:11px">…/AKfycbwFb2igRK_Nk…LiEEgg/exec</td><td>Trips, diesel, stock, running hours. All mines (Tonk / Khakhunda / Sanwariya)</td><td>Tile for ticked users, all mines, no badge</td></tr>
+<tr><td><b>Collection Dashboard</b><br><span style="color:var(--ink-soft);font-size:12px">"GGM Collections · Finance"</span></td><td class="mono" style="font-size:11px">…/AKfycbxo81rUG8fc…8NdnXu/exec</td><td>Billing, GST, parties, freight. Sites Newai / Tonk / Kachola / Rambas. Has a "Sync now" button</td><td>Tile for ticked users, no badge</td></tr>
+<tr><td><b>Levanto Production</b><br><span style="color:var(--ink-soft);font-size:12px">"Slabworks — Production Control"</span></td><td class="mono" style="font-size:11px">…/AKfycbw2Gu-OCMbk…VbVe-jSZQ/exec</td><td>Production line, halts, supervisor grade reports and alerts</td><td>Tile for ticked users + <b>badge = active slabs needing attention</b> (Feedback tab)</td></tr>
+</table>
+</div>
+
+<h3>What "pending" means in each app (for the notification dot)</h3>
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>App</th><th>Badge count</th><th>Source</th></tr>
+<tr><td>Indent Flow</td><td>Indents waiting on <i>this person's</i> action, plus incoming transfers (STORE) and item-list requests (ADMIN)</td><td><code>dashboardFresh_().counts.myQueue</code> in <span class="mono">05_Views.js</span> (already exists)</td></tr>
+<tr><td>Fuel &amp; Car Tasks</td><td>Tasks <code>due</code> / <code>overdue</code> / <code>broken</code>. The same number for every Fuel user (tasks aren't per person)</td><td><code>computeTaskState_()</code> (already exists)</td></tr>
+<tr><td>GGM Assets</td><td>Assets in transit <i>to this person's site</i>. BOSS: all in transit</td><td>Filter over <code>getGlobalAssetStatus()</code></td></tr>
+<tr><td>Staff Dashboard</td><td>Routine due today or overdue + delegated pending/rejected + incoming transfer requests + pending renewals</td><td>Same rules as the app's own Routine/Pending/Review nav badges</td></tr>
+<tr><td>Main Admin Dashboard</td><td>Waiting on the admin: delegated tasks "In Review" + leave "Pending" + renewals in review</td><td>Same as its "In Review" KPI + leave list</td></tr>
+<tr><td>Levanto Production</td><td>Active slabs needing attention (Feedback tab "live alerts": reported, still inside the response window, unanswered)</td><td>The hub reads Levanto's source sheet read-only (dashboard untouched)</td></tr>
+<tr><td>Mines · Collection</td><td>No badge</td><td>n/a</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s3"><span class="n">3</span>Architecture</h2>
+<p class="sub">The hub is the only user list and password store. Each of the 5 apps gets one small, identical file, the <b>Portal Connector</b>, that trusts messages signed by the hub. The 3 public dashboards are only tiles.</p>
+
+<figure class="card" style="padding:18px">
+<svg class="arch" viewBox="0 0 1060 560" role="img" aria-label="Architecture: hub sends launch passes, user sync, mode switch and badge requests to five apps; three dashboards are public links">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6C685D"/></marker>
+    <marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#D9A52C"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3A6EA5"/></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4F9D69"/></marker>
+  </defs>
+  <rect x="20" y="222" width="130" height="92" rx="16" fill="#FFFFFF" stroke="#E8E3D6"/>
+  <text x="85" y="258" text-anchor="middle" font-size="14" font-weight="700" fill="#1B1A17">Staff phone</text>
+  <text x="85" y="278" text-anchor="middle" font-size="12" fill="#6C685D">or browser</text>
+  <text x="85" y="298" text-anchor="middle" font-size="11" fill="#9A968B">logs in once</text>
+
+  <rect x="210" y="120" width="300" height="300" rx="20" fill="#232220"/>
+  <text x="360" y="152" text-anchor="middle" font-size="16" font-weight="800" fill="#F2C14E">GGM Portal (hub)</text>
+  <text x="360" y="172" text-anchor="middle" font-size="11.5" fill="#9C988A">Code.js + Index.html · master sheet</text>
+  <rect x="232" y="190" width="256" height="40" rx="10" fill="#2E2C29"/><text x="248" y="215" font-size="12.5" fill="#F4F0E5">Users · email · password · admins</text>
+  <rect x="232" y="238" width="256" height="40" rx="10" fill="#2E2C29"/><text x="248" y="263" font-size="12.5" fill="#F4F0E5">Access grid: app ✓ + role + site</text>
+  <rect x="232" y="286" width="256" height="40" rx="10" fill="#2E2C29"/><text x="248" y="311" font-size="12.5" fill="#F4F0E5">Sync queue · Badges · Lists</text>
+  <rect x="232" y="334" width="256" height="40" rx="10" fill="#3A3520" stroke="#F2C14E"/><text x="248" y="359" font-size="12.5" fill="#F2C14E" font-weight="700">Portal-only switch · OTP · Log</text>
+  <text x="360" y="402" text-anchor="middle" font-size="11" fill="#9C988A">one secret per app in Script Properties</text>
+
+  <line x1="150" y1="258" x2="206" y2="258" stroke="#6C685D" stroke-width="2" marker-end="url(#ar)"/>
+  <line x1="206" y1="282" x2="150" y2="282" stroke="#6C685D" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="178" y="245" text-anchor="middle" font-size="10" fill="#6C685D">login</text>
+  <text x="178" y="300" text-anchor="middle" font-size="10" fill="#6C685D">tiles + dots</text>
+
+  <g font-size="13" font-weight="700" fill="#1B1A17">
+    <rect x="720" y="40"  width="320" height="70" rx="14" fill="#FFFFFF" stroke="#E8E3D6"/><text x="740" y="68">Indent Flow</text>
+    <rect x="720" y="124" width="320" height="70" rx="14" fill="#FFFFFF" stroke="#E8E3D6"/><text x="740" y="152">Fuel &amp; Car Tasks</text>
+    <rect x="720" y="208" width="320" height="70" rx="14" fill="#FFFFFF" stroke="#E8E3D6"/><text x="740" y="236">GGM Assets</text>
+    <rect x="720" y="292" width="320" height="70" rx="14" fill="#FFFFFF" stroke="#E8E3D6"/><text x="740" y="320">Staff Dashboard</text>
+    <rect x="720" y="376" width="320" height="70" rx="14" fill="#FFFFFF" stroke="#E8E3D6"/><text x="740" y="404">Main Admin Dashboard</text>
+    <rect x="720" y="460" width="320" height="70" rx="14" fill="#F0ECE1" stroke="#E8E3D6" stroke-dasharray="5 4"/><text x="740" y="488">Mines · Collection · Levanto</text>
+  </g>
+  <g font-size="11" fill="#6C685D">
+    <text x="740" y="90">+ Portal.js · own Users sheet kept in sync</text>
+    <text x="740" y="174">+ Portal.js · form name = logged-in user</text>
+    <text x="740" y="258">+ Portal.js · person login, site from hub</text>
+    <text x="740" y="342">+ Portal.js · session carries exact doer name</text>
+    <text x="740" y="426">+ Portal.js · Given By + Done By = username</text>
+    <text x="740" y="510">public links, untouched · tile only</text>
+  </g>
+  <g fill="#D9A52C"><circle cx="1022" cy="58" r="5"/><circle cx="1022" cy="142" r="5"/><circle cx="1022" cy="226" r="5"/><circle cx="1022" cy="310" r="5"/><circle cx="1022" cy="394" r="5"/></g>
+
+  <path d="M510 200 C 600 200, 620 75, 716 75" fill="none" stroke="#D9A52C" stroke-width="2.5" marker-end="url(#arA)"/>
+  <path d="M510 250 C 610 250, 630 243, 716 243" fill="none" stroke="#3A6EA5" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arB)"/>
+  <path d="M716 327 C 630 327, 600 310, 514 305" fill="none" stroke="#4F9D69" stroke-width="2.5" marker-end="url(#arG)"/>
+  <path d="M510 360 C 610 360, 630 495, 716 495" fill="none" stroke="#9A968B" stroke-width="1.5" stroke-dasharray="3 4" marker-end="url(#ar)"/>
+
+  <g font-size="12">
+    <rect x="232" y="452" width="14" height="4" fill="#D9A52C"/><text x="254" y="458" fill="#1B1A17" font-weight="700">① Launch</text>
+    <text x="254" y="474" fill="#6C685D">tile tap → 90 s one-time pass → app opens already logged in</text>
+    <rect x="232" y="492" width="14" height="4" fill="#3A6EA5"/><text x="254" y="498" fill="#1B1A17" font-weight="700">② Sync (users + Portal-only switch)</text>
+    <text x="254" y="514" fill="#6C685D">signed POST → app updates its own user / mode setting</text>
+    <rect x="232" y="532" width="14" height="4" fill="#4F9D69"/><text x="254" y="538" fill="#1B1A17" font-weight="700">③ Badges</text>
+    <text x="254" y="554" fill="#6C685D">every 5 min → pending counts → cached → red dots</text>
+  </g>
+</svg>
+<figcaption>All flows use an HMAC-SHA256 signature made with the per-app secret that the hub's menu item "Connect selected app" already generates. Apps never store hub passwords.</figcaption>
+</figure>
+
+<h3>The Portal Connector (one file added to each of the 5 apps)</h3>
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>Entry point</th><th>Called by</th><th>What it does</th></tr>
+<tr><td><code>doGet(e)</code> with <code>?pt=</code></td><td>Browser (iframe inside the hub)</td><td>Checks the signature, expiry, app ID and single use. Creates the app's <i>own</i> normal session and serves the page with it filled in, so no login screen appears. Works in both switch positions.</td></tr>
+<tr><td><code>doGet(e)</code> without a pass</td><td>Someone opening the old link</td><td>Switch <b>ON</b>: shows "Open through GGM Portal". Switch <b>OFF</b>: shows the app's login form, which now asks for the <b>portal</b> username/phone + password (checked by the hub, see below).</td></tr>
+<tr><td><code>doPost</code> <code>op:"meta"</code></td><td>Hub, daily and from a menu item</td><td>Returns the app's roles, sites and (Staff Dashboard) doer names, for the dropdowns.</td></tr>
+<tr><td><code>doPost</code> <code>op:"provision"</code> / <code>"disable"</code></td><td>Hub sync queue</td><td>Creates, updates or switches off one user using the app's own rules, and removes the sessions of switched-off users. Never deletes rows.</td></tr>
+<tr><td><code>doPost</code> <code>op:"mode"</code></td><td>Hub, when an admin flips the switch</td><td>Stores <code>PORTAL_ONLY = true/false</code> in the app's Script Properties. Turning it ON also ends sessions that were started outside the portal.</td></tr>
+<tr><td><code>doPost</code> <code>op:"counts"</code></td><td>Hub trigger, every 5 min</td><td>Returns <code>{localId: pendingCount}</code> for all users with access, using the app's own logic.</td></tr>
+</table>
+</div>
+<p>Indent Flow already has a <code>doPost</code> for Telegram. The connector adds a branch checked by <code>e.parameter.portal</code>, so the Telegram webhook is untouched.</p>
+
+<h3>The Portal-only switch</h3>
+<div class="grid2">
+  <div class="card" style="margin:0">
+    <div class="label" style="margin-top:0"><span class="sw"></span>&nbsp; OFF: "apps open separately"</div>
+    <ul style="margin-left:18px">
+      <li>Each app's own link works on its own, as today.</li>
+      <li>Its login form asks for the <b>same portal username or phone + password</b>. The app sends them to the hub (signed server-to-server call <code>op:"verify"</code>), and the hub checks the password <i>and</i> the Access tick. There are no separate app passwords to keep in step.</li>
+      <li>The portal still works too, with no login inside apps.</li>
+    </ul>
+  </div>
+  <div class="card" style="margin:0">
+    <div class="label" style="margin-top:0"><span class="sw on"></span>&nbsp; ON: "portal only"</div>
+    <ul style="margin-left:18px">
+      <li>Opening any app's link directly shows "Open through GGM Portal" with a button to <code>HUB_URL?app=ID</code>.</li>
+      <li>App login forms are switched off. The only way in is a launch pass from the hub.</li>
+      <li>Sessions started outside the portal end the moment it's turned ON.</li>
+    </ul>
+  </div>
+</div>
+<ul>
+  <li><b>Who can flip it:</b> only users ticked <i>Portal Admin</i> in the Users tab. They see an extra <b>Admin</b> item in their account menu (mockup in section 7).</li>
+  <li><b>What happens on flip:</b> the hub saves the new state, pushes <code>op:"mode"</code> to all 5 apps in parallel, and shows ✓/✗ per app. A failed app is retried every minute until it confirms. Each flip is logged (<code>MODE_ON</code> / <code>MODE_OFF</code>, by whom).</li>
+  <li><b>Emergency:</b> if the hub itself is broken while the switch is ON, <code>itadmin@</code> can set <code>PORTAL_ONLY=false</code> directly in any app's Script Properties to reopen that one app.</li>
+  <li><b>Not affected:</b> the 3 public dashboards (they stay open links either way).</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="s4"><span class="n">4</span>How each requirement is met</h2>
+
+<h3>① Master user list creates the user in every app</h3>
+<div class="step"><div class="num">1</div><div>Admin adds a row to <b>Users</b> (username, name, phone, email, active ✓).</div></div>
+<div class="step"><div class="num">2</div><div>Admin ticks apps in <b>Access</b> and picks role, site or doer name where needed. The existing <code>onPortalEdit</code> trigger queues the change in <b>Sync</b>.</div></div>
+<div class="step"><div class="num">3</div><div>A 1-minute trigger (or menu → <i>Sync now</i>) sends <code>provision</code> to each app, which writes the user in its own format:</div></div>
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>App</th><th>What gets written into the app</th><th>Must not break</th></tr>
+<tr><td>Indent Flow</td><td><code>Users</code> row through the app's own <code>saveUser_</code> rules: <code>User_ID</code> = username in capitals, Name, Role, Site (USER/STORE: chosen site; others <code>ALL</code>), Phone, Email, Active. PIN = random (the app's own PIN is no longer used).</td><td>Updates never touch <code>Telegram_*</code> or <code>Language</code>.</td></tr>
+<tr><td>Fuel &amp; Car Tasks</td><td>Fills the auth columns only (EMAIL, NAME, STATUS) in the first row whose EMAIL is empty. EMAIL = the portal email, or the username if the person has no email (it's only a lookup key now). PASSWORD = hash of a random value.</td><td>Cols A–B (Driver and Vehicle lists) are never touched. A blank PASSWORD would mean the password is 1234, so it is never left blank.</td></tr>
+<tr><td>GGM Assets</td><td>Nothing in the sheet. Role (SITE/BOSS) and site travel in the pass and sit in the server session.</td><td>The old site logins in <code>Users</code> stop being used once connected.</td></tr>
+<tr><td>Staff Dashboard</td><td>New staff: a row in <code>Doer List</code> (mobile, exact full name) and <code>Users</code> (mobile, random password, name). Existing staff are only <i>mapped</i> to their existing Doer List name.</td><td>Task sheets find people by name, so the exact Doer List spelling is used.</td></tr>
+<tr><td>Main Admin Dashboard</td><td>Nothing (no user list). Access is the tick.</td><td>n/a</td></tr>
+</table>
+</div>
+
+<h3>② Roles and sites from each app, as dropdowns</h3>
+<ul>
+  <li><b>Indent Flow:</b> Role ADMIN / STORE / PURCHASE / PC / USER. Site = active sites from its Sites tab. USER and STORE need a site; other roles are locked to ALL.</li>
+  <li><b>Fuel &amp; Car Tasks:</b> tick only.</li>
+  <li><b>GGM Assets:</b> Role SITE / BOSS. Site = the 6 from <code>LOCATION_BLOCKS</code>. SITE needs a site; BOSS sees all.</li>
+  <li><b>Staff Dashboard:</b> <b>Doer name</b> dropdown, sourced from <code>Doer List</code>.</li>
+  <li><b>Main Admin Dashboard · Mines · Collection · Levanto:</b> tick only.</li>
+</ul>
+<p>Lists are refreshed daily from each app's <code>meta</code> into a hidden <b>Lists</b> tab. Conditional formatting greys out unticked columns and marks missing required values in red. Red rows don't sync.</p>
+
+<h3>③ Assign apps with a tick and a dropdown</h3>
+<p>The Access grid gets a two-row header: the app name across its columns, with <i>✓ / Role / Site</i> underneath. See section 6.</p>
+
+<h3>④ Pending tasks as a dot on each tile</h3>
+<ul>
+  <li>A 5-minute trigger calls <code>counts</code> on the 5 apps in parallel (one call per app for <i>all</i> users) and reads Levanto's sheet for its alert count.</li>
+  <li>Results are cached. <code>getHome()</code> adds a <code>badge</code> to each tile, so the home screen isn't slowed down.</li>
+  <li>When someone closes an app, the hub refreshes that app's count for that person, so finished work clears straight away.</li>
+</ul>
+
+<h3>⑤ Log in once, never again inside apps</h3>
+<div class="step"><div class="num">1</div><div>Tile tap → <code>launchApp()</code> checks access again → returns <code>APP_URL?pt=&lt;pass&gt;</code> (username, name, local ID, role, site, unique ID, 90 s expiry).</div></div>
+<div class="step"><div class="num">2</div><div>The app's <code>doGet</code> checks the pass, creates its own normal session, and serves the page with <code>PORTAL_BOOT = {token, user}</code>.</div></div>
+<div class="step"><div class="num">3</div><div>The page skips its login screen. Every screen works unchanged because the session is the same kind the app always used.</div></div>
+<div class="step"><div class="num">4</div><div>Old links opened directly follow the <b>Portal-only switch</b> (section 3).</div></div>
+
+<h3>⑥ Password reset by email OTP</h3>
+<div class="step"><div class="num">1</div><div>Login → <b>Forgot password?</b> → username or phone → the hub shows the email masked (<code>r•••••@ggminerals.com</code>).</div></div>
+<div class="step"><div class="num">2</div><div>A 6-digit code is emailed. Only its hash is kept, for 10 minutes. 5 wrong tries kills the code, 60 s between resends, max 5 per hour.</div></div>
+<div class="step"><div class="num">3</div><div>Code + new password (twice) → new salt and hash. All other devices are signed out automatically. Logged as <code>PASSWORD_RESET</code>.</div></div>
+<div class="step"><div class="num">4</div><div><b>First-time users use the same screen</b>, so no password is ever typed into the sheet. People without email get a temporary password from the admin.</div></div>
+<p>One password covers everything: the portal, and each app's own login form while the switch is OFF. The apps' old password and OTP screens (Fuel has one) are hidden.</p>
+
+<!-- ============================================================ -->
+<h2 id="s5"><span class="n">5</span>Changes you asked for inside the apps</h2>
+<p class="sub">Small, targeted changes. The workflows stay the same.</p>
+
+<h3>Fuel &amp; Car Tasks: "who filled" = logged-in user</h3>
+<ul>
+  <li><b>Form:</b> the <code>f_driver</code> dropdown is replaced by a locked field showing the logged-in user.</li>
+  <li><b>Server:</b> <code>submitFuelForm</code> ignores whatever the browser sends for <code>driver</code> and writes the <b>username from the session</b> into column B of <code>FUEL DETAIL DRIVERS</code>. Column I keeps the login identity as today. Other columns are unchanged.</li>
+  <li><b>Service form (confirmed):</b> the same rule. <code>s_driver</code> is removed, and <code>submitServiceForm</code> writes the session username into column B of <code>SERVICE COST</code>.</li>
+  <li>Mileage and cost-per-km maths group by <i>vehicle</i>, so they are unaffected.</li>
+</ul>
+
+<h3>Main Admin Dashboard: every action stamped with the username</h3>
+<ul>
+  <li><b>New task:</b> "Given By" (today a hand-picked dropdown) becomes the logged-in admin's username, set on the server. "Assign to" lists <b>all portal users who have the Staff Dashboard ticked</b> (from the hub, so switched-off people vanish). It writes that person's exact doer name into column C, which the Staff Dashboard needs to find the task.</li>
+  <li><b>Every write records who did it</b> (<code>addNewTask</code>, <code>editTask</code>, <code>updateTaskStatusById</code>, <code>rejectTaskByBoss</code>, leave decisions, renewal actions, routine "mark done"). They go in new columns on the right of each sheet:</li>
+</ul>
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>Sheet</th><th>Read today up to</th><th>New columns (proposed)</th></tr>
+<tr><td>Delegated <code>Master</code></td><td>Staff Dashboard reads 19 cols; Main Admin reads 20</td><td><b>U</b> Created By · <b>V</b> Last Action · <b>W</b> Last Action By · <b>X</b> Last Action At</td></tr>
+<tr><td>Delegated <code>Leave</code></td><td>10 cols (A–J)</td><td><b>K</b> Decided By · <b>L</b> Decided At</td></tr>
+<tr><td>Renewal <code>Task Feed</code></td><td>22 cols (A–V)</td><td><b>W</b> Action By · <b>X</b> Action At</td></tr>
+<tr><td>Routine <code>Monthly Master</code> (JPR / NEWAI / TONK)</td><td>Staff Dashboard reads 15 cols</td><td><b>P</b> Marked By · <b>Q</b> Marked At</td></tr>
+</table>
+</div>
+<p>The exact letters are confirmed on the live sheets before writing (the first empty column past what both apps read). Filters such as "All Given By" keep working, and new rows simply show usernames.</p>
+
+<h3>GGM Assets: people log in, sites are assigned</h3>
+<ul>
+  <li>Each person logs in as themselves. Their role (SITE/BOSS) and site come from the Access grid and are held in the server session, not in <code>localStorage</code>.</li>
+  <li>Transfer and Receive rows: column B (today <code>"TONK (Web UI)"</code> or a Google email) records the <b>username</b>. Source and destination site columns are unchanged, and so are the sync logic and the Present Assets grid.</li>
+  <li>Every server function checks the session. A SITE user can only act for their own site on the server, not just in the page.</li>
+</ul>
+
+<h3>Staff Dashboard (staff app)</h3>
+<ul>
+  <li>The session carries the exact Doer List name, so the app stops guessing people from name fragments.</li>
+  <li>Staff actions (mark done, remarks, transfer requests, self tasks, leave requests) keep writing names where they do today. The same "Done By" username columns above can be filled here too, which is recommended so the audit trail is complete.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="s6"><span class="n">6</span>Master sheet design</h2>
+<p class="sub">Click the tabs along the bottom. Blue ticks are checkboxes, grey pills are dropdowns, and striped cells are hidden.</p>
+
+<div class="gs" id="gs">
+  <div class="gs-toolbar"><span class="ic"></span><span class="nm">GGM Portal — Master</span><span class="menu">Portal Admin ▾</span></div>
+
+  <div class="gs-pane on" data-pane="users">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th><th class="cl">F</th><th class="cl">G</th><th class="cl">H</th><th class="cl">I</th><th class="cl" style="background:#FEF7E0">J · new</th><th class="cl" style="background:#FEF7E0">K · new</th><th class="cl" style="background:#FEF7E0">L · new</th><th class="cl" style="background:#FEF7E0">M · new</th></tr>
+    <tr class="h"><td class="rn">1</td><td>Username</td><td>Name</td><td>Phone</td><td>Active</td><td>Set Password</td><td>Password Hash</td><td>Salt</td><td>Last Login</td><td>Notes</td><td>Email</td><td>Password Set</td><td>Created</td><td>Portal Admin</td></tr>
+    <tr><td class="rn">2</td><td>itadmin</td><td>IT Admin</td><td>98290 00000</td><td><span class="cb on"></span></td><td></td><td class="hid">hidden</td><td class="hid">hidden</td><td>29/09/2026 09:02</td><td></td><td>itadmin@ggminerals.com</td><td><span class="cb on"></span></td><td>01/10/2026</td><td><span class="cb on"></span></td></tr>
+    <tr><td class="rn">3</td><td>ramesh.k</td><td>Ramesh Kumar</td><td>98290 11111</td><td><span class="cb on"></span></td><td></td><td class="hid">hidden</td><td class="hid">hidden</td><td>29/09/2026 09:12</td><td>Store, Tonk</td><td>ramesh.k@ggminerals.com</td><td><span class="cb on"></span></td><td>01/10/2026</td><td><span class="cb"></span></td></tr>
+    <tr><td class="rn">4</td><td>sunita.p</td><td>Sunita Patel</td><td>98290 22222</td><td><span class="cb on"></span></td><td></td><td class="hid">hidden</td><td class="hid">hidden</td><td>29/09/2026 10:40</td><td>Purchase</td><td>sunita.p@ggminerals.com</td><td><span class="cb on"></span></td><td>01/10/2026</td><td><span class="cb"></span></td></tr>
+    <tr><td class="rn">5</td><td>amit.s</td><td>Amit Sharma</td><td>98290 33333</td><td><span class="cb on"></span></td><td></td><td class="hid">hidden</td><td class="hid">hidden</td><td></td><td>New, invite sent</td><td>amit.s@ggminerals.com</td><td><span class="cb"></span></td><td>29/09/2026</td><td><span class="cb"></span></td></tr>
+    <tr><td class="rn">6</td><td>mohan.l</td><td>Mohan Lal</td><td>98290 44444</td><td><span class="cb on"></span></td><td style="color:#999">••••••</td><td class="hid">hidden</td><td class="hid">hidden</td><td></td><td>Driver, no email</td><td></td><td><span class="cb"></span></td><td>29/09/2026</td><td><span class="cb"></span></td></tr>
+    <tr><td class="rn">7</td><td>old.user</td><td>Left company</td><td>98290 55555</td><td><span class="cb"></span></td><td></td><td class="hid">hidden</td><td class="hid">hidden</td><td>02/08/2026</td><td>Switched off → disabled everywhere</td><td>old.user@ggminerals.com</td><td><span class="cb on"></span></td><td>01/04/2026</td><td><span class="cb"></span></td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>Users:</b> A–I unchanged. J–M added on the right. <i>Portal Admin</i> = can see the Admin screen and flip the Portal-only switch. Unticking <i>Active</i> blocks login at once and disables the user in every app. Login accepts <i>Username</i> or <i>Phone</i>.</div>
+  </div>
+
+  <div class="gs-pane" data-pane="access">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th><th class="cl">F</th><th class="cl">G</th><th class="cl">H</th><th class="cl">I</th><th class="cl">J</th><th class="cl">K</th><th class="cl">L</th><th class="cl">M</th><th class="cl">N</th><th class="cl">O</th><th class="cl">P</th></tr>
+    <tr class="g"><td class="rn">1</td><td colspan="2" style="background:#5F6368">USER</td><td colspan="3" style="background:#4F46E5">INDENT</td><td style="background:#0E7490">FUEL</td><td colspan="3" style="background:#B45309">ASSETS</td><td colspan="2" style="background:#15803D">STAFF</td><td style="background:#7C3AED">MAIN ADMIN</td><td style="background:#57534E">MINES</td><td style="background:#9A3412">COLLECT.</td><td style="background:#1F2937">LEVANTO</td><td style="background:#374151">SYNC</td></tr>
+    <tr class="h"><td class="rn">2</td><td>Username</td><td>Name</td><td>✓</td><td>Role</td><td>Site</td><td>✓</td><td>✓</td><td>Role</td><td>Site</td><td>✓</td><td>Doer name</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Status</td></tr>
+    <tr><td class="rn">3</td><td class="frz">itadmin</td><td class="frz">IT Admin</td>
+      <td><span class="cb on"></span></td><td><span class="dd">ADMIN</span></td><td class="off">ALL (auto)</td>
+      <td><span class="cb on"></span></td>
+      <td><span class="cb on"></span></td><td><span class="dd">BOSS</span></td><td class="off">ALL (auto)</td>
+      <td><span class="cb"></span></td><td class="off">—</td>
+      <td><span class="cb on"></span></td><td><span class="cb on"></span></td><td><span class="cb on"></span></td><td><span class="cb on"></span></td><td class="ok">✓ 8/8</td></tr>
+    <tr><td class="rn">4</td><td class="frz">ramesh.k</td><td class="frz">Ramesh Kumar</td>
+      <td><span class="cb on"></span></td><td><span class="dd">STORE</span></td><td><span class="dd">TONK</span></td>
+      <td><span class="cb"></span></td>
+      <td><span class="cb on"></span></td><td><span class="dd">SITE</span></td><td><span class="dd">TONK</span></td>
+      <td><span class="cb on"></span></td><td><span class="dd">JPR-Ramesh Kumar (Store)</span></td>
+      <td><span class="cb"></span></td><td><span class="cb on"></span></td><td><span class="cb"></span></td><td><span class="cb"></span></td><td class="ok">✓ 4/4</td></tr>
+    <tr><td class="rn">5</td><td class="frz">sunita.p</td><td class="frz">Sunita Patel</td>
+      <td><span class="cb on"></span></td><td><span class="dd">PURCHASE</span></td><td class="off">ALL (auto)</td>
+      <td><span class="cb on"></span></td>
+      <td><span class="cb"></span></td><td class="off">—</td><td class="off">—</td>
+      <td><span class="cb on"></span></td><td><span class="dd">JPR-Sunita Patel (Purchase)</span></td>
+      <td><span class="cb"></span></td><td><span class="cb"></span></td><td><span class="cb on"></span></td><td><span class="cb"></span></td><td class="ok">✓ 4/4</td></tr>
+    <tr><td class="rn">6</td><td class="frz">amit.s</td><td class="frz">Amit Sharma</td>
+      <td><span class="cb on"></span></td><td><span class="dd">USER</span></td><td class="err"><span class="dd r">site needed</span></td>
+      <td><span class="cb"></span></td>
+      <td><span class="cb"></span></td><td class="off">—</td><td class="off">—</td>
+      <td><span class="cb on"></span></td><td class="err"><span class="dd r">pick doer</span></td>
+      <td><span class="cb"></span></td><td><span class="cb"></span></td><td><span class="cb"></span></td><td><span class="cb on"></span></td><td class="er">✗ fix 2 cells</td></tr>
+    <tr><td class="rn">7</td><td class="frz">mohan.l</td><td class="frz">Mohan Lal</td>
+      <td><span class="cb"></span></td><td class="off">—</td><td class="off">—</td>
+      <td><span class="cb on"></span></td>
+      <td><span class="cb"></span></td><td class="off">—</td><td class="off">—</td>
+      <td><span class="cb"></span></td><td class="off">—</td>
+      <td><span class="cb"></span></td><td><span class="cb"></span></td><td><span class="cb"></span></td><td><span class="cb"></span></td><td class="pd">⏳ 1 pending</td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>Access:</b> A–B frozen, and users are added automatically from Users. Only Indent (role + site), Assets (role + site) and Staff (doer name) have dropdowns; everything else is a tick. Red = required value missing, so the row won't sync. Dashboard ticks (Mines, Collection, Levanto) only control whether the tile appears.</div>
+  </div>
+
+  <div class="gs-pane" data-pane="apps">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th><th class="cl">F</th><th class="cl">G</th><th class="cl">H</th><th class="cl">I</th><th class="cl" style="background:#FEF7E0">J · new</th><th class="cl" style="background:#FEF7E0">K · new</th></tr>
+    <tr class="h"><td class="rn">1</td><td>App ID</td><td>Name</td><td>Icon</td><td>Color</td><td>URL</td><td>Active</td><td>Order</td><td>Match By</td><td>Notes</td><td>Type</td><td>Badges</td></tr>
+    <tr><td class="rn">2</td><td>INDENT</td><td>Indent Flow</td><td>📦</td><td>#4F46E5</td><td class="mono">…/exec</td><td><span class="cb on"></span></td><td>1</td><td>Username</td><td></td><td><span class="dd">CONNECTED</span></td><td><span class="cb on"></span></td></tr>
+    <tr><td class="rn">3</td><td>FUEL</td><td>Fuel &amp; Car Tasks</td><td>⛽</td><td>#0E7490</td><td class="mono">…/exec</td><td><span class="cb on"></span></td><td>2</td><td><span class="dd">Email</span></td><td>username if no email</td><td><span class="dd">CONNECTED</span></td><td><span class="cb on"></span></td></tr>
+    <tr><td class="rn">4</td><td>ASSETS</td><td>GGM Assets</td><td>🚜</td><td>#B45309</td><td class="mono">…/exec</td><td><span class="cb on"></span></td><td>3</td><td>Username</td><td></td><td><span class="dd">CONNECTED</span></td><td><span class="cb on"></span></td></tr>
+    <tr><td class="rn">5</td><td>STAFF</td><td>Staff Dashboard</td><td>✅</td><td>#15803D</td><td class="mono">…/exec</td><td><span class="cb on"></span></td><td>4</td><td><span class="dd">Doer name</span></td><td>script 1tJHy…</td><td><span class="dd">CONNECTED</span></td><td><span class="cb on"></span></td></tr>
+    <tr><td class="rn">6</td><td>MAINADMIN</td><td>Main Admin Dashboard</td><td>🛡️</td><td>#7C3AED</td><td class="mono">…/exec</td><td><span class="cb on"></span></td><td>5</td><td>Username</td><td>script 12hlS…</td><td><span class="dd">CONNECTED</span></td><td><span class="cb on"></span></td></tr>
+    <tr><td class="rn">7</td><td>MINES</td><td>Mines Dashboard</td><td>⛏️</td><td>#57534E</td><td class="mono">…LiEEgg/exec</td><td><span class="cb on"></span></td><td>6</td><td>—</td><td>public link</td><td><span class="dd">LINK</span></td><td><span class="cb"></span></td></tr>
+    <tr><td class="rn">8</td><td>COLLECTION</td><td>Collection Dashboard</td><td>💰</td><td>#9A3412</td><td class="mono">…8NdnXu/exec</td><td><span class="cb on"></span></td><td>7</td><td>—</td><td>public link</td><td><span class="dd">LINK</span></td><td><span class="cb"></span></td></tr>
+    <tr><td class="rn">9</td><td>LEVANTO</td><td>Levanto Production</td><td>🏭</td><td>#1F2937</td><td class="mono">…VbVe-jSZQ/exec</td><td><span class="cb on"></span></td><td>8</td><td>—</td><td>badge from sheet</td><td><span class="dd">LINK</span></td><td><span class="cb on"></span></td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>Apps:</b> <i>CONNECTED</i> = has Portal.js, gets a launch pass, obeys the Portal-only switch. <i>LINK</i> = public URL, sent only to ticked users at tap time, never gated. Because the Staff/Main Admin folders were swapped, the URL for each row must follow the <b>script</b>, not the folder name.</div>
+  </div>
+
+  <div class="gs-pane" data-pane="settings">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th></tr>
+    <tr class="h"><td class="rn">1</td><td>Setting</td><td>Value</td><td>Changed By</td><td>Changed At</td></tr>
+    <tr><td class="rn">2</td><td>PORTAL_ONLY</td><td class="ok">ON</td><td>itadmin</td><td>15/10/2026 18:00</td></tr>
+    <tr><td class="rn">3</td><td>MODE · INDENT</td><td class="ok">✓ confirmed</td><td></td><td>15/10/2026 18:00</td></tr>
+    <tr><td class="rn">4</td><td>MODE · FUEL</td><td class="ok">✓ confirmed</td><td></td><td>15/10/2026 18:00</td></tr>
+    <tr><td class="rn">5</td><td>MODE · ASSETS</td><td class="pd">⏳ retrying</td><td></td><td>15/10/2026 18:01</td></tr>
+    <tr><td class="rn">6</td><td>MODE · STAFF</td><td class="ok">✓ confirmed</td><td></td><td>15/10/2026 18:00</td></tr>
+    <tr><td class="rn">7</td><td>MODE · MAINADMIN</td><td class="ok">✓ confirmed</td><td></td><td>15/10/2026 18:00</td></tr>
+    <tr><td class="rn">8</td><td>LEVANTO_SHEET_ID</td><td class="mono">1Cy3Li1uXx_wkCcrk893WKK2DLRttKTjrsnafb5DsJbY</td><td></td><td></td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>Settings</b> (new, script-written, protected): shows the switch state and which apps confirmed it. The switch itself is flipped from the Admin screen in the portal, not by typing here.</div>
+  </div>
+
+  <div class="gs-pane" data-pane="sync">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th><th class="cl">F</th><th class="cl">G</th></tr>
+    <tr class="h"><td class="rn">1</td><td>Username</td><td>App</td><td>Local ID in app</td><td>Wanted</td><td>Status</td><td>Message from app</td><td>Last Sync</td></tr>
+    <tr><td class="rn">2</td><td>ramesh.k</td><td>INDENT</td><td>RAMESH.K</td><td>STORE · TONK · active</td><td class="ok">OK</td><td>updated</td><td>29/09 11:02</td></tr>
+    <tr><td class="rn">3</td><td>ramesh.k</td><td>ASSETS</td><td>(session only)</td><td>SITE · TONK</td><td class="ok">OK</td><td>no sheet write needed</td><td>29/09 11:02</td></tr>
+    <tr><td class="rn">4</td><td>ramesh.k</td><td>STAFF</td><td>JPR-Ramesh Kumar (Store)</td><td>mapped · active</td><td class="ok">OK</td><td>found in Doer List</td><td>29/09 11:02</td></tr>
+    <tr><td class="rn">5</td><td>mohan.l</td><td>FUEL</td><td>mohan.l</td><td>active</td><td class="pd">PENDING</td><td>queued, no email so username used as key</td><td>—</td></tr>
+    <tr><td class="rn">6</td><td>old.user</td><td>INDENT</td><td>OLD.USER</td><td>inactive</td><td class="ok">OK</td><td>deactivated, 2 sessions removed</td><td>29/09 10:15</td></tr>
+    <tr><td class="rn">7</td><td>amit.s</td><td>INDENT</td><td>AMIT.S</td><td>USER · (no site)</td><td class="er">BLOCKED</td><td>USER must belong to one site</td><td>—</td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>Sync:</b> one row per user and app. It's where to look when someone says "I can't see the app". Menu → <i>Retry failed</i>.</div>
+  </div>
+
+  <div class="gs-pane" data-pane="logins">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th></tr>
+    <tr class="h"><td class="rn">1</td><td>Username</td><td>App ID</td><td>Local Username</td><td>App Role</td><td>Notes</td></tr>
+    <tr><td class="rn">2</td><td>sunita.p</td><td>INDENT</td><td>PUR01</td><td></td><td>existing Indent ID kept, so her old indents stay hers</td></tr>
+    <tr><td class="rn">3</td><td>mohan.l</td><td>FUEL</td><td>mohan.driver@gmail.com</td><td></td><td>existing Fuel login email kept</td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>App Logins</b> (existing tab): exceptions where a person already has a different ID inside an app. Filled mostly by the one-time import (phase 3).</div>
+  </div>
+
+  <div class="gs-pane" data-pane="lists">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th><th class="cl">F</th></tr>
+    <tr class="h"><td class="rn">1</td><td>INDENT_ROLES</td><td>INDENT_SITES</td><td>ASSETS_ROLES</td><td>ASSETS_SITES</td><td>STAFF_DOERS</td><td>refreshed</td></tr>
+    <tr><td class="rn">2</td><td>ADMIN</td><td>TONK</td><td>SITE</td><td>TONK</td><td>JPR-Ramesh Kumar (Store)</td><td>29/09 06:00</td></tr>
+    <tr><td class="rn">3</td><td>STORE</td><td>NEWAI</td><td>BOSS</td><td>SANWARIYA</td><td>JPR-Sunita Patel (Purchase)</td><td></td></tr>
+    <tr><td class="rn">4</td><td>PURCHASE</td><td>SANWARIYA</td><td></td><td>KHAKHUNDA</td><td>NEWAI-Peon Satya</td><td></td></tr>
+    <tr><td class="rn">5</td><td>PC</td><td>KHAKHUNDA</td><td></td><td>NEWAI</td><td>…</td><td></td></tr>
+    <tr><td class="rn">6</td><td>USER</td><td></td><td></td><td>AMARGARH</td><td></td><td></td></tr>
+    <tr><td class="rn">7</td><td></td><td></td><td></td><td>KACHOLA FACTORY</td><td></td><td></td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>Lists</b> (hidden): written from each app's <code>meta</code>. Never edited by hand.</div>
+  </div>
+
+  <div class="gs-pane" data-pane="log">
+  <div class="gs-scroll">
+  <table class="gst">
+    <tr><th class="cl"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th></tr>
+    <tr class="h"><td class="rn">1</td><td>Time</td><td>Username</td><td>Action</td><td>App ID</td><td>Detail</td></tr>
+    <tr><td class="rn">2</td><td>15/10 18:00</td><td>itadmin</td><td>MODE_ON</td><td></td><td>Portal-only switched ON · 4/5 confirmed</td></tr>
+    <tr><td class="rn">3</td><td>29/09 11:04</td><td>ramesh.k</td><td>OPEN</td><td>INDENT</td><td></td></tr>
+    <tr><td class="rn">4</td><td>29/09 10:58</td><td>amit.s</td><td>OTP_SENT</td><td></td><td>a•••••@ggminerals.com</td></tr>
+    <tr><td class="rn">5</td><td>29/09 11:00</td><td>amit.s</td><td>PASSWORD_RESET</td><td></td><td>first-time set via OTP</td></tr>
+    <tr><td class="rn">6</td><td>29/09 11:03</td><td>ramesh.k</td><td>APP_LOGIN</td><td>FUEL</td><td>direct link, verified by hub (switch OFF)</td></tr>
+  </table>
+  </div>
+  <div class="gs-note"><b>Log</b> (existing): gains OTP_SENT, PASSWORD_RESET, SYNC, SYNC_FAIL, MODE_ON, MODE_OFF, APP_LOGIN, DENIED.</div>
+  </div>
+
+  <div class="gs-tabs" role="tablist">
+    <button class="on" data-tab="users">Users</button>
+    <button data-tab="access">Access</button>
+    <button data-tab="apps">Apps</button>
+    <button data-tab="settings">Settings <span class="h">· new</span></button>
+    <button data-tab="sync">Sync <span class="h">· new</span></button>
+    <button data-tab="logins">App Logins</button>
+    <button data-tab="lists">Lists <span class="h">· hidden</span></button>
+    <button data-tab="log">Log</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="label">"Portal Admin" menu in the sheet (existing menu, new items marked ★)</div>
+  <div class="grid2">
+    <ul style="margin-top:0">
+      <li>Set up / repair tabs</li>
+      <li>Refresh Access grid</li>
+      <li>Apply typed passwords</li>
+      <li>★ Sync now · ★ Retry failed syncs</li>
+      <li>★ Refresh dropdowns from apps</li>
+    </ul>
+    <ul style="margin-top:0">
+      <li>★ Send set-password email to selected user(s)</li>
+      <li>★ Import existing users from apps (one-time)</li>
+      <li>★ Refresh badges now</li>
+      <li>Connect selected app (create its secret) · ★ Test connection</li>
+      <li>Show portal link</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s7"><span class="n">7</span>Portal screens</h2>
+<p class="sub">Same look as the current hub (Slabworks theme). What's new is badges, the dashboards group, the OTP flow, the Admin screen with the switch, and the locked name fields in apps.</p>
+
+<div class="stage">
+  <div class="desk">
+    <div class="bar"><i></i><i></i><i></i><div class="url">script.google.com/macros/s/…/exec</div></div>
+    <div class="scr">
+      <div class="m-top">
+        <div class="m-brand"><div class="brand-mark"></div><div><div class="m-bn">GGM Portal</div><div class="m-bs">Apps &amp; dashboards</div></div></div>
+        <div class="m-acct">R</div>
+      </div>
+      <div class="m-hello"><b>Good morning, Ramesh</b><span>You have 21 things waiting across 4 apps.</span></div>
+      <div class="m-sec">Apps</div>
+      <div class="m-grid">
+        <div class="m-tile"><span class="badge">7</span><div class="m-chip" style="background:#4F46E5;color:#fff">📦</div><div class="m-name">Indent Flow</div><div class="m-meta hot">7 waiting on you</div></div>
+        <div class="m-tile"><span class="badge">2</span><div class="m-chip" style="background:#B45309;color:#fff">🚜</div><div class="m-name">GGM Assets</div><div class="m-meta hot">2 to receive · Tonk</div></div>
+        <div class="m-tile"><span class="badge">7</span><div class="m-chip" style="background:#15803D;color:#fff">✅</div><div class="m-name">Staff Dashboard</div><div class="m-meta hot">7 pending</div></div>
+      </div>
+      <div class="m-sec">Dashboards</div>
+      <div class="m-grid">
+        <div class="m-tile"><span class="m-lock">VIEW</span><div class="m-chip" style="background:#57534E;color:#fff">⛏️</div><div class="m-name">Mines Dashboard</div><div class="m-meta">All mines · Open</div></div>
+        <div class="m-tile"><span class="badge">5</span><div class="m-chip" style="background:#1F2937;color:#fff">🏭</div><div class="m-name">Levanto Production</div><div class="m-meta hot">5 slabs need attention</div></div>
+      </div>
+    </div>
+  </div>
+  <div>
+  <div class="phone"><div class="scr" style="padding:16px 14px">
+    <div class="m-top">
+      <div class="m-brand"><div class="brand-mark"></div><div><div class="m-bn">GGM Portal</div><div class="m-bs">Apps &amp; dashboards</div></div></div>
+      <div class="m-acct">I</div>
+    </div>
+    <div class="m-hello"><b>Good afternoon, IT Admin</b><span>Tap an app to open it.</span></div>
+    <div class="m-grid">
+      <div class="m-tile"><span class="badge">4</span><div class="m-chip" style="background:#7C3AED;color:#fff">🛡️</div><div class="m-name">Main Admin</div><div class="m-meta hot">4 to review</div></div>
+      <div class="m-tile"><span class="badge">3</span><div class="m-chip" style="background:#0E7490;color:#fff">⛽</div><div class="m-name">Fuel &amp; Car</div><div class="m-meta hot">3 due</div></div>
+      <div class="m-tile"><span class="badge">9</span><div class="m-chip" style="background:#4F46E5;color:#fff">📦</div><div class="m-name">Indent Flow</div><div class="m-meta hot">9 waiting</div></div>
+      <div class="m-tile"><span class="m-lock">VIEW</span><div class="m-chip" style="background:#9A3412;color:#fff">💰</div><div class="m-name">Collection</div><div class="m-meta">Open</div></div>
+    </div>
+  </div></div>
+  <div class="flow-cap">Phone · home (admin)</div>
+  </div>
+</div>
+<figcaption>Badge = red number from the 5-minute cache. The footer says what it means for that app. Dashboard tiles open the public page inside the viewer.</figcaption>
+
+<h3>Admin screen: the Portal-only switch</h3>
+<div class="stage flow">
+  <div>
+  <div class="phone"><div class="scr" style="padding:16px 14px">
+    <div class="m-hello" style="margin-top:4px"><b>Hello, IT Admin</b></div>
+    <div class="m-grid"><div class="m-tile"><div class="m-chip">📦</div><div class="m-name">Indent Flow</div></div><div class="m-tile"><div class="m-chip">✅</div><div class="m-name">Staff</div></div></div>
+    <div class="scrim"></div>
+    <div class="menu-sheet">
+      <b style="font-size:14px">IT Admin</b><div class="mono" style="font-size:10px;color:var(--ink-soft)">itadmin · Portal Admin</div>
+      <div class="mb" style="background:var(--amber-wash);border-color:#EED9A2">⚙️ Admin: Portal-only switch</div>
+      <div class="mb">Change password</div>
+      <div class="mb" style="color:var(--bad)">Sign out (all apps)</div>
+    </div>
+  </div></div>
+  <div class="flow-cap">Account menu (admins see "Admin")</div>
+  </div>
+
+  <div>
+  <div class="phone"><div class="scr" style="padding:18px 14px">
+    <div style="font-size:17px;font-weight:800;letter-spacing:-.02em">Admin</div>
+    <div style="font-size:11px;color:var(--ink-soft);margin-bottom:12px">Only Portal Admin accounts see this.</div>
+    <div class="adm-row"><div class="t"><b>Portal-only mode</b>ON: apps open only through GGM Portal. OFF: each app's link also works on its own (same username and password).</div><span class="sw on"></span></div>
+    <div class="adm-apps">
+      <span>Indent Flow</span><span class="ok">✓ ON</span>
+      <span>Fuel &amp; Car Tasks</span><span class="ok">✓ ON</span>
+      <span>GGM Assets</span><span class="pd">⏳ retrying</span>
+      <span>Staff Dashboard</span><span class="ok">✓ ON</span>
+      <span>Main Admin Dashboard</span><span class="ok">✓ ON</span>
+    </div>
+    <div style="font-size:10.5px;color:var(--ink-faint);margin-top:10px">Last changed by itadmin · 15 Oct 18:00. Dashboards are public links and are not affected.</div>
+  </div></div>
+  <div class="flow-cap">Switch + confirmation per app</div>
+  </div>
+
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="m-login" style="margin-top:60px">
+      <div class="h"><div class="m-bn" style="color:#F4F0E5">Turn portal-only ON?</div><div class="m-bs">Confirm</div></div>
+      <div class="b">
+        <p style="font-size:11.5px;color:var(--ink)">Everyone who opened an app with its own link will be signed out of it. From now on the only way in is through GGM Portal.</p>
+        <div class="m-btn amber">Yes, turn ON</div>
+        <div class="m-link">Cancel</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="flow-cap">Confirmation before it takes effect</div>
+  </div>
+</div>
+
+<h3>Opening an app's own link</h3>
+<div class="stage flow">
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="m-login" style="margin-top:70px">
+      <div class="h"><div class="m-bn" style="color:#F4F0E5">Fuel &amp; Car Tasks</div><div class="m-bs">Sign in with your GGM Portal account</div></div>
+      <div class="b">
+        <h4>Sign in</h4><p>Same username/phone and password as GGM Portal.</p>
+        <div class="m-f"><label>Username or phone</label><div>ramesh.k</div></div>
+        <div class="m-f"><label>Password</label><div>••••••••</div></div>
+        <div class="m-btn">Sign in</div>
+        <div class="m-link">Forgot password? → GGM Portal</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="flow-cap">Switch OFF: direct link works</div>
+  </div>
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="m-login" style="margin-top:90px">
+      <div class="h"><div class="m-bn" style="color:#F4F0E5">Fuel &amp; Car Tasks</div><div class="m-bs">Managed by GGM Portal</div></div>
+      <div class="b">
+        <h4>Open through the portal</h4><p>This app is opened from GGM Portal, where you sign in once for all apps.</p>
+        <div class="m-btn amber">Go to GGM Portal</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="flow-cap">Switch ON: direct link blocked</div>
+  </div>
+</div>
+
+<h3>Name fields taken from the login</h3>
+<div class="stage flow">
+  <div>
+  <div class="phone"><div class="scr" style="padding:16px 14px">
+    <div style="font-size:15px;font-weight:800;margin-bottom:10px">⛽ Fuel entry</div>
+    <div class="m-f lock-f"><label>Filled by</label><div>ramesh.k</div></div>
+    <div class="m-f"><label>Vehicle</label><div>RJ14 GB 1234 ▾</div></div>
+    <div class="m-f"><label>Fuel type</label><div>DIESEL ▾</div></div>
+    <div class="m-f"><label>Quantity (L)</label><div>45</div></div>
+    <div class="m-f"><label>Amount (₹)</label><div>4,180</div></div>
+    <div class="m-f"><label>Odometer</label><div>128450</div></div>
+    <div class="m-btn">Submit</div>
+    <div style="font-size:10px;color:var(--ink-faint);margin-top:8px">The Driver dropdown is gone. The server writes the logged-in username into column B.</div>
+  </div></div>
+  <div class="flow-cap">Fuel form</div>
+  </div>
+  <div>
+  <div class="phone"><div class="scr" style="padding:16px 14px">
+    <div style="font-size:15px;font-weight:800;margin-bottom:10px">🛡️ New task</div>
+    <div class="m-f lock-f"><label>Given by</label><div>itadmin</div></div>
+    <div class="m-f"><label>Assign to (portal users)</label><div>Ramesh Kumar · ramesh.k ▾</div></div>
+    <div class="m-f"><label>Task</label><div>Check crusher belt spares</div></div>
+    <div class="m-f"><label>Due date</label><div>02/10/2026</div></div>
+    <div class="m-btn">Create task</div>
+    <div style="font-size:10px;color:var(--ink-faint);margin-top:8px">Written: col C = the person's exact doer name, col K = itadmin, col U "Created By" = itadmin.</div>
+  </div></div>
+  <div class="flow-cap">Main Admin: new task</div>
+  </div>
+</div>
+
+<h3>Login and "Forgot password?" flow</h3>
+<div class="stage flow">
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="m-login">
+      <div class="h"><div class="m-brand"><div class="brand-mark"></div><div><div class="m-bn" style="color:#F4F0E5">GGM Portal</div><div class="m-bs">Apps &amp; dashboards</div></div></div></div>
+      <div class="b">
+        <h4>Sign in</h4><p>One sign-in opens every app you have access to.</p>
+        <div class="m-f"><label>Username or phone</label><div>98290 11111</div></div>
+        <div class="m-f"><label>Password</label><div>••••••••</div></div>
+        <div class="m-btn">Sign in</div>
+        <div class="m-link">Forgot password? · First time here?</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="flow-cap">1 · Sign in</div>
+  </div>
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="m-login">
+      <div class="h"><div class="m-bn" style="color:#F4F0E5">Reset password</div><div class="m-bs">Step 1 of 3</div></div>
+      <div class="b">
+        <h4>Who are you?</h4><p>We'll email a 6-digit code to the address on your account.</p>
+        <div class="m-f"><label>Username or phone</label><div>amit.s</div></div>
+        <div class="m-btn">Send code</div>
+        <div class="m-link">Back to sign in</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="flow-cap">2 · Ask for a code</div>
+  </div>
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="m-login">
+      <div class="h"><div class="m-bn" style="color:#F4F0E5">Reset password</div><div class="m-bs">Step 2 of 3</div></div>
+      <div class="b">
+        <h4>Enter the code</h4><p>Sent to a•••••@ggminerals.com. It expires in 10 minutes.</p>
+        <div class="otp"><span>4</span><span>8</span><span>2</span><span class="f">0</span><span></span><span></span></div>
+        <div class="m-btn">Verify</div>
+        <div class="m-link">Resend in 0:42</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="flow-cap">3 · Type the OTP</div>
+  </div>
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="m-login">
+      <div class="h"><div class="m-bn" style="color:#F4F0E5">Reset password</div><div class="m-bs">Step 3 of 3</div></div>
+      <div class="b">
+        <h4>New password</h4><p>At least 6 characters. Other devices will be signed out.</p>
+        <div class="m-f"><label>New password</label><div>••••••••</div></div>
+        <div class="m-f"><label>Again</label><div>••••••••</div></div>
+        <div class="m-btn amber">Save &amp; sign in</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="flow-cap">4 · Set it, signed in</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s8"><span class="n">8</span>The three public dashboards</h2>
+<p class="sub">Your choice: leave Mines, Collection and Levanto as they are, so the people who use them can keep using them without accounts.</p>
+<ul>
+  <li><b>In the portal:</b> a tile appears only for users ticked in the Access grid. The URL isn't sent to the phone until the tile is tapped (<code>buildHome_</code> already sends no URLs), and every open is logged.</li>
+  <li><b>No code change</b> in any of the three, and no users created. The Portal-only switch doesn't apply to them.</li>
+  <li><b>Mines:</b> all mines for everyone it's assigned to (no site column).</li>
+  <li><b>Levanto badge:</b> the hub (running as <code>itadmin@</code>, the owner) opens the source spreadsheet <b>"New Base"</b> (<code>1Cy3Li1uXx_wkCcrk893WKK2DLRttKTjrsnafb5DsJbY</code>) read-only and counts the slabs that need attention right now. The source tabs are <b>Grade Alerts</b> and <b>Feedback Response</b>; both are hidden, so they couldn't be opened from a public link. <b>_DashboardConfig</b> (also hidden) probably holds the 3-hour response window. The rule mirrors the Feedback tab's "Live alerts": a grade alert that is still inside its response window and has no matching feedback response yet. Exact column names are confirmed at build time from inside the owner's account, and stored in Settings so a layout change is a one-cell fix.</li>
+</ul>
+<div class="callout warn"><b>Accepted risk</b>These pages stay open to anyone who has the link, including the Collection finance figures and its "Sync now" button. The portal decides who sees a tile; it doesn't stop someone who already has, or copies, the link.</div>
+<div class="callout bad"><b>Found while checking the Levanto sheet: "New Base" is public and exposes a password list</b>
+The spreadsheet opens <i>without signing in</i> ("anyone with the link can view"). Its visible <b>App Users</b> tab lists every username of a separate Levanto <i>forms</i> app (Batching, Resin, Mixer, Pressing, gradeReport…), their assigned forms, and a <b>Password Hash</b> column in which <b>almost every user has the same hash</b>. So nearly everyone shares one password, and it's stored without a salt, where anyone with the link can see it. The dashboard doesn't need the sheet to be public, because it runs as the owner.<br><br>
+<b>You can do now, without code:</b> Share → General access → <i>Restricted</i> (keep only <code>itadmin@</code> and the people who edit it), then have the forms-app users change to their own passwords. Check that the dashboard and forms still load afterwards; they will if they run as <code>itadmin@</code>.<br>
+<b>Later (optional):</b> that forms app has its own login and could become a 9th portal app, with its usernames joining the hub. It isn't in this folder, so it's outside this plan.</div>
+
+<!-- ============================================================ -->
+<h2 id="s9"><span class="n">9</span>Problems you will hit</h2>
+<p class="sub">Ordered by how much they matter.</p>
+
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>#</th><th>Problem</th><th>Why it matters</th><th>Fix in this plan</th></tr>
+<tr><td><span class="pill p-bad">P1</span></td><td><b>Assets, Staff Dashboard and Main Admin Dashboard have no server-side security.</b></td><td>Anyone with an <code>/exec</code> link can open it and run its server functions from the browser console. Main Admin is the worst: no login at all, but it can add, edit and reject tasks and approve leave. Assets: <code>localStorage.loggedInSite='BOSS'</code>. Staff: <code>getAllTasksForUser('any name')</code>. Neither the portal nor the switch helps until the app itself checks.</td><td>Every server function in these 3 apps gets a <code>token</code> argument and checks the session first (about 8 + 12 + 20 functions plus their calls). This is the largest piece of work, and it's needed before the switch means anything.</td></tr>
+<tr><td><span class="pill p-bad">P2</span></td><td><b>With the switch ON, the hub is a single point of failure.</b></td><td>If the hub script breaks (a bad deployment, a quota, a Google outage), nobody can open any app.</td><td>Keep hub changes small and tested. Always deploy with <i>New version</i> so you can roll back. Emergency <code>PORTAL_ONLY=false</code> per app in Script Properties. Flip the switch ON only after a trial week with it OFF.</td></tr>
+<tr><td><span class="pill p-bad">P3</span></td><td><b>Fuel: a blank PASSWORD cell means the password is "1234".</b></td><td>Any Fuel row with a blank password can be logged into with 1234 <i>today</i>.</td><td>Provisioning always writes a random hash. The login form moves to portal credentials, so the 1234 path goes away.</td></tr>
+<tr><td><span class="pill p-bad">P23</span></td><td><b>Levanto's source sheet is public and shows password hashes.</b></td><td>"New Base" opens for anyone with the link. Its App Users tab shows usernames and one shared, unsalted password hash for almost everyone (a separate forms app).</td><td>Set sharing to Restricted (phase 0, no code). Users set their own passwords. Optionally bring that forms app into the portal later.</td></tr>
+<tr><td><span class="pill p-warn">P4</span></td><td><b>Every app knows people by a different key</b> (email, User ID, site name, mobile + fuzzy name, nothing).</td><td>If an existing person's old ID isn't mapped, they lose their history (old indents, old tasks).</td><td>One-time <b>Import</b> (phase 3) suggests matches by phone, email and name and writes exceptions into <i>App Logins</i>.</td></tr>
+<tr><td><span class="pill p-warn">P5</span></td><td><b>Name history splits in reports.</b></td><td>Fuel col B, Main Admin "Given By" and Assets col B switch from free-typed names or <code>"TONK (Web UI)"</code> to usernames. Filters and scores that group by name (Fuel driver filter, "All Given By", scoring) will list old and new spellings as different people.</td><td>Expected and harmless for new data. If wanted, a one-time relabel of old rows using a name → username table (only run after you approve it).</td></tr>
+<tr><td><span class="pill p-warn">P6</span></td><td><b>Staff Dashboard's fuzzy name matching</b> can show someone else's tasks.</td><td><code>isNameMatch</code> accepts a first-name-only match, so two people named "Ramesh" can see each other's items.</td><td>The session carries the exact Doer List name. Tighten the matcher to exact-first.</td></tr>
+<tr><td><span class="pill p-warn">P7</span></td><td><b>Delegated <code>Master</code> column R is used for two things.</b></td><td>Main Admin writes an action <i>date</i> into R (<code>updateTaskStatusById</code>, <code>rejectTaskByBoss</code>), but the Staff Dashboard reads R as the <i>transfer-to name</i> (and also as the approval date). It's an existing clash.</td><td>The new "Done By" columns go at U onward, clear of both apps. Fixing the R clash is a separate small fix (recommended while this code is open).</td></tr>
+<tr><td><span class="pill p-warn">P8</span></td><td><b>Two places to edit users.</b></td><td>Indent's own Users admin screen and the Fuel and Staff user sheets can still be edited directly, and the next sync overwrites them.</td><td>The hub is master. Indent's user screen becomes read-only ("Managed in GGM Portal").</td></tr>
+<tr><td><span class="pill p-warn">P9</span></td><td><b>Sites differ in every app.</b></td><td>Indent 4 (hard-coded in <code>SITES</code>), Assets 6, Staff name prefixes, Collection adds RAMBAS and writes "Kachola" (Assets: "KACHOLA FACTORY").</td><td>Site dropdowns are per app, never one global list. A 5th Indent site still needs a one-line change inside Indent.</td></tr>
+<tr><td><span class="pill p-warn">P10</span></td><td><b>Fuel sessions never expire</b> and each is a row in <code>_AUTH</code>.</td><td>Every tile tap would add a row, so the sheet grows forever.</td><td>Portal-made sessions get a 12 h expiry and a nightly clean-up.</td></tr>
+<tr><td><span class="pill p-warn">P11</span></td><td><b>Switching someone off must reach sessions that are already open.</b></td><td>New launches stop at once, but an already-open app page keeps its session.</td><td><code>disable</code> removes their sessions in each app. The switch turning ON removes non-portal sessions.</td></tr>
+<tr><td><span class="pill p-info">P12</span></td><td><b>Login through an app's own link (switch OFF) depends on the hub.</b></td><td>The app asks the hub to check the password, which adds about 1 s, and fails if the hub is down.</td><td>Acceptable. The same emergency property applies.</td></tr>
+<tr><td><span class="pill p-info">P13</span></td><td><b>Passwords typed into the sheet stay in version history.</b></td><td>The hub wipes "Set Password", but Sheets history keeps what was typed.</td><td>OTP first-time setup by default. "Set Password" only for people without email.</td></tr>
+<tr><td><span class="pill p-info">P14</span></td><td><b>Speed.</b></td><td>Each app opens as a cold Apps Script page inside the hub (2–6 s).</td><td>Badges come from a background trigger. <code>KEEP_ALIVE</code> can keep 1–2 apps warm.</td></tr>
+<tr><td><span class="pill p-info">P15</span></td><td><b>Google quotas.</b></td><td>Workspace: about 1,500 emails/day, 6 h/day trigger runtime, 100k UrlFetch/day.</td><td>5-min badges ≈ 1,440 fetches/day. OTP limits keep email low. Fine.</td></tr>
+<tr><td><span class="pill p-info">P16</span></td><td><b>The folder layout can break a <code>clasp push</code>.</b></td><td>The root <code>.clasp.json</code> doesn't skip subfolders and there's no <code>.claspignore</code>. A push from the root would upload all apps (and this plan) into the hub project.</td><td>Add a <code>.claspignore</code> first (phase 0).</td></tr>
+<tr><td><span class="pill p-info">P17</span></td><td><b>Swapped folders vs deployments.</b></td><td>The folder names changed, but each folder's <code>.clasp.json</code> still points at its own script (<code>Staff_Dashboard/</code> → 1tJHy…, <code>main_admin_dashboard/</code> → 12hlS…). Links, bookmarks and the hub's Apps tab must follow the script, not the folder name.</td><td>The Apps tab records the script ID in Notes. Check each <code>/exec</code> once before go-live.</td></tr>
+<tr><td><span class="pill p-info">P18</span></td><td><b>Deployments.</b></td><td>"New deployment" creates a <i>new</i> /exec URL.</td><td>Always <i>Manage deployments → edit → New version</i>.</td></tr>
+<tr><td><span class="pill p-info">P19</span></td><td><b>People without email.</b></td><td>No OTP self-reset.</td><td>Admin sets a temporary password. Fuel uses the username as its key.</td></tr>
+<tr><td><span class="pill p-info">P20</span></td><td><b>Telegram buttons in Indent</b> point at the app's own URL.</td><td>With the switch ON they'd hit the "Open through portal" page.</td><td>Set Indent's <code>APP_URL</code> to <code>HUB_URL?app=INDENT</code>.</td></tr>
+<tr><td><span class="pill p-mute">P21</span></td><td><b>Levanto badge depends on its sheet layout.</b></td><td>The dashboard code isn't touched, so the hub re-implements "needs attention" from the raw sheet.</td><td>Keep the rule in one hub function, with its column names in Settings.</td></tr>
+<tr><td><span class="pill p-mute">P22</span></td><td><b>Access grid format change.</b></td><td>The current grid reads App IDs from row 1.</td><td>"Set up / repair tabs" converts it once and keeps every tick.</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s10"><span class="n">10</span>Build phases</h2>
+<p class="sub">Each phase can go live and be rolled back on its own. The switch stays <b>OFF</b> until phase 5, so nobody is locked out.</p>
+
+<div class="tbl-wrap">
+<table class="t">
+<tr><th>Phase</th><th>What</th><th>Files touched</th><th>User impact</th></tr>
+<tr><td><b>0 · Prepare</b></td><td>Copy every spreadsheet as a backup. Add <code>.claspignore</code>. Fill Email and tick Portal Admin. <b>Restrict sharing of the "New Base" sheet</b> (P23).</td><td><code>.claspignore</code> (new)</td><td>None</td></tr>
+<tr><td><b>1 · Hub upgrade</b></td><td>Users/Access/Settings/Sync/Lists/Badges tabs, OTP reset + first-time set, badges, dashboards group, Admin screen with the switch (it has no effect until apps are connected), <code>op:"verify"</code> and directory endpoints.</td><td><code>Code.js</code>, <code>Index.html</code></td><td>New "Forgot password?" link. Admins see Admin.</td></tr>
+<tr><td><b>2 · Connect apps</b></td><td>Portal.js + launch-pass boot + portal-credential login form, one app at a time: <b>Indent → Fuel → Assets → Staff → Main Admin</b>.</td><td>Per app: new <code>Portal.js</code>, <code>doGet</code>, page boot, login form</td><td>Tiles open apps logged in. Direct links ask for the portal password.</td></tr>
+<tr><td><b>3 · Import &amp; provision</b></td><td>One-time import of existing users, match review, App Logins, switch on sync.</td><td>Hub only</td><td>None (IDs preserved)</td></tr>
+<tr><td><b>4 · App changes you asked for</b></td><td>Fuel and service "filled by" = user. Main Admin Given By / assign list / Done By columns. Assets person login + username in col B. Session checks in Assets, Staff and Main Admin (P1).</td><td>fuel <code>Code.js</code> + <code>Index.html</code>; main_admin_dashboard, Staff_Dashboard, assets <code>Code.js</code> + <code>Index.html</code></td><td>Name fields become automatic.</td></tr>
+<tr><td><b>5 · Badges</b></td><td><code>counts</code> in each connector + Levanto sheet reader + 5-min trigger.</td><td>Portal.js (each app), hub</td><td>Red dots appear.</td></tr>
+<tr><td><b>6 · Go portal-only</b></td><td>A trial week with the switch OFF. Then an admin flips it <b>ON</b>. Update Indent <code>APP_URL</code>. Share the one portal link.</td><td>None (switch)</td><td>Old links show "Open through GGM Portal".</td></tr>
+</table>
+</div>
+
+<div class="callout ok"><b>What will not change</b>Business logic, stage flows, report maths, existing column order and sheet layouts in every app. New columns only on the right. No rows ever deleted by the portal. The 3 public dashboards aren't touched at all.</div>
+
+<h3>Testing each app before it goes live</h3>
+<ol>
+  <li>Tile opens the app as the right person, role and site.</li>
+  <li>A pass reused, or used after 90 s, is refused.</li>
+  <li>Switch OFF: the app's own link logs in with the portal username <i>or</i> phone + password. Unticked users are refused.</li>
+  <li>Switch ON: the app's own link shows "Open through GGM Portal", and open direct sessions end.</li>
+  <li>Unticking the app hides the tile, and an open page fails on its next action.</li>
+  <li>Switching the user off logs them out of the hub and every app.</li>
+  <li>Fuel entry and service entry: column B = logged-in username, whatever the browser sends. Cols A–B of Fuel <code>Users</code> untouched.</li>
+  <li>Main Admin: Given By = logged-in username; the "Done By" columns fill on every action; the Staff Dashboard still shows the task to the assignee.</li>
+  <li>The badge number matches what the app shows.</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="s11"><span class="n">11</span>Still needed</h2>
+<p><span class="done-tag">✓ Resolved</span>Levanto sheet ID provided · fuel service form uses the logged-in user.</p>
+<p><b>Nothing is blocking the build.</b> Two things are best done by you first, because they are settings, not code:</p>
+<ol>
+  <li><b>Restrict the "New Base" sheet</b> (Share → General access → Restricted) and have its forms-app users set their own passwords (P23).</li>
+  <li>Tick <b>Portal Admin</b> for the accounts that should control the Portal-only switch, and fill in <b>Email</b> for every user in the hub's Users tab.</li>
+</ol>
+<p>When you're ready, the build starts at phase 1 (hub upgrade), with the switch OFF so nothing changes for anyone yet.</p>
+
+<p style="margin-top:40px;color:var(--ink-faint);font-size:12.5px">Prepared from a read of every file in <code>Main Dashboard/</code> (hub, indent_flow, fuel_and_car_tasks, assets, Staff_Dashboard, main_admin_dashboard, after the folder swap), viewing the three live dashboards in <code>moredashboards.txt</code>, and your answers of 29 Sep 2026. No code was changed.</p>
+</div>
+
+<script>
+document.querySelectorAll('.gs-tabs button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.querySelectorAll('.gs-tabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
+    document.querySelectorAll('.gs-pane').forEach(function (p) { p.classList.toggle('on', p.dataset.pane === b.dataset.tab); });
+  });
+});
+</script>
+</body>
+</html>

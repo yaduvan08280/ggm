@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Theme tokens copied from Slabworks (Dashboard HTML) so the portal and the
+   apps inside it read as one product. */
+:root{
+  --bg:#F4F1E9; --surface:#FCFAF5; --surface2:#FFFFFF;
+  --ink:#1B1A17; --ink-soft:#6C685D; --ink-faint:#9A968B;
+  --line:#E8E3D6; --line-soft:#F0ECE1;
+  --amber:#F2C14E; --amber-deep:#D9A52C; --amber-wash:#FBEFCB;
+  --charcoal:#232220; --charcoal-2:#2E2C29;
+  --ok:#4F9D69; --bad:#CF4F33; --bad-wash:#F8E2DB;
+  --r-lg:26px; --r-md:18px; --r-sm:12px;
+  --shadow:0 1px 2px rgba(27,26,23,.04), 0 8px 24px -12px rgba(27,26,23,.12);
+  --shadow-lift:0 4px 12px rgba(27,26,23,.06), 0 24px 48px -20px rgba(27,26,23,.22);
+  --tint:14%; --chip-ink:100%; --hover-line:#D6D0C0; --input-bg:#FFFFFF; --amber-line:#EED9A2; color-scheme:light;
+}
+/* Night colours: the theme button picks Light / Dark; "Auto" (no choice saved) follows the phone. */
+:root[data-theme="dark"]{
+  --bg:#151412; --surface:#1E1D1A; --surface2:#26241F;
+  --ink:#F2EEE4; --ink-soft:#B4AE9F; --ink-faint:#878274;
+  --line:#2F2D28; --line-soft:#26241F;
+  --amber-wash:#3A3020; --charcoal:#0D0C0B; --charcoal-2:#1A1917;
+  --bad-wash:#3B1E17;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  --shadow-lift:0 4px 12px rgba(0,0,0,.35), 0 24px 48px -20px rgba(0,0,0,.6);
+  --tint:24%; --chip-ink:55%; --hover-line:#3A3833; --input-bg:#1E1D1A; --amber-line:#5A4A25; color-scheme:dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151412; --surface:#1E1D1A; --surface2:#26241F;
+    --ink:#F2EEE4; --ink-soft:#B4AE9F; --ink-faint:#878274;
+    --line:#2F2D28; --line-soft:#26241F;
+    --amber-wash:#3A3020; --charcoal:#0D0C0B; --charcoal-2:#1A1917;
+    --bad-wash:#3B1E17;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    --shadow-lift:0 4px 12px rgba(0,0,0,.35), 0 24px 48px -20px rgba(0,0,0,.6);
+    --tint:24%; --chip-ink:55%; --hover-line:#3A3833; --input-bg:#1E1D1A; --amber-line:#5A4A25; color-scheme:dark;
+  }
+}
+body{transition:background-color .2s,color .2s}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body.app-open{overflow:hidden}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-feature-settings:"zero" 1}
+[hidden]{display:none!important}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font-family:inherit;color:var(--ink)}
+:focus-visible{outline:2px solid var(--amber-deep);outline-offset:2px}
+
+/* ---------- brand (same mark as Slabworks) ---------- */
+.brand{display:flex;align-items:center;gap:11px}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--amber);position:relative;flex:0 0 auto;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.brand-mark::before,.brand-mark::after{content:"";position:absolute;background:var(--charcoal)}
+.brand-mark::before{left:10px;top:7px;width:3px;height:20px;transform:skewX(-18deg)}
+.brand-mark::after{left:18px;top:7px;width:3px;height:20px;transform:skewX(-18deg)}
+.brand-name{font-weight:800;font-size:16px;letter-spacing:-.02em;line-height:1.05}
+.brand-sub{font-size:10.5px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+
+/* ---------- buttons (Slabworks .btn) ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:22px;
+  font-weight:600;font-size:13px;transition:.15s;border:1px solid transparent;white-space:nowrap}
+.btn-dark{background:var(--charcoal);color:#F6F2E7}
+.btn-dark:hover{background:#000}
+.btn-amber{background:var(--amber);color:var(--charcoal)}
+.btn-amber:hover{background:var(--amber-deep)}
+.btn-ghost{background:var(--surface2);color:var(--ink);border-color:var(--line)}
+.btn-ghost:hover{border-color:#D6D0C0;box-shadow:var(--shadow)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-block{width:100%;padding:13px 16px;font-size:14px}
+
+/* ---------- fields (Slabworks .fb-field) ---------- */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;position:relative}
+.field>label{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.field input{border:1px solid var(--line);border-radius:10px;padding:12px 12px;font-size:16px;background:var(--input-bg);width:100%}
+.field input:focus{outline:none;border-color:var(--amber-deep)}
+.peek{position:absolute;right:6px;bottom:6px;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;color:var(--ink-soft)}
+.peek:hover{background:var(--line-soft)}
+.err{color:var(--bad);font-size:12.5px;min-height:1.3em;margin-top:10px;font-weight:500}
+
+/* ---------- boot + login ---------- */
+.center{min-height:100%;display:grid;place-items:center;padding:24px}
+.boot{display:flex;flex-direction:column;align-items:center;gap:16px}
+.login{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-lift);overflow:hidden}
+.login-h{background:var(--charcoal);color:#F4F0E5;padding:22px 24px}
+.login-h .brand-sub{color:#9C988A}
+.login-b{padding:22px 24px 24px}
+.login-b h1{font-size:22px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.login-b p.sub{color:var(--ink-soft);font-size:13px;margin:4px 0 18px}
+
+/* ---------- home ---------- */
+.home{max-width:1080px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top,0px)) 30px 60px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.hello{margin:26px 0 20px}
+.hello h1{font-size:25px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.hello p{color:var(--ink-soft);font-size:13px;margin-top:3px}
+/* the account button borrows the Slabworks phone menu button */
+.acct{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 auto;
+  border-radius:14px;background:var(--charcoal);color:var(--amber);font-size:16px;font-weight:800;
+  box-shadow:var(--shadow);transition:transform .12s}
+.acct:active{transform:scale(.93)}
+/* profile photo: on the account button, in the menu, and full size on tap */
+.acct.has-photo,.me-av.has-photo{background-size:cover;background-position:center;color:transparent}
+.acct.has-photo{border-radius:50%}
+.me-row{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.me-row h2{overflow-wrap:anywhere}
+.me-row .who{margin:2px 0 0}
+.me-av{width:64px;height:64px;border-radius:50%;background:var(--charcoal);color:var(--amber);font-size:24px;font-weight:800;
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:var(--shadow);cursor:pointer;position:relative}
+.me-av .cam{position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;border-radius:50%;background:var(--amber);color:var(--charcoal);
+  display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.me-av .cam svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.lightbox{position:fixed;inset:0;z-index:95;background:rgba(12,11,10,.88);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;padding:24px;cursor:zoom-out;animation:lbIn .18s ease}
+.lightbox img{width:min(86vw,480px);max-height:74vh;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.5);height:auto;object-fit:contain;background:#222}
+.lb-name{color:#fff;font-weight:700;font-size:15px;text-align:center}
+@keyframes lbIn{from{opacity:0}to{opacity:1}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+/* app tile = Slabworks report card */
+.tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;text-align:left;
+  border:1.5px solid var(--line);border-radius:var(--r-md);padding:18px 20px;background:var(--surface);
+  box-shadow:var(--shadow);transition:.15s;min-height:132px}
+.tile:hover{border-color:var(--hover-line);transform:translateY(-1px)}
+.tile:active{border-color:var(--amber);background:var(--amber-wash)}
+.chip{width:46px;height:46px;border-radius:14px;background:var(--charcoal);color:var(--amber);flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;margin-bottom:14px;overflow:hidden}
+.chip svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.chip.tinted{background:var(--c);color:#fff}
+@supports (background:color-mix(in srgb, red 10%, white)){
+  .chip.tinted{background:color-mix(in srgb, var(--c) var(--tint), transparent);color:color-mix(in srgb, var(--c) var(--chip-ink), white);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--c) 18%, transparent)}
+}
+.chip img{width:100%;height:100%;object-fit:cover}
+.tile::after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:3px;border-radius:3px 3px 0 0;
+  background:var(--c,transparent);opacity:0;transition:opacity .15s}
+.tile:hover::after{opacity:.55}
+.tsub{font-size:12px;color:var(--ink-soft);margin-top:2px;line-height:1.3}
+.topen .arr{display:inline-block;transition:transform .15s;margin-left:3px}
+.tile:hover .topen .arr{transform:translateX(3px)}
+.vchip{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  background:var(--c,rgba(255,255,255,.12));color:#fff;font-size:14px}
+.vchip svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vchip img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+.tbtns{display:flex;align-items:center;gap:10px}
+.rfr{width:44px;height:44px;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:var(--ink-soft);
+  display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:.15s}
+.rfr:hover{color:var(--ink)}
+.rfr svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rfr.busy svg{animation:spin .8s linear infinite}
+.login-h{position:relative}
+.lt{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:12px;
+  background:rgba(255,255,255,.08);color:#F4F0E5;display:flex;align-items:center;justify-content:center;transition:.15s}
+.lt:hover{background:rgba(255,255,255,.16)}
+.lt svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.seg-l{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin:0 0 6px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:14px;background:var(--line-soft);
+  border:1px solid var(--line);margin-bottom:14px}
+.seg button{padding:9px 6px;border-radius:10px;font-size:13px;font-weight:600;color:var(--ink-soft);transition:.15s}
+.seg button[aria-checked="true"]{background:var(--surface2);color:var(--ink);box-shadow:var(--shadow)}
+.date{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-bottom:6px}
+.sum{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:7px 12px;border-radius:20px;
+  background:var(--bad-wash);color:var(--bad);font-size:12.5px;font-weight:700}
+.sum::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.skel{pointer-events:none}
+.skel .chip,.skel .bar{background:linear-gradient(90deg,var(--line-soft),var(--line),var(--line-soft));background-size:200% 100%;
+  animation:shimmer 1.2s ease-in-out infinite}
+.skel .bar{height:12px;border-radius:6px;width:70%}
+.skel .bar.s{width:40%;margin-top:8px}
+@keyframes shimmer{to{background-position:-200% 0}}
+.tname{font-size:14.5px;font-weight:700;letter-spacing:-.01em;line-height:1.3}
+.topen{margin-top:auto;padding-top:10px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-faint);font-weight:600}
+.empty{grid-column:1/-1;text-align:center;padding:46px 20px;color:var(--ink-faint);background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r-lg)}
+
+/* ---------- app viewer ---------- */
+.viewer{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}
+.vbar{flex:none;display:flex;align-items:center;gap:10px;background:var(--charcoal);color:#F4F0E5;
+  padding:env(safe-area-inset-top,0px) 14px 0 8px;height:calc(46px + env(safe-area-inset-top,0px))}
+/* the ✕ is the Slabworks drawer close button */
+.x{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:18px;
+  display:flex;align-items:center;justify-content:center;transition:.15s;flex:0 0 auto}
+.x:hover,.x:active{background:rgba(255,255,255,.2)}
+.vtitle{font-size:14px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frames{position:relative;flex:1;min-height:0}
+.frames iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
+/* A closed viewer stays laid out (just invisible) so dashboards loading in the background get their real size. */
+.viewer[hidden]{display:flex!important;visibility:hidden;pointer-events:none}
+.frames iframe.parked{visibility:hidden}
+body.float-close .vbar{position:absolute;top:0;left:0;height:auto;padding:calc(8px + env(safe-area-inset-top,0px)) 0 0 8px;
+  background:transparent;z-index:2}
+body.float-close .vtitle,body.float-close .vchip{display:none}
+body.float-close .x{background:var(--charcoal);box-shadow:var(--shadow-lift)}
+
+.vload{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;background:var(--bg);color:var(--ink-soft);font-size:13px;font-weight:500;z-index:1;padding:24px;text-align:center}
+.spin{width:30px;height:30px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--amber-deep);
+  animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- menu + dialog (Slabworks .modal) ---------- */
+.scrim{position:fixed;inset:0;background:rgba(27,26,23,.45);backdrop-filter:blur(2px);z-index:60;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.panel{background:var(--bg);border-radius:var(--r-lg);padding:26px;width:min(440px,100%);box-shadow:var(--shadow-lift);
+  max-height:90vh;overflow:auto}
+.panel h2{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.who{font-size:12px;color:var(--ink-soft);margin:4px 0 18px}
+.menu-list{display:flex;flex-direction:column;gap:9px}
+.menu-list .btn{justify-content:flex-start;padding:13px 16px;font-size:13.5px}
+.btn-danger{color:var(--bad)}
+.panel .row{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--charcoal);
+  color:#F4F0E5;padding:13px 20px;border-radius:14px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lift);
+  opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:calc(100% - 28px)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- reset password / first-time set ---------- */
+.links{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-top:14px}
+.links button{font-size:12.5px;font-weight:600;color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px}
+.links button:hover{color:var(--ink)}
+.code-in{letter-spacing:.5em;text-align:center;font-weight:800;font-size:22px!important;font-family:'JetBrains Mono',ui-monospace,monospace}
+.step-lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#9C988A;margin-top:3px}
+
+/* ---------- sections + badges ---------- */
+.sec{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin:22px 0 10px}
+.sec:first-child{margin-top:0}
+.grid .sec{grid-column:1/-1;margin-bottom:-4px}
+.badge{position:absolute;top:-8px;right:-8px;min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:var(--bad);
+  color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;border:3px solid var(--bg);
+  font-feature-settings:"tnum" 1;box-shadow:0 2px 6px rgba(207,79,51,.35)}
+.topen.hot{color:var(--bad)}
+.tag{position:absolute;top:12px;right:12px;font-size:9.5px;font-weight:700;color:var(--ink-faint);background:var(--line-soft);
+  padding:2px 7px;border-radius:6px;letter-spacing:.04em}
+
+/* ---------- admin: portal-only switch ---------- */
+.sw{position:relative;width:52px;height:30px;border-radius:15px;background:#D6D0C0;flex:0 0 auto;transition:background .15s}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.sw.on{background:var(--ok)}
+.sw.on::after{left:25px}
+.sw:disabled{opacity:.5}
+.adm-row{display:flex;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;margin-bottom:12px}
+.adm-row .t{flex:1;font-size:12.5px;line-height:1.4;color:var(--ink-soft)}
+.adm-row .t b{display:block;font-size:14px;color:var(--ink);margin-bottom:2px}
+.adm-apps{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 16px}
+.adm-apps div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+.adm-apps div:last-child{border-bottom:0}
+.st-ok{color:var(--ok);font-weight:700}.st-wait{color:#B07A12;font-weight:700}.st-bad{color:var(--bad);font-weight:700}
+.adm-foot{font-size:11.5px;color:var(--ink-faint);margin:12px 0 4px}
+
+/* ---------- bottom nav: Dashboards · Sheets · Forms ---------- */
+body.has-nav .home{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+.bnav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:40;
+  display:flex;gap:4px;padding:6px;border-radius:22px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-lift)}
+.bnav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;padding:8px 14px;border-radius:16px;
+  color:var(--ink-soft);font-size:11.5px;font-weight:700;letter-spacing:.01em;transition:.15s}
+.bnav button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.bnav button:hover{color:var(--ink)}
+.bnav button.on{background:var(--charcoal);color:var(--amber)}
+.bnav .cnt{position:absolute;top:3px;right:14px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--line);
+  color:var(--ink-soft);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.bnav button.on .cnt{background:var(--amber);color:var(--charcoal)}
+.vhead{display:flex;align-items:center;gap:10px;margin:4px 0 14px}
+.vhead h2{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.litem{display:flex;align-items:center;gap:14px;text-align:left;border:1.5px solid var(--line);border-radius:var(--r-md);padding:14px 16px;
+  background:var(--surface);box-shadow:var(--shadow);transition:.15s;width:100%}
+.litem:hover{border-color:var(--hover-line);transform:translateY(-1px)}
+.litem:active{border-color:var(--amber);background:var(--amber-wash)}
+.litem .chip{margin:0;width:42px;height:42px;border-radius:12px}
+.litem .lt1{font-size:14px;font-weight:700;line-height:1.3}
+.litem .lt2{font-size:12px;color:var(--ink-soft);margin-top:1px}
+.litem .go{margin-left:auto;color:var(--ink-faint);font-size:16px}
+@media(max-width:820px){
+  .bnav{left:12px;right:12px;transform:none;justify-content:space-around}
+  .bnav button{flex:1;min-width:0;padding:8px 4px}
+  .bnav .cnt{right:8px}
+  .lgrid{grid-template-columns:1fr}
+  .home{padding:calc(16px + env(safe-area-inset-top,0px)) 14px calc(30px + env(safe-area-inset-bottom,0px))}
+  .hello{margin:20px 0 14px}
+  .hello h1{font-size:21px}
+  .grid{grid-template-columns:1fr 1fr;gap:12px}
+  .tile{padding:15px 16px;min-height:120px}
+  .tname{font-size:13.5px}
+  .scrim{padding:0;align-items:flex-end}
+  .panel{width:100%;max-height:88dvh;border-radius:22px 22px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+  .panel h2{font-size:16.5px}
+  .toast{left:14px;right:14px;transform:translateY(20px);text-align:center;max-width:none}
+  .toast.on{transform:translateY(0)}
+}
+@media(max-width:430px){.hello h1{font-size:19px}}
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}.tile,.toast{transition:none}.skel .chip,.skel .bar{animation:none}}
+</style>
+<script>/* saved theme first, so the page never flashes the wrong colours */
+try { var t0 = localStorage.getItem('ggm_theme'); if (t0 === 'light' || t0 === 'dark') document.documentElement.setAttribute('data-theme', t0); } catch(e) {}
+</script>
+</head>
+<body>
+
+<!-- boot: checking the saved sign-in -->
+<section id="boot" class="center">
+  <div class="boot"><div class="brand-mark"></div><div class="spin" aria-label="Loading"></div></div>
+</section>
+
+<!-- sign in -->
+<section id="login" class="center" hidden>
+  <form class="login" id="loginForm" autocomplete="on">
+    <div class="login-h">
+      <div class="brand"><div class="brand-mark"></div>
+        <div><div class="brand-name"><?= title ?></div><div class="brand-sub">Apps &amp; dashboards</div></div></div>
+      <button class="lt theme-btn" type="button" aria-label="Switch theme" title="Switch theme"><svg viewBox="0 0 24 24"></svg></button>
+    </div>
+    <div class="login-b">
+      <h1>Sign in</h1>
+      <p class="sub">One sign-in opens every app you have access to.</p>
+      <div class="field">
+        <label for="uid">Username or phone</label>
+        <input id="uid" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      </div>
+      <div class="field">
+        <label for="pw">Password</label>
+        <input id="pw" type="password" autocomplete="current-password" required>
+        <button type="button" class="peek" id="peek">Show</button>
+      </div>
+      <button class="btn btn-dark btn-block" id="loginBtn" type="submit">Sign in</button>
+      <p class="err" id="loginErr" role="alert"></p>
+      <div class="links">
+        <button type="button" id="forgotBtn">Forgot password?</button>
+        <button type="button" id="firstBtn">First time here?</button>
+      </div>
+    </div>
+  </form>
+</section>
+
+<!-- reset password / first-time set: 3 steps -->
+<section id="reset" class="center" hidden>
+  <div class="login">
+    <div class="login-h">
+      <div class="brand-name" id="rsTitle">Reset password</div>
+      <div class="step-lbl" id="rsStep">Step 1 of 3</div>
+    </div>
+    <div class="login-b">
+      <form id="rs1">
+        <h1>Who are you?</h1>
+        <p class="sub">We'll email a 6-digit code to the address on your account.</p>
+        <div class="field">
+          <label for="rsId">Username or phone</label>
+          <input id="rsId" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </div>
+        <button class="btn btn-dark btn-block" id="rs1Btn" type="submit">Send code</button>
+      </form>
+      <form id="rs2" hidden>
+        <h1>Enter the code</h1>
+        <p class="sub" id="rsSent"></p>
+        <div class="field">
+          <label for="rsCode">6-digit code</label>
+          <input id="rsCode" class="code-in" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+        </div>
+        <button class="btn btn-dark btn-block" id="rs2Btn" type="submit">Verify</button>
+        <div class="links"><button type="button" id="rsResend">Resend code</button></div>
+      </form>
+      <form id="rs3" hidden>
+        <h1>New password</h1>
+        <p class="sub">At least 6 characters. Other devices will be signed out.</p>
+        <div class="field"><label for="rsPw">New password</label><input id="rsPw" type="password" autocomplete="new-password" minlength="6" required></div>
+        <div class="field"><label for="rsPw2">New password again</label><input id="rsPw2" type="password" autocomplete="new-password" required></div>
+        <button class="btn btn-amber btn-block" id="rs3Btn" type="submit">Save &amp; sign in</button>
+      </form>
+      <p class="err" id="rsErr" role="alert"></p>
+      <div class="links"><button type="button" id="rsBack">Back to sign in</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- home: app tiles -->
+<section id="home" hidden>
+  <div class="home">
+    <div class="topbar">
+      <div class="brand"><div class="brand-mark"></div>
+        <div><div class="brand-name"><?= title ?></div><div class="brand-sub">Apps &amp; dashboards</div></div></div>
+      <div class="tbtns">
+        <button class="rfr theme-btn" id="themeBtn" type="button" aria-label="Switch theme" title="Switch theme"><svg viewBox="0 0 24 24"></svg></button>
+        <button class="rfr" id="refreshBtn" type="button" aria-label="Refresh apps and counts" title="Refresh">
+          <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></svg>
+        </button>
+        <button class="acct" id="avatar" aria-label="Account menu"></button>
+      </div>
+    </div>
+    <div class="hello">
+      <div class="date" id="today"></div>
+      <h1 id="hello"></h1>
+      <p id="hint">Tap an app to open it.</p>
+      <div class="sum" id="sum" hidden></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div id="lview" hidden>
+      <div class="vhead"><h2 id="vname"></h2></div>
+      <div class="lgrid" id="lgrid"></div>
+    </div>
+  </div>
+  <nav class="bnav" id="bnav" aria-label="Menu" hidden>
+    <button type="button" data-v="apps"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>Apps<span class="cnt" hidden></span></button>
+    <button type="button" data-v="dashboards"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-6"/></svg>Dashboards<span class="cnt" hidden></span></button>
+    <button type="button" data-v="sheets"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M3.5 9.5h17M3.5 15h17M9.5 9.5v11"/></svg>Sheets<span class="cnt" hidden></span></button>
+    <button type="button" data-v="forms"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Forms<span class="cnt" hidden></span></button>
+  </nav>
+  <div hidden>
+  </div>
+</section>
+
+<!-- app viewer -->
+<div class="viewer" id="viewer" hidden>
+  <div class="vbar">
+    <button class="x" id="closeBtn" aria-label="Close app">×</button>
+    <span class="vchip" id="vchip" aria-hidden="true"></span>
+    <span class="vtitle" id="vtitle"></span>
+  </div>
+  <div class="frames" id="frames">
+    <div class="vload" id="vload" hidden><div class="spin"></div><div id="vloadText"></div></div>
+  </div>
+</div>
+
+<!-- account menu -->
+<div class="scrim" id="menu" hidden>
+  <div class="panel" role="dialog" aria-label="Account">
+    <div class="me-row">
+      <button type="button" class="me-av" id="meAv" aria-label="Profile photo"><span id="meAvTxt"></span>
+        <span class="cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button>
+      <div style="min-width:0"><h2 id="menuName"></h2><p class="who mono" id="menuUser"></p></div>
+    </div>
+    <input type="file" id="photoFile" accept="image/*" hidden>
+    <div class="seg-l">Theme</div>
+    <div class="seg" id="themeSeg" role="radiogroup" aria-label="Theme">
+      <button type="button" role="radio" data-t="auto">Auto</button>
+      <button type="button" role="radio" data-t="light">Light</button>
+      <button type="button" role="radio" data-t="dark">Dark</button>
+    </div>
+    <div class="menu-list">
+      <button class="btn btn-ghost" id="openAdmin" hidden style="background:var(--amber-wash);border-color:var(--amber-line)">⚙️ Admin: Portal-only switch</button>
+      <button class="btn btn-ghost" id="photoAdd">Add profile photo</button>
+      <button class="btn btn-ghost btn-danger" id="photoDel" hidden>Remove profile photo</button>
+      <button class="btn btn-ghost" id="openPw">Change password</button>
+      <button class="btn btn-ghost btn-danger" id="signOut">Sign out</button>
+      <button class="btn btn-ghost" id="menuClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- profile photo, full size -->
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-label="Profile photo">
+  <img id="lbImg" alt="">
+  <div class="lb-name" id="lbName"></div>
+</div>
+
+<!-- change password -->
+<div class="scrim" id="pwDlg" hidden>
+  <form class="panel" id="pwForm">
+    <h2>Change password</h2>
+    <p class="who">Other phones signed in as you will be signed out.</p>
+    <div class="field"><label for="pOld">Current password</label><input id="pOld" type="password" autocomplete="current-password" required></div>
+    <div class="field"><label for="pNew">New password</label><input id="pNew" type="password" autocomplete="new-password" minlength="6" required></div>
+    <div class="field"><label for="pNew2">New password again</label><input id="pNew2" type="password" autocomplete="new-password" required></div>
+    <p class="err" id="pwErr" role="alert"></p>
+    <div class="row">
+      <button type="button" class="btn btn-ghost" id="pwCancel">Cancel</button>
+      <button class="btn btn-dark" id="pwSave" type="submit">Save password</button>
+    </div>
+  </form>
+</div>
+
+<!-- admin: portal-only switch -->
+<div class="scrim" id="admDlg" hidden>
+  <div class="panel" role="dialog" aria-label="Admin">
+    <h2>Admin</h2>
+    <p class="who">Only Portal Admin accounts see this.</p>
+    <div class="adm-row">
+      <div class="t"><b>Portal-only mode</b><span id="admText"></span></div>
+      <button class="sw" id="admSw" type="button" role="switch" aria-checked="false" aria-label="Portal-only mode"></button>
+    </div>
+    <div class="adm-apps" id="admApps"></div>
+    <p class="adm-foot" id="admFoot"></p>
+    <div class="row">
+      <button type="button" class="btn btn-ghost" id="admReload">Refresh</button>
+      <button type="button" class="btn btn-dark" id="admClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- admin: confirm before flipping -->
+<div class="scrim" id="confDlg" hidden style="z-index:70">
+  <div class="panel" role="alertdialog" aria-labelledby="confTitle">
+    <h2 id="confTitle"></h2>
+    <p class="who" id="confText" style="font-size:13px;color:var(--ink)"></p>
+    <div class="row">
+      <button type="button" class="btn btn-ghost" id="confNo">Cancel</button>
+      <button type="button" class="btn btn-amber" id="confYes"></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ===================== settings ===================== */
+const KEEP_ALIVE  = 3;      // closed apps kept loaded in the background (0 = unload on ✕, lightest on phones); reopening a kept app is instant
+const PRELOAD_APPS = 1;     // the person's most-used app(s) on this phone load in the background after the home screen shows (0 = off)
+const APP_STALE_MS = 15 * 60 * 1000;       // an app kept loaded longer than this opens fresh
+const CLOSE_STYLE = 'bar';  // 'bar' = slim strip with ✕ above the app, 'float' = round ✕ floating over the app's top-left corner
+const PRELOAD_DASHBOARDS = true;           // load the person's dashboards in the background after the home screen shows
+const DASH_STALE_MS = 15 * 60 * 1000;      // a dashboard kept loaded longer than this reloads when opened
+const SLOW_MS     = 15000;  // show a "still loading" note after this long
+const REFRESH_MS  = 3 * 60 * 1000; // re-check the app list when the phone comes back to the portal after this long
+const STORE_KEY   = 'ggm_portal_session';
+let   startApp    = '<?= startApp ?>';   // from ?app=… — opened once, straight after sign-in
+
+/* ===================== state ===================== */
+let session = null, home = null, current = null, lastRefresh = 0, slowTimer = null;
+const frames = new Map(); // appId -> { el, used }
+const $ = id => document.getElementById(id);
+
+/* ===================== helpers ===================== */
+function run(fn, ...args){
+  return new Promise((ok, fail) => google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](...args));
+}
+function errText(e){ return String((e && e.message) || e || 'Something went wrong.').replace(/^(Error|Exception):\s*/,''); }
+function isSessionErr(e){ return errText(e).indexOf('SESSION_EXPIRED') > -1; }
+function save(v){ try{ v ? localStorage.setItem(STORE_KEY, v) : localStorage.removeItem(STORE_KEY); }catch(_){} }
+function saved(){ try{ return localStorage.getItem(STORE_KEY); }catch(_){ return null; } }
+/* SPEED: the last home screen is kept, so the portal opens instantly and refreshes behind it. */
+const HOME_KEY = 'ggm_portal_home';
+function saveHome(h){ try{ h ? localStorage.setItem(HOME_KEY, JSON.stringify(h)) : localStorage.removeItem(HOME_KEY); }catch(_){} }
+function savedHome(){ try{ return JSON.parse(localStorage.getItem(HOME_KEY) || 'null'); }catch(_){ return null; } }
+function screen(name){ ['boot','login','reset','home'].forEach(s => $(s).hidden = (s !== name)); }
+function toast(t){ const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3600); }
+function fail(e){
+  if (isSessionErr(e)){ signOut(); toast('Your sign-in has ended. Please sign in again.'); return; }
+  toast(errText(e));
+}
+/* Built-in icons: type the name in the Apps tab "Icon" column (an emoji or an https:// image link also works). */
+const ICONS = {
+  cart:      '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.3 11.2a2 2 0 0 0 2 1.6h8.1a2 2 0 0 0 1.9-1.5L21.5 7H6.1"/>',
+  truck:     '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h9A1.5 1.5 0 0 1 15 6.5V17H3z"/><path d="M15 9h3.6a1.5 1.5 0 0 1 1.2.6l2 2.7a1.5 1.5 0 0 1 .2.8V17h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
+  fuel:      '<path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/><path d="M3 21h13"/><path d="M7 7h5v4H7z"/><path d="M15 9h1.5a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3"/>',
+  checklist: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m9 13 2 2 4-4"/>',
+  list:      '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 14h6M9 18h3"/>',
+  calendar:  '<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="m9 15 2 2 4-4"/>',
+  tasks:     '<path d="m3 6 1.6 1.6L8 4.2"/><path d="m3 13 1.6 1.6L8 11.2"/><path d="M11.5 6H21M11.5 13H21M11.5 20H21"/><path d="M4 20h3"/>',
+  shield:    '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.4 7.5 9.5 4.4-1.1 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/>',
+  send:      '<path d="M21.5 2.5 10.5 13.5"/><path d="m21.5 2.5-7 19-4-8-8-4z"/>',
+  chart:     '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-6"/>',
+  factory:   '<path d="M3 21V10l5 3v-3l5 3v-3l5 3V4h3v17z"/><path d="M7 17h2M12 17h2M17 17h1"/>',
+  wallet:    '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/><path d="m6 6 9-3 1.5 3"/>',
+  mine:      '<path d="M3 21 13 11"/><path d="M6 5.5C10 3 16 3.5 19.5 7S21.5 14 19 18c-1.4-4-3.2-6.6-6-9.2C10.4 6.4 8.4 5.6 6 5.5z"/>',
+  box:       '<path d="m12 3 8.5 4.5v9L12 21l-8.5-4.5v-9z"/><path d="m3.5 7.5 8.5 4.5 8.5-4.5M12 12v9"/>',
+  users:     '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.5a6.5 6.5 0 0 1 3 5.5"/>',
+  doc:       '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  tools:     '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.5 17.3a1.8 1.8 0 0 0 2.6 2.6l5.8-5.8a4 4 0 0 0 5.2-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'
+};
+function hexOk(c){ return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c || '').trim()); }
+/** Fills a chip with the app's icon: built-in name → SVG, https link → picture, else emoji / first letter. */
+function paintIcon(el, app){
+  el.textContent = '';
+  const icon = String(app.icon || '').trim(), key = icon.toLowerCase();
+  if (ICONS[key]) el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[key] + '</svg>';
+  else if (/^https:\/\//i.test(icon)){ const img = document.createElement('img'); img.src = icon; img.alt = ''; el.appendChild(img); }
+  else el.textContent = icon || app.name.charAt(0).toUpperCase();
+}
+function history_(state){ try{ google.script.history.push(state, {}); }catch(_){} }
+function historyReplace_(state){ try{ google.script.history.replace(state, {}); }catch(_){} }
+
+/* ===================== boot ===================== */
+async function boot(){
+  document.body.classList.toggle('float-close', CLOSE_STYLE === 'float');
+  session = saved();
+  if (!session){ screen('login'); $('uid').focus(); return; }
+  const cached = savedHome();
+  if (cached && cached.user){ home = cached; renderHome(); }          // instant; the real one follows
+  else skeleton();
+  try { home = await run('getHome', session); saveHome(home); lastRefresh = Date.now(); renderHome(); openStartApp(); }
+  catch(e){
+    if (isSessionErr(e)){ signOut(); toast('Your sign-in has ended. Please sign in again.'); return; }
+    // a weak signal is not a sign-out: keep the session, show what we have, try again
+    toast('No connection to the portal. Retrying…');
+    setTimeout(boot, 8000);
+  }
+}
+
+/* ===================== sign in / out ===================== */
+$('loginForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const btn = $('loginBtn'); btn.disabled = true; btn.textContent = 'Signing in…'; $('loginErr').textContent = '';
+  try {
+    const r = await run('login', $('uid').value, $('pw').value);
+    session = r.session; save(session); home = r.home; saveHome(home); lastRefresh = Date.now();
+    $('pw').value = '';
+    renderHome();
+    openStartApp();
+  } catch(e){ $('loginErr').textContent = errText(e); }
+  finally { btn.disabled = false; btn.textContent = 'Sign in'; }
+});
+$('peek').addEventListener('click', () => {
+  const p = $('pw'); const show = p.type === 'password';
+  p.type = show ? 'text' : 'password'; $('peek').textContent = show ? 'Hide' : 'Show';
+});
+
+function signOut(){
+  closeApp();
+  frames.forEach(f => f.el.remove()); frames.clear();
+  session = null; home = null; save(null); saveHome(null); renderHome.sig = null;
+  navView = null; $('bnav').hidden = true; document.body.classList.remove('has-nav');
+  $('menu').hidden = true; $('pwDlg').hidden = true; $('lightbox').hidden = true;
+  screen('login');
+}
+
+/* ===================== home ===================== */
+function todayText(){
+  try { return new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }); }
+  catch(_){ return new Date().toDateString(); }
+}
+/** Grey placeholder tiles while the first app list loads. */
+function skeleton(){
+  $('today').textContent = todayText(); $('hello').textContent = ''; $('hint').textContent = 'Loading your apps…'; $('sum').hidden = true;
+  const grid = $('grid'); grid.textContent = '';
+  for (let i = 0; i < 4; i++){
+    const t = document.createElement('div'); t.className = 'tile skel';
+    t.innerHTML = '<span class="chip"></span><span class="bar"></span><span class="bar s"></span>';
+    grid.appendChild(t);
+  }
+  screen('home');
+}
+
+function renderHome(){
+  const name = (home.user.name || home.user.username).trim();
+  const h = new Date().getHours();
+  $('today').textContent = todayText();
+  $('hello').textContent = (h < 12 ? 'Good morning, ' : h < 17 ? 'Good afternoon, ' : 'Good evening, ') + name.split(/\s+/)[0];
+  paintMe();
+  $('menuName').textContent = name;
+  $('menuUser').textContent = home.user.username;
+  $('openAdmin').hidden = !home.user.admin;
+  warmUp();
+
+  // Same apps and counts as on screen: keep the tiles (rebuilding them swallowed a tap made at that moment).
+  const sig = JSON.stringify([home.apps, home.sheets, home.forms]);
+  if (sig === renderHome.sig && !$('grid').querySelector('.skel')){ screen('home'); return; }
+  renderHome.sig = sig;
+
+  const grid = $('grid'); grid.textContent = '';
+  const waiting = home.apps.filter(a => a.badge > 0);
+  const total = waiting.reduce((n, a) => n + a.badge, 0);
+  $('hint').textContent = 'Tap an app to open it.';
+  $('hint').hidden = !home.apps.length;
+  $('sum').hidden = !total;
+  $('sum').textContent = total + (total === 1 ? ' thing' : ' things') + ' waiting in ' + waiting.length + (waiting.length === 1 ? ' app' : ' apps');
+  if (!home.apps.length){
+    const d = document.createElement('div'); d.className = 'empty';
+    d.textContent = 'No apps are assigned to you yet. Ask the IT admin to give you access.';
+    grid.appendChild(d);
+  }
+  // Apps on the home screen; dashboards, sheets and forms live in the bottom menu.
+  const appsOnly = home.apps.filter(a => a.kind !== 'dashboard');
+  appsOnly.forEach(app => grid.appendChild(tileFor(app)));
+  if (!appsOnly.length && home.apps.length){
+    const d = document.createElement('div'); d.className = 'empty';
+    d.textContent = 'Your dashboards, sheets and forms are in the menu below.';
+    grid.appendChild(d);
+  }
+  paintNav();
+
+  // drop kept-alive apps the user no longer has
+  const allowed = new Set(home.apps.map(a => a.id));
+  frames.forEach((f, id) => { if (!allowed.has(id)){ f.el.remove(); frames.delete(id); } });
+
+  screen('home');
+}
+
+function tileFor(app){
+  const b = document.createElement('button'); b.className = 'tile'; b.type = 'button'; b.dataset.app = app.id;
+  const chip = document.createElement('span'); chip.className = 'chip';
+  if (hexOk(app.color)){ b.style.setProperty('--c', app.color.trim()); chip.classList.add('tinted'); }
+  paintIcon(chip, app);
+  const t = document.createElement('span'); t.className = 'tname'; t.textContent = app.name;
+  const go = document.createElement('span'); go.className = 'topen';
+  b.append(chip, t);
+  if (app.site){ const s = document.createElement('span'); s.className = 'tsub'; s.textContent = app.site; b.appendChild(s); }
+  b.appendChild(go);
+  if (app.kind === 'dashboard' && !(app.badge > 0)){ const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = 'VIEW'; b.appendChild(tag); }
+  paintBadge(b, app);
+  b.addEventListener('click', () => openApp(app));
+  return b;
+}
+
+function paintBadge(tile, app){
+  const go = tile.querySelector('.topen');
+  let badge = tile.querySelector('.badge');
+  const n = app.badge;
+  if (n > 0){
+    if (!badge){ badge = document.createElement('span'); badge.className = 'badge'; tile.appendChild(badge); }
+    badge.textContent = n > 99 ? '99+' : String(n);
+    go.textContent = n + ' ' + (app.badgeWord || 'pending');
+    go.classList.add('hot');
+  } else {
+    if (badge) badge.remove();
+    go.innerHTML = 'Open<span class="arr">→</span>';
+    go.classList.remove('hot');
+  }
+}
+
+/** After an app is closed, its number is fetched again for this person. */
+async function refreshOneBadge(appId){
+  const app = session && home && home.apps.find(a => a.id === appId);
+  if (!app || app.badge === null || app.badge === undefined) return;
+  try {
+    const n = await run('refreshBadge', session, appId);
+    if (typeof n !== 'number') return;
+    app.badge = n; saveHome(home);
+    const tile = document.querySelector('.tile[data-app="' + CSS.escape(appId) + '"]');
+    if (tile) paintBadge(tile, app);
+  } catch(e){ if (isSessionErr(e)) fail(e); }
+}
+
+/* ===================== theme: Auto (follows the phone) / Light / Dark ===================== */
+const THEME_KEY = 'ggm_theme';
+const SUN  = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+const MOON = '<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>';
+const darkQuery = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+function themeChoice(){ try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch(_){ return 'auto'; } }
+function themeIsDark(){ const c = themeChoice(); return c === 'dark' || (c === 'auto' && !!(darkQuery && darkQuery.matches)); }
+function applyTheme(){
+  const c = themeChoice(), dark = themeIsDark();
+  if (c === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', c);
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.querySelector('svg').innerHTML = dark ? SUN : MOON;          // shows what a tap switches to
+    b.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
+    b.setAttribute('aria-label', b.title);
+  });
+  document.querySelectorAll('#themeSeg button').forEach(b => b.setAttribute('aria-checked', b.dataset.t === c ? 'true' : 'false'));
+}
+function setTheme(c){
+  try { c === 'auto' ? localStorage.removeItem(THEME_KEY) : localStorage.setItem(THEME_KEY, c); } catch(_){}
+  applyTheme();
+}
+document.querySelectorAll('.theme-btn').forEach(b => b.addEventListener('click', () => {
+  const next = themeIsDark() ? 'light' : 'dark';
+  setTheme(next); toast(next === 'dark' ? 'Dark theme' : 'Light theme');
+}));
+document.querySelectorAll('#themeSeg button').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.t)));
+if (darkQuery){ try { darkQuery.addEventListener('change', applyTheme); } catch(_){ try { darkQuery.addListener(applyTheme); } catch(__){} } }
+applyTheme();
+
+/* ===================== bottom menu: Apps · Dashboards · Sheets · Forms ===================== */
+let navView = null;
+const NAV = {
+  apps:       { title: 'Apps',       icon: 'grid',  items: () => (home.apps || []).filter(a => a.kind !== 'dashboard') },
+  dashboards: { title: 'Dashboards', icon: 'chart', items: () => (home.apps || []).filter(a => a.kind === 'dashboard') },
+  sheets:     { title: 'Sheets',     icon: 'sheet', items: () => home.sheets || [] },
+  forms:      { title: 'Forms',      icon: 'form',  items: () => home.forms || [] }
+};
+ICONS.sheet = '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M3.5 9.5h17M3.5 15h17M9.5 9.5v11"/>';
+ICONS.form  = '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>';
+
+/** Counts on the menu buttons; the menu shows once a dashboard, sheet or form is shared (Apps alone needs no menu). */
+function paintNav(){
+  if (!home) return;
+  let any = false;
+  $('bnav').querySelectorAll('button').forEach(b => {
+    const v = b.dataset.v, n = NAV[v].items().length, c = b.querySelector('.cnt');
+    c.hidden = !n; c.textContent = n; if (n && v !== 'apps') any = true;
+    b.classList.toggle('on', (navView || 'apps') === v);
+  });
+  $('bnav').hidden = !any;
+  document.body.classList.toggle('has-nav', any);
+  if (navView) showView(navView, true); else { $('lview').hidden = true; $('grid').hidden = false; }
+}
+
+/** Apps = the app tiles; the other menus show their list instead. Tapping the open menu again goes back to Apps. */
+function showView(v, keep){
+  if (v === 'apps' || (!keep && navView === v)) v = null;
+  navView = v;
+  $('bnav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === (v || 'apps')));
+  $('grid').hidden = !!v; $('lview').hidden = !v;
+  $('hint').hidden = !!v || !home.apps.length;
+  if (!v) return;
+  const cfg = NAV[v], list = cfg.items(), box = $('lgrid');
+  $('vname').textContent = cfg.title;
+  box.textContent = '';
+  if (!list.length){
+    const d = document.createElement('div'); d.className = 'empty';
+    d.textContent = 'No ' + cfg.title.toLowerCase() + ' are shared with you yet.';
+    box.appendChild(d); return;
+  }
+  list.forEach(it => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'litem';
+    const chip = document.createElement('span'); chip.className = 'chip tinted';
+    const color = v === 'dashboards' && hexOk(it.color) ? it.color.trim() : v === 'sheets' ? '#15803D' : v === 'forms' ? '#7C3AED' : '#0284C7';
+    b.style.setProperty('--c', color);
+    paintIcon(chip, v === 'dashboards' ? it : { icon: cfg.icon, name: it.name });
+    const tx = document.createElement('span');
+    const t1 = document.createElement('div'); t1.className = 'lt1'; t1.textContent = it.name;
+    tx.appendChild(t1);
+    const sub = [it.site, it.desig].filter(Boolean).join(' · ');
+    if (sub){ const t2 = document.createElement('div'); t2.className = 'lt2'; t2.textContent = sub; tx.appendChild(t2); }
+    const go = document.createElement('span'); go.className = 'go'; go.textContent = '↗';
+    b.append(chip, tx, go);
+    b.addEventListener('click', () => v === 'dashboards' ? openApp(it) : openLinkItem(v === 'sheets' ? 'sheet' : 'form', it));
+    box.appendChild(b);
+  });
+  window.scrollTo({ top: 0 });
+}
+
+/** Sheets / forms open in a new tab; the link is fetched (and the tick checked) on the tap itself. */
+async function openLinkItem(kind, it){
+  const w = window.open('', '_blank');
+  if (w) try { w.document.write('<p style="font:15px system-ui;padding:24px;color:#6C685D">Opening ' + it.name.replace(/</g, '&lt;') + '…</p>'); } catch(_){}
+  try {
+    const r = await run('openLink', session, kind, it.name);
+    if (w) w.location.href = r.url;
+    else if (!window.open(r.url, '_blank')) toast('Your browser blocked the new tab. Tap ' + it.name + ' again.');
+  } catch(e){ if (w) w.close(); fail(e); }
+}
+
+$('bnav').querySelectorAll('button').forEach(b => b.addEventListener('click', () => showView(b.dataset.v)));
+
+/* Refresh button: fresh app list and counts (the counts themselves are refreshed every 5 minutes). */
+$('refreshBtn').addEventListener('click', async () => {
+  const b = $('refreshBtn');
+  if (!session || b.classList.contains('busy')) return;
+  b.classList.add('busy');
+  try { home = await run('getHome', session); saveHome(home); lastRefresh = Date.now(); renderHome(); toast('Up to date.'); }
+  catch(e){ fail(e); }
+  finally { b.classList.remove('busy'); }
+});
+
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden || !session || current || Date.now() - lastRefresh < REFRESH_MS) return;
+  try { home = await run('getHome', session); saveHome(home); lastRefresh = Date.now(); renderHome(); } catch(e){ fail(e); }
+});
+
+/* ===================== open / close apps ===================== */
+function openStartApp(){
+  if (!startApp || !home) return;
+  const app = home.apps.find(a => a.id === startApp);
+  startApp = '';
+  if (app) openApp(app);
+  else toast('You do not have access to that app.');
+}
+
+async function openApp(app){
+  if (current === app.id) return;                 // a double tap must not stack two copies of the app
+  current = app.id; openedAt = Date.now();
+  $('vtitle').textContent = app.name;
+  const vc = $('vchip'); paintIcon(vc, app);
+  if (hexOk(app.color)) vc.style.setProperty('--c', app.color.trim()); else vc.style.removeProperty('--c');
+  $('viewer').hidden = false; document.body.classList.add('app-open');
+  history_({ app: app.id });
+
+  if (app.kind === 'dashboard' && app.url){       // usually already loaded in the background: instant
+    const f = dashFrame(app);
+    if (Date.now() - f.at > DASH_STALE_MS){ f.loaded = false; f.at = Date.now(); f.el.src = f.url; }
+    f.el.classList.remove('parked'); f.used = Date.now();
+    loading(!f.loaded, 'Opening ' + app.name + '…');
+    return;
+  }
+
+  bumpUse(app.id);
+  let kept = frames.get(app.id);
+  if (kept && Date.now() - kept.at > APP_STALE_MS){ kept.el.remove(); frames.delete(app.id); kept = null; }
+  if (kept){ kept.el.classList.remove('parked'); kept.used = Date.now(); loading(!kept.loaded, 'Opening ' + app.name + '…'); return; }
+
+  loading(true, 'Opening ' + app.name + '…');
+  try {
+    const f = await appFrame(app);
+    if (current !== app.id) return;               // closed while we were waiting: it stays loaded for next time
+    f.el.classList.remove('parked'); f.used = Date.now();
+    loading(!f.loaded, 'Opening ' + app.name + '…');
+  } catch(e){ if (current === app.id){ closeApp(); fail(e); } }
+}
+
+/* Apps: a one-time pass from the hub, then the app in a hidden ("parked") frame.
+   A tap while the same app is already being pre-loaded waits for that one instead of loading it twice. */
+const pending = new Map();   // appId -> Promise of its frame
+function appFrame(app, why){
+  if (pending.has(app.id)) return pending.get(app.id);
+  const p = run('launchApp', session, app.id, why || '').then(r => {
+    if (!session) throw new Error('Signed out.');   // signed out while the pass was on its way
+    const old = frames.get(app.id); if (old) old.el.remove();
+    const el = document.createElement('iframe');
+    el.title = app.name; el.className = 'parked';
+    el.allow = 'camera; microphone; geolocation; clipboard-read; clipboard-write; fullscreen';
+    const f = { el, used: Date.now(), loaded: false, at: Date.now() };
+    el.addEventListener('load', () => { f.loaded = true; if (current === app.id) loading(false); });
+    el.src = r.url;
+    $('frames').appendChild(el);
+    frames.set(app.id, f);
+    trimKept();
+    return f;
+  });
+  pending.set(app.id, p);
+  const clear = () => pending.delete(app.id);
+  p.then(clear, clear);
+  return p;
+}
+
+/* Which apps this person opens most on this phone (kept on the phone only). */
+const USE_KEY = 'ggm_app_use';
+function bumpUse(id){
+  try { const u = JSON.parse(localStorage.getItem(USE_KEY) || '{}'); u[id] = (u[id] || 0) + 1; localStorage.setItem(USE_KEY, JSON.stringify(u)); } catch(_){}
+}
+function favouriteApps(n){
+  let u = {}; try { u = JSON.parse(localStorage.getItem(USE_KEY) || '{}') || {}; } catch(_){}
+  const apps = ((home && home.apps) || []).filter(a => a.kind !== 'dashboard');
+  const used = apps.filter(a => u[a.id]).sort((x, y) => u[y.id] - u[x.id]);
+  return (used.length ? used : apps.length === 1 ? apps : []).slice(0, n);
+}
+
+function closeApp(){
+  if (!current){ $('viewer').hidden = true; return; }
+  const closed = current;
+  setTimeout(() => refreshOneBadge(closed), 400);
+  current = null;
+  loading(false);
+  $('viewer').hidden = true; document.body.classList.remove('app-open');
+  // Give focus back to the portal BEFORE the app's frame goes: a loaded app holds the keyboard focus,
+  // and removing a focused frame made the next tap on a tile only bring focus back (tile needed two taps).
+  const tile = document.querySelector('.tile[data-app="' + CSS.escape(closed) + '"]');
+  try { window.focus(); if (tile) tile.focus({ preventScroll: true }); } catch(_){}
+  const f = frames.get(closed);
+  if (f){
+    if (f.dash || KEEP_ALIVE > 0){ f.el.classList.add('parked'); f.used = Date.now(); }   // stays loaded: reopening is instant
+    else { f.el.remove(); frames.delete(closed); }
+  }
+  trimKept();
+  historyReplace_({});
+}
+
+function trimKept(){
+  [...frames.entries()].filter(e => !e[1].dash && e[0] !== current).sort((a, b) => b[1].used - a[1].used).slice(KEEP_ALIVE)
+    .forEach(([id, f]) => { f.el.remove(); frames.delete(id); });
+}
+
+/* Dashboards are public pages: their link comes with the app list, so a frame can start at once.
+   One frame per dashboard, created hidden ("parked") and kept after ✕. */
+function dashFrame(app){
+  let f = frames.get(app.id);
+  if (f && f.dash && f.url === app.url) return f;
+  if (f){ f.el.remove(); frames.delete(app.id); }
+  const el = document.createElement('iframe');
+  el.title = app.name; el.className = 'parked';
+  el.allow = 'camera; microphone; geolocation; clipboard-read; clipboard-write; fullscreen';
+  f = { el, used: Date.now(), dash: true, url: app.url, loaded: false, at: Date.now() };
+  el.addEventListener('load', () => { f.loaded = true; if (current === app.id) loading(false); });
+  el.src = app.url;
+  $('frames').appendChild(el);
+  frames.set(app.id, f);
+  return f;
+}
+
+/** Once the home screen is up, loads in the background, one after another: the person's most-used app(s), then their dashboards. */
+let warmTimer = null;
+const frameReady = f => f.loaded ? null : new Promise(ok => { f.el.addEventListener('load', ok, { once: true }); setTimeout(ok, 6000); });
+function warmUp(){
+  clearTimeout(warmTimer);
+  warmTimer = setTimeout(async () => {
+    for (const app of favouriteApps(PRELOAD_APPS)){
+      if (!session || frames.has(app.id) || current === app.id) continue;
+      try { await frameReady(await appFrame(app, 'preload')); } catch(_){}   // a failed pre-load just means a normal open later
+    }
+    if (!PRELOAD_DASHBOARDS) return;
+    for (const app of ((home && home.apps) || []).filter(a => a.kind === 'dashboard' && a.url)){
+      if (!session) return;
+      await frameReady(dashFrame(app));
+    }
+  }, 1200);
+}
+
+function loading(on, text){
+  clearTimeout(slowTimer);
+  $('vload').hidden = !on;
+  if (on){
+    $('vloadText').textContent = text || 'Opening…';
+    slowTimer = setTimeout(() => { $('vloadText').textContent = 'Still loading. If this takes much longer, check the phone\'s internet and try again.'; }, SLOW_MS);
+  }
+}
+
+$('closeBtn').addEventListener('click', closeApp);
+// Android back button closes the open app instead of leaving the portal.
+// Google delivers the "history cleared" notice of the previous close late, sometimes right after the next
+// tile tap: without the time check that late notice closed the app that had just opened (tap needed twice).
+let openedAt = 0;
+try { google.script.history.setChangeHandler(e => {
+  if (!(e.state && e.state.app) && current && Date.now() - openedAt > 1500) closeApp();
+}); } catch(_){}
+
+/* ===================== profile photo ===================== */
+/** Shows the photo (or the first letter) on the account button and in the menu. */
+function paintMe(){
+  if (!home) return;
+  const name = (home.user.name || home.user.username).trim(), p = home.user.photo || '';
+  [$('avatar'), $('meAv')].forEach(el => {
+    el.classList.toggle('has-photo', !!p);
+    el.style.backgroundImage = p ? 'url("' + p + '")' : '';
+  });
+  $('avatar').textContent = p ? '' : name.charAt(0).toUpperCase();
+  $('meAvTxt').textContent = p ? '' : name.charAt(0).toUpperCase();
+  $('photoAdd').textContent = p ? 'Change profile photo' : 'Add profile photo';
+  $('photoDel').hidden = !p;
+}
+
+/** Full-size photo in the middle of the screen: the small one at once, the sharp one when it arrives. */
+function showPhoto(username, name, small){
+  if (!small) return;
+  $('lbImg').src = small; $('lbName').textContent = name || '';
+  $('lightbox').hidden = false;
+  const want = username;
+  run('getPhoto', session, username).then(big => {
+    if (big && !$('lightbox').hidden && showPhoto.want === want) $('lbImg').src = big;
+  }).catch(() => {});
+  showPhoto.want = want;
+}
+$('lightbox').addEventListener('click', () => { $('lightbox').hidden = true; $('lbImg').removeAttribute('src'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('lightbox').hidden) $('lightbox').click(); });
+
+/* The phone shrinks the picture before sending: a 112 px square for avatars and a sharp
+   copy up to 560 px for the full view, each squeezed until it fits one sheet cell. */
+function loadImg(file){
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(new Error('That file could not be read as a picture.')); };
+    img.src = url;
+  });
+}
+function jpeg(img, sx, sy, sw, sh, w, h, q){
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
+  return c.toDataURL('image/jpeg', q);
+}
+function shrinkPhoto(img){
+  const W = img.naturalWidth, H = img.naturalHeight, side = Math.min(W, H);
+  const sx = (W - side) / 2, sy = (H - side) / 2;
+  let q = 0.82, thumb = jpeg(img, sx, sy, side, side, 112, 112, q);
+  while (thumb.length > 19000 && q > 0.35) { q -= 0.12; thumb = jpeg(img, sx, sy, side, side, 112, 112, q); }
+  let max = 560, fq = 0.82, full;
+  for (let i = 0; i < 14; i++){
+    const k = Math.min(1, max / Math.max(W, H));
+    full = jpeg(img, 0, 0, W, H, Math.round(W * k), Math.round(H * k), fq);
+    if (full.length <= 48000) break;
+    if (fq > 0.5) fq -= 0.1; else max = Math.round(max * 0.85);
+  }
+  return { thumb, full };
+}
+$('meAv').addEventListener('click', () => {
+  if (home && home.user.photo) showPhoto(home.user.username, home.user.name, home.user.photo);
+  else $('photoFile').click();
+});
+$('photoAdd').addEventListener('click', () => $('photoFile').click());
+$('photoFile').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { toast('Pick a photo (JPG or PNG).'); return; }
+  const b = $('photoAdd'); b.disabled = true; b.textContent = 'Saving photo…';
+  try {
+    const img = await loadImg(file);
+    const p = shrinkPhoto(img);
+    if (p.full.length > 48000 || p.thumb.length > 19000) throw new Error('This picture is too large even after shrinking. Try another one.');
+    const r = await run('savePhoto', session, p.thumb, p.full);
+    home.user.photo = r.thumb; saveHome(home); paintMe();
+    toast('Profile photo saved. It shows in your apps within a few minutes.');
+  } catch(err){ if (isSessionErr(err)) fail(err); else toast(errText(err)); }
+  finally { b.disabled = false; paintMe(); }
+});
+$('photoDel').addEventListener('click', async () => {
+  if (!confirm('Remove your profile photo?')) return;
+  const b = $('photoDel'); b.disabled = true;
+  try {
+    await run('removePhoto', session);
+    home.user.photo = ''; saveHome(home); paintMe();
+    toast('Profile photo removed.');
+  } catch(err){ if (isSessionErr(err)) fail(err); else toast(errText(err)); }
+  finally { b.disabled = false; }
+});
+
+/* ===================== account menu + password ===================== */
+$('avatar').addEventListener('click', () => $('menu').hidden = false);
+$('menuClose').addEventListener('click', () => $('menu').hidden = true);
+$('menu').addEventListener('click', e => { if (e.target === $('menu')) $('menu').hidden = true; });
+$('signOut').addEventListener('click', signOut);
+$('openPw').addEventListener('click', () => { $('menu').hidden = true; $('pwForm').reset(); $('pwErr').textContent = ''; $('pwDlg').hidden = false; });
+$('pwCancel').addEventListener('click', () => $('pwDlg').hidden = true);
+$('pwForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if ($('pNew').value !== $('pNew2').value){ $('pwErr').textContent = 'The two new passwords do not match.'; return; }
+  const b = $('pwSave'); b.disabled = true; b.textContent = 'Saving…';
+  try {
+    const r = await run('changePassword', session, $('pOld').value, $('pNew').value);
+    session = r.session; save(session);
+    $('pwDlg').hidden = true; toast('Password changed. Other phones signed in as you are now signed out.');
+  } catch(e){ if (isSessionErr(e)) fail(e); else $('pwErr').textContent = errText(e); }
+  finally { b.disabled = false; b.textContent = 'Save password'; }
+});
+
+/* ===================== reset password / first-time set ===================== */
+const rs = { id: '', code: '', resendAt: 0, timer: null };
+
+function openReset(firstTime){
+  rs.id = ''; rs.code = '';
+  $('rsTitle').textContent = firstTime ? 'Set your password' : 'Reset password';
+  ['rs1', 'rs2', 'rs3'].forEach(f => $(f).reset());
+  $('rsId').value = $('uid').value.trim();
+  resetStep(1);
+  screen('reset');
+  setTimeout(() => $('rsId').focus(), 60);
+}
+function resetStep(n){
+  ['rs1', 'rs2', 'rs3'].forEach((f, i) => $(f).hidden = (i + 1 !== n));
+  $('rsStep').textContent = 'Step ' + n + ' of 3';
+  $('rsErr').textContent = '';
+}
+async function busy(btn, label, fn){
+  const old = btn.textContent; btn.disabled = true; btn.textContent = label;
+  try { await fn(); } catch(e){ $('rsErr').textContent = errText(e); }
+  finally { btn.disabled = false; btn.textContent = old; }
+}
+function resendCountdown(){
+  clearInterval(rs.timer);
+  const tick = () => {
+    const s = Math.ceil((rs.resendAt - Date.now()) / 1000);
+    $('rsResend').disabled = s > 0;
+    $('rsResend').textContent = s > 0 ? 'Resend in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : 'Resend code';
+    if (s <= 0) clearInterval(rs.timer);
+  };
+  tick(); rs.timer = setInterval(tick, 1000);
+}
+async function sendCode(){
+  const r = await run('otpStart', rs.id);
+  $('rsSent').textContent = 'Sent to ' + r.masked + '. It expires in 10 minutes.';
+  rs.resendAt = Date.now() + 60000; resendCountdown();
+}
+
+$('forgotBtn').addEventListener('click', () => openReset(false));
+$('firstBtn').addEventListener('click', () => openReset(true));
+$('rsBack').addEventListener('click', () => { clearInterval(rs.timer); screen('login'); });
+$('rs1').addEventListener('submit', ev => {
+  ev.preventDefault();
+  busy($('rs1Btn'), 'Sending…', async () => {
+    rs.id = $('rsId').value.trim();
+    await sendCode();
+    resetStep(2); setTimeout(() => $('rsCode').focus(), 60);
+  });
+});
+$('rsResend').addEventListener('click', () => busy($('rsResend'), 'Sending…', sendCode));
+$('rsCode').addEventListener('input', () => { $('rsCode').value = $('rsCode').value.replace(/\D/g, '').slice(0, 6); });
+$('rs2').addEventListener('submit', ev => {
+  ev.preventDefault();
+  busy($('rs2Btn'), 'Checking…', async () => {
+    rs.code = $('rsCode').value;
+    await run('otpCheck', rs.id, rs.code);
+    resetStep(3); setTimeout(() => $('rsPw').focus(), 60);
+  });
+});
+$('rs3').addEventListener('submit', ev => {
+  ev.preventDefault();
+  if ($('rsPw').value !== $('rsPw2').value){ $('rsErr').textContent = 'The two passwords do not match.'; return; }
+  busy($('rs3Btn'), 'Saving…', async () => {
+    const r = await run('otpFinish', rs.id, rs.code, $('rsPw').value);
+    clearInterval(rs.timer);
+    session = r.session; save(session); home = r.home; saveHome(home); lastRefresh = Date.now();
+    renderHome(); openStartApp();
+    toast('Password saved. You are signed in.');
+  });
+});
+
+/* ===================== admin: portal-only switch ===================== */
+let adm = null;
+
+function paintAdmin(){
+  const on = adm.portalOnly;
+  $('admSw').classList.toggle('on', on);
+  $('admSw').setAttribute('aria-checked', on ? 'true' : 'false');
+  $('admText').textContent = on
+    ? 'ON: apps open only through GGM Portal. Their own links show "Open through GGM Portal".'
+    : 'OFF: each app\'s own link also works (same username and password as the portal).';
+  const box = $('admApps'); box.textContent = '';
+  if (!adm.apps.length){ const d = document.createElement('div'); d.textContent = 'No apps are connected yet.'; box.appendChild(d); }
+  adm.apps.forEach(a => {
+    const d = document.createElement('div');
+    const n = document.createElement('span'); n.textContent = a.name;
+    const s = document.createElement('span');
+    const v2 = a.state === 'OK PORTAL LOGIN';
+    const ok = v2 || a.state === 'OK ' + (on ? 'ON' : 'OFF');
+    const off = a.state === 'NOT CONNECTED';
+    s.className = ok ? 'st-ok' : off ? 'st-bad' : 'st-wait';
+    s.textContent = v2 ? '✓ portal login (always)' : ok ? '✓ ' + (on ? 'ON' : 'OFF') : off ? '✗ not connected (own link still open)' : '⏳ retrying';
+    d.append(n, s); box.appendChild(d);
+  });
+  $('admFoot').textContent = (adm.changedBy ? 'Last changed by ' + adm.changedBy + (adm.changedAt ? ' · ' + adm.changedAt : '') + '. ' : '') +
+    'Dashboards are public links and are not affected. Apps that did not answer are retried every minute.';
+}
+async function loadAdmin(){
+  try { adm = await run('getAdminState', session); paintAdmin(); }
+  catch(e){ fail(e); $('admDlg').hidden = true; }
+}
+function confirmBox(title, text, yes){
+  return new Promise(ok => {
+    $('confTitle').textContent = title; $('confText').textContent = text; $('confYes').textContent = yes;
+    $('confDlg').hidden = false;
+    const done = v => { $('confDlg').hidden = true; $('confYes').onclick = $('confNo').onclick = null; ok(v); };
+    $('confYes').onclick = () => done(true);
+    $('confNo').onclick = () => done(false);
+  });
+}
+
+$('openAdmin').addEventListener('click', () => {
+  $('menu').hidden = true; $('admDlg').hidden = false;
+  $('admApps').textContent = 'Loading…'; $('admText').textContent = '';
+  loadAdmin();
+});
+$('admClose').addEventListener('click', () => $('admDlg').hidden = true);
+$('admReload').addEventListener('click', loadAdmin);
+$('admSw').addEventListener('click', async () => {
+  if (!adm) return;
+  const turnOn = !adm.portalOnly;
+  const ok = await confirmBox(
+    turnOn ? 'Turn portal-only ON?' : 'Turn portal-only OFF?',
+    turnOn ? 'Everyone who opened an app with its own link will be signed out of it. From now on the only way into the apps is through GGM Portal.'
+           : 'Each app\'s own link will work again. People sign in there with their GGM Portal username (or phone) and password.',
+    turnOn ? 'Yes, turn ON' : 'Yes, turn OFF');
+  if (!ok) return;
+  $('admSw').disabled = true;
+  try { adm = await run('setPortalOnly', session, turnOn); paintAdmin(); toast('Portal-only is now ' + (turnOn ? 'ON' : 'OFF') + '.'); }
+  catch(e){ fail(e); }
+  finally { $('admSw').disabled = false; }
+});
+
+boot();
+</script>
+</body>
+</html>

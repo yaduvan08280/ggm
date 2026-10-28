@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        box-sizing: border-box;
+        color: #202124;
+        font-family: Arial, sans-serif;
+        font-size: 13px;
+        margin: 0;
+        padding: 18px;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin: 0 0 6px;
+      }
+
+      select,
+      input {
+        border: 1px solid #dadce0;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font: inherit;
+        height: 36px;
+        margin: 0 0 14px;
+        padding: 6px 8px;
+        width: 100%;
+      }
+
+      .date-row {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 4px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 4px;
+        cursor: pointer;
+        font: inherit;
+        height: 34px;
+        padding: 0 14px;
+      }
+
+      button.primary {
+        background: #1a73e8;
+        color: #fff;
+      }
+
+      button.secondary {
+        background: #f1f3f4;
+        color: #202124;
+      }
+
+      button:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+
+      #status {
+        min-height: 18px;
+        margin-top: 12px;
+      }
+
+      .error {
+        color: #b3261e;
+      }
+
+      .success {
+        color: #137333;
+      }
+    </style>
+  </head>
+  <body>
+    <form id="assignBuddyForm">
+      <label for="doerSelect">Name - Department</label>
+      <select id="doerSelect" required>
+        <option value="">Loading...</option>
+      </select>
+
+      <div class="date-row">
+        <div>
+          <label for="fromDate">From Date</label>
+          <input id="fromDate" type="date" required>
+        </div>
+        <div>
+          <label for="toDate">To Date</label>
+          <input id="toDate" type="date" required>
+        </div>
+      </div>
+
+      <label for="buddySelect">Buddy Email</label>
+      <select id="buddySelect" required>
+        <option value="">Loading...</option>
+      </select>
+
+      <div class="actions">
+        <button class="secondary" type="button" onclick="google.script.host.close()">Cancel</button>
+        <button class="primary" id="submitButton" type="submit">Assign</button>
+      </div>
+    </form>
+
+    <div id="status"></div>
+
+    <script>
+      var doerSelect = document.getElementById('doerSelect');
+      var buddySelect = document.getElementById('buddySelect');
+      var statusEl = document.getElementById('status');
+      var submitButton = document.getElementById('submitButton');
+
+      function setStatus(message, type) {
+        statusEl.className = type || '';
+        statusEl.textContent = message || '';
+      }
+
+      function showError(error) {
+        submitButton.disabled = false;
+        setStatus(error && error.message ? error.message : 'Something went wrong.', 'error');
+      }
+
+      function fillOptions(options) {
+        doerSelect.innerHTML = '<option value="">Choose name - department</option>';
+        buddySelect.innerHTML = '<option value="">Choose buddy email</option>';
+
+        options.doers.forEach(function(doer) {
+          var option = document.createElement('option');
+          option.value = JSON.stringify({ name: doer.name, department: doer.department });
+          option.textContent = doer.label;
+          doerSelect.appendChild(option);
+        });
+
+        options.buddies.forEach(function(buddy) {
+          var option = document.createElement('option');
+          option.value = buddy.email;
+          option.textContent = buddy.label;
+          buddySelect.appendChild(option);
+        });
+
+        if (options.doers.length === 0 || options.buddies.length === 0) {
+          submitButton.disabled = true;
+          setStatus('No valid doer email records found in Doer List.', 'error');
+        } else {
+          setStatus('');
+        }
+      }
+
+      document.getElementById('assignBuddyForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        var selectedDoer = doerSelect.value ? JSON.parse(doerSelect.value) : null;
+        if (!selectedDoer) {
+          setStatus('Choose a name and department.', 'error');
+          return;
+        }
+
+        submitButton.disabled = true;
+        setStatus('Assigning...');
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            submitButton.disabled = false;
+            setStatus('Updated ' + result.updated + ' task(s).', 'success');
+          })
+          .withFailureHandler(showError)
+          .assignBuddyToTasks({
+            name: selectedDoer.name,
+            department: selectedDoer.department,
+            fromDate: document.getElementById('fromDate').value,
+            toDate: document.getElementById('toDate').value,
+            buddyEmail: buddySelect.value
+          });
+      });
+
+      google.script.run
+        .withSuccessHandler(fillOptions)
+        .withFailureHandler(showError)
+        .getAssignBuddyOptions();
+    </script>
+  </body>
+</html>

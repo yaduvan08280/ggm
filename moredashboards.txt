@@ -1,0 +1,3 @@
+https://script.google.com/macros/s/AKfycbwFb2igRK_NkLwrWbjohB8mCFZGwTM2g1BE7k3uTYwkQ5UWR6e034M2AYCLsEECFLiegg/exec        ==> mines dashboard 
+https://script.google.com/macros/s/AKfycbxo81rUG8fcE8IhD_iYFTc2haI1y37QIKCulwYlIfy62yIx_tz34VOaCYWg8X8NdnXu/exec          ==> collection dashboard 
+https://script.google.com/macros/s/AKfycbw2Gu-OCMbkCj3oDa5prBNQc_9UR3kFfK8c0aRnA2Hbdvh0hjC7nnDz03WbVe-jSZQ/exec           ==> levanto production dashboard

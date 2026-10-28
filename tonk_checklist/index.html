@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
+    <meta name="theme-color" content="#f4f7f8">
+    <title>GGM Master Workspace</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
+    </script>
+
+    <style>
+        :root {
+            --bg:#f4f7f8; --ink:#1e293b; --blue:#00a8ff; --orange:#ff6b00;
+            --amber:#ffb800; --green:#22c55e; --nav:#161d2b;
+        }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg); color: var(--ink); 
+            font-family:'Inter',sans-serif; overscroll-behavior-y:none; 
+            padding-bottom:env(safe-area-inset-bottom); 
+        }
+        body.locked { overflow:hidden; }
+        ::-webkit-scrollbar { display:none; }
+        button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+
+        .view-section { display:none; }
+        .view-section.active { display:block; animation:fadeUp .34s cubic-bezier(.16,1,.3,1) both; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+        @keyframes cardIn { from { opacity:0; transform:translateY(16px) scale(.985); } to { opacity:1; transform:none; } }
+        @keyframes popIn { 0% { opacity:0; transform:scale(.7) rotate(-8deg); } 60% { transform:scale(1.06) rotate(2deg); } 100% { opacity:1; transform:none; } }
+        @keyframes riseIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+        @keyframes floatBlob { 0%,100% { transform:translate3d(0,0,0) scale(1); } 50% { transform:translate3d(18px,-26px,0) scale(1.12); } }
+        @keyframes sheen { 0% { transform:translateX(-120%) skewX(-18deg); } 100% { transform:translateX(320%) skewX(-18deg); } }
+        .pulse-soft { animation:pulseSoft 2s infinite; }
+        @keyframes pulseSoft { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+        .spin-slow { animation:spinSlow 1s linear infinite; }
+        @keyframes spinSlow { 100% { transform:rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
+
+        /* ---------- LOGIN SECURE & FULL SCREEN ---------- */
+        .login-wrap { position:fixed; inset:0; z-index:90; background-color:#141b28; width:100vw; height:100dvh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .login-blob { position:absolute; border-radius:50%; filter:blur(70px); opacity:.55; animation:floatBlob 11s ease-in-out infinite; }
+        .blob-a { width:260px; height:260px; background:#0077d6; top:-70px; left:-60px; }
+        .blob-b { width:230px; height:230px; background:#ff6b00; bottom:-60px; right:-50px; animation-delay:2.5s; }
+        .blob-c { width:180px; height:180px; background:#00d1b2; top:42%; right:-70px; animation-delay:5s; opacity:.35; }
+        .login-box { position:relative; z-index:2; background:rgba(255,255,255,.97); border-radius:26px; padding:38px 24px 32px; width:90%; max-width:360px; text-align:center; box-shadow:0 40px 80px -28px rgba(0,0,0,.75); animation:riseIn .55s cubic-bezier(.16,1,.3,1) both; }
+        .login-logo { position:relative; overflow:hidden; background:linear-gradient(135deg,#00a8ff,#0062c4); color:#fff; width:74px; height:74px; border-radius:24px; display:inline-flex; align-items:center; justify-content:center; font-size:30px; box-shadow:0 16px 30px -10px rgba(0,168,255,.65); margin-bottom:18px; animation:popIn .6s cubic-bezier(.16,1,.3,1) both .1s; }
+        .login-logo::after { content:''; position:absolute; top:0; bottom:0; width:34%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent); animation:sheen 2.8s ease-in-out infinite 1s; }
+        .stagger > * { animation:riseIn .5s cubic-bezier(.16,1,.3,1) both; }
+        .stagger > *:nth-child(1) { animation-delay:.16s; }
+        .stagger > *:nth-child(2) { animation-delay:.22s; }
+        .stagger > *:nth-child(3) { animation-delay:.28s; }
+        .stagger > *:nth-child(4) { animation-delay:.34s; }
+        .stagger > *:nth-child(5) { animation-delay:.40s; }
+        .login-field { position:relative; margin-bottom:14px; }
+        .login-field > i.fld { position:absolute; left:15px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px; pointer-events:none; transition:color .2s; }
+        .login-field:focus-within > i.fld { color:var(--blue); }
+        .login-input { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:14px; padding:16px 44px; font-size:14px; font-weight:700; color:#334155; width:100%; outline:none; transition:.2s; }
+        .login-input:focus { border-color:var(--blue); background:#fff; box-shadow:0 0 0 4px rgba(0,168,255,.13); }
+        .eye-btn { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:36px; height:36px; border:0; background:transparent; color:#94a3b8; cursor:pointer; border-radius:10px; }
+        .login-btn { background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff; border-radius:14px; font-weight:900; padding:16px; width:100%; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:8px; transition:.2s; cursor:pointer; border:0; box-shadow:0 14px 26px -14px rgba(15,23,42,.9); }
+        .login-btn:active { transform:scale(.98); }
+        .error-box { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; font-size:11px; font-weight:800; padding:11px 12px; border-radius:12px; margin-bottom:14px; text-align:left; animation:shake .4s; }
+        @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+
+        /* ---------- DRAWER & NAV ---------- */
+        .drawer-overlay { position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(4px); z-index:120; opacity:0; pointer-events:none; transition:opacity .3s; }
+        .drawer-overlay.open { opacity:1; pointer-events:auto; }
+        .drawer { position:fixed; top:0; left:0; bottom:0; width:84%; max-width:318px; background:linear-gradient(180deg,#1b2434 0%,#141b28 100%); z-index:130; transform:translateX(-104%); transition:transform .38s cubic-bezier(.16,1,.3,1); display:flex; flex-direction:column; color:#fff; box-shadow:24px 0 60px -20px rgba(0,0,0,.7); }
+        .drawer.open { transform:none; }
+        .drawer-head { padding:calc(30px + env(safe-area-inset-top)) 22px 22px; border-bottom:1px solid rgba(255,255,255,.07); }
+        .avatar { width:52px; height:52px; border-radius:17px; background:linear-gradient(135deg,#00a8ff,#0062c4); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:19px; letter-spacing:.5px; box-shadow:0 12px 22px -10px rgba(0,168,255,.8); }
+        .drawer-item { display:flex; align-items:center; gap:14px; width:100%; padding:14px 18px; border:0; background:transparent; color:#93a1b5; font-size:13px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; border-radius:14px; cursor:pointer; transition:background .2s, color .2s, transform .15s; }
+        .drawer-item i { width:20px; text-align:center; font-size:15px; }
+        .drawer-item:active { transform:scale(.98); }
+        .drawer-item.active { background:rgba(255,255,255,.08); color:#fff; }
+        .drawer-item.active i { color:var(--blue); }
+        .drawer-count { margin-left:auto; font-size:10px; font-weight:900; padding:3px 8px; border-radius:9px; background:rgba(255,255,255,.1); color:#fff; }
+
+        .dark-nav-wrap { position:fixed; bottom:calc(12px + env(safe-area-inset-bottom)); left:0; right:0; margin-left:auto; margin-right:auto; width:calc(100% - 20px); max-width:452px; z-index:95; animation:riseIn .5s cubic-bezier(.16,1,.3,1) both .15s; }
+        .dark-bottom-nav { position:relative; display:flex; gap:0; padding:7px; border-radius:26px; background:linear-gradient(180deg, rgba(38,48,66,.98), rgba(18,24,36,.98)); border:1px solid rgba(255,255,255,.09); box-shadow:0 24px 48px -16px rgba(2,6,23,.8), inset 0 1px 0 rgba(255,255,255,.09); backdrop-filter:blur(16px); }
+        .nav-indicator { position:absolute; top:7px; bottom:7px; left:7px; border-radius:19px; background:linear-gradient(180deg,#3d4d69,#26314a); box-shadow:0 8px 18px -8px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14); transform:translateX(calc(var(--nav-i, 0) * 100%)); transition:transform .42s cubic-bezier(.2,1.1,.3,1); }
+        .nav-indicator::after { content:''; position:absolute; left:50%; transform:translateX(-50%); top:-8px; width:26px; height:3px; border-radius:3px; background:var(--blue); box-shadow:0 0 12px 1px rgba(0,168,255,.85); }
+        .dark-nav-btn { position:relative; z-index:2; flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:10px 2px; border:0; background:transparent; color:#7b8aa1; font-size:8.5px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; cursor:pointer; transition:color .28s; }
+        .dark-nav-btn i { font-size:17px; line-height:1; transition:transform .32s cubic-bezier(.2,1.4,.4,1); }
+        .dark-nav-btn span { line-height:1; opacity:.85; }
+        .dark-nav-btn.active { color:#fff; }
+        .dark-nav-btn.active i { transform:translateY(-2px) scale(1.14); }
+        .dark-nav-btn.active span { opacity:1; }
+        .nav-badge-new { position:absolute; top:3px; right:calc(50% - 25px); font-size:9px; font-weight:900; padding:2px 5px; border-radius:9px; color:#fff; border:2px solid #1c2436; min-width:20px; text-align:center; line-height:1; z-index:3; }
+
+        #navIndicatorDrv { width:calc((100% - 14px) / 2); }
+        #navIndicatorStf { width:calc((100% - 14px) / 5); }
+
+        /* ---------- CARDS & BUTTONS ---------- */
+        .premium-card { background:#fff; border-radius:18px; box-shadow:0 6px 18px -8px rgba(15,23,42,.12); border:1px solid #eef2f6; }
+        .premium-shadow { box-shadow:0 6px 18px -8px rgba(15,23,42,.12); }
+        .top-card { display:flex; flex-direction:column; justify-content:space-between; min-height:108px; padding:18px; color:#fff; position:relative; overflow:hidden; cursor:pointer; border:0; transition:transform .18s; }
+        .top-card:active { transform:scale(.975); }
+        .top-card > i { position:absolute; right:-10px; top:8px; font-size:62px; opacity:.16; transform:rotate(-10deg); }
+        .card-home-rout { background:linear-gradient(135deg,#3b82f6,#2563eb); }
+        .card-home-del  { background:linear-gradient(135deg,#f97316,#ea580c); }
+        .card-home-rev  { background:linear-gradient(135deg,#fbbf24,#f59e0b); }
+        .card-home-done { background:linear-gradient(135deg,#10b981,#059669); }
+
+        .task-card { background:#fff; border-radius:18px; padding:20px; margin-bottom:16px; position:relative; overflow:hidden; border:1px solid #f1f5f9; box-shadow:0 6px 18px -8px rgba(15,23,42,.12); transform-origin:top center; }
+        .task-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:18px 0 0 18px; }
+        .card-blue::before   { background:var(--blue); }
+        .card-orange::before { background:var(--orange); }
+        .card-yellow::before { background:var(--amber); }
+        .card-green::before  { background:var(--green); }
+        .card-gray::before   { background:#cbd5e1; }
+        .card-red::before    { background:#ef4444; }
+
+        /* Unified Modern Buttons */
+        .btn-outline, .btn-done, .drv-btn-yes, .drv-btn-no {
+            font-weight: 800; font-size: 12px; padding: 12px 0; border-radius: 12px; 
+            text-transform: uppercase; letter-spacing: .5px; display: flex; 
+            justify-content: center; align-items: center; gap: 6px; 
+            transition: .2s; cursor: pointer; border: 1px solid transparent; flex: 1;
+        }
+        
+        .btn-outline { background:#f8fafc; border-color:#cbd5e1; color:#475569; }
+        .btn-outline:active { background:#e2e8f0; transform:scale(.97); }
+        
+        .btn-done { background:linear-gradient(135deg,#1e293b,#0f172a); border-color:#1e293b; color:#fff; }
+        .btn-done:active { transform:scale(.97); }
+
+        .drv-btn-yes { background:linear-gradient(135deg,#10b981,#059669); border-color:#059669; color:#fff; box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.4); font-size:13px; padding:14px 0; border-radius:14px;}
+        .drv-btn-yes:active { transform:scale(.97); }
+
+        .drv-btn-no { background:linear-gradient(135deg,#ef4444,#dc2626); border-color:#dc2626; color:#fff; box-shadow: 0 4px 12px -2px rgba(239, 68, 68, 0.4); font-size:13px; padding:14px 0; border-radius:14px;}
+        .drv-btn-no:active { transform:scale(.97); }
+
+        .btn-transfer { background:#f8fafc; border:1px solid #cbd5e1; color:#475569; border-radius:12px; font-size:15px; width:46px; min-width:46px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
+        .btn-transfer:active { background:#e2e8f0; transform:scale(.95); }
+
+        .tab-btn { background:#fff; border:1px solid #e2e8f0; color:#64748b; font-weight:800; font-size:13px; padding:12px 10px; border-radius:12px; transition:.2s; white-space:nowrap; flex:1; text-align:center; cursor:pointer; }
+        .tab-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; box-shadow:0 8px 16px -8px rgba(0,168,255,.7); }
+        .tab-btn-red.active { background:#ef4444; border-color:#ef4444; color:#fff; box-shadow:0 8px 16px -8px rgba(239,68,68,.7); }
+
+        .lang-btn { font-weight: 900; font-size: 11px; padding: 0 12px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; color: #3b82f6; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,.03); cursor: pointer;}
+        
+        .sir-remark { background:#fef2f2; border:1px solid #fca5a5; border-radius:10px; padding:12px; margin-bottom:16px; font-size:11px; color:#ef4444; font-weight:800; text-transform:uppercase; display:flex; align-items:flex-start; gap:6px; }
+        .extra-note { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:16px; font-size:12px; color:#475569; font-weight:700; display:flex; align-items:flex-start; gap:6px; }
+        
+        /* Modernized Link Style for Admin Files */
+        .file-link { background:#1e293b; color:#fff; font-size:11px; font-weight:900; padding:14px; border-radius:12px; display:flex; justify-content:center; align-items:center; gap:8px; text-transform:uppercase; margin-bottom:14px; width:100%; cursor:pointer; transition:.2s; letter-spacing:0.5px; box-shadow: 0 4px 10px -2px rgba(15,23,42,0.3); }
+        .file-link:active { transform:scale(0.98); background:#0f172a; }
+        .file-link i { font-size:13px; }
+        
+        #fileViewerModal { backdrop-filter:blur(8px); }
+        .file-iframe-container { width:100%; height:85vh; background:#fff; border-radius:22px 22px 0 0; overflow:hidden; position:absolute; bottom:0; left:0; animation:fadeUp .3s both; }
+
+        .skeleton { background:linear-gradient(90deg,#eef2f7 25%,#f8fafc 37%,#eef2f7 63%); background-size:400% 100%; animation:shimmer 1.4s infinite; border-radius:18px; height:104px; margin-bottom:16px; }
+        @keyframes shimmer { 0% { background-position:100% 0; } 100% { background-position:0 0; } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- COMMON LOGIN -->
+    <div id="loginScreen" class="login-wrap transition-opacity duration-500" style="opacity:1;">
+        <div class="login-blob blob-a"></div>
+        <div class="login-blob blob-b"></div>
+        <div class="login-blob blob-c"></div>
+        <div class="login-box">
+            <div class="login-logo"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="stagger">
+                <h1 class="text-3xl font-black text-[#1e293b] tracking-tight mb-1">GGM Tasks</h1>
+                <p class="text-slate-400 font-black uppercase tracking-widest text-[10px] mb-7">Employee Workspace</p>
+                <div class="login-field">
+                    <i class="fa-solid fa-mobile-screen fld"></i>
+                    <input type="tel" id="mobile" placeholder="Mobile number" class="login-input" autocomplete="username">
+                </div>
+                <div class="login-field">
+                    <i class="fa-solid fa-lock fld"></i>
+                    <input type="password" id="pass" placeholder="Password" class="login-input" autocomplete="current-password">
+                    <button type="button" class="eye-btn" onclick="togglePass()" aria-label="Show password"><i id="eyeIcon" class="fa-regular fa-eye"></i></button>
+                </div>
+                <div>
+                    <div id="errorMsg" class="error-box hidden"><i class="fa-solid fa-circle-exclamation me-1"></i> <span id="errorText"></span></div>
+                    <button type="button" id="loginBtn" onclick="appLogin()" class="login-btn">Log in <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                    <p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-5">GGM Minerals &bull; Internal use &bull; <span id="buildStamp">v16.1 Pro</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[160] opacity-0 bg-[#1E293B] text-white px-5 py-3 rounded-full shadow-2xl font-black text-[11px] flex items-center gap-2 transition-all duration-300 pointer-events-none" style="display:none; width: max-content; max-width: 90%;">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-[#10B981] text-[14px]"></i><span id="toastMessage">Saved</span>
+    </div>
+
+    <!-- UPDATING SPINNER UI (PREMIUM FLOATING PILL) -->
+    <div id="update-spinner" class="fixed top-6 left-1/2 -translate-x-1/2 z-[200] bg-[#1e293b] text-white px-5 py-3 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.3)] text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all duration-500 translate-y-[-100px] opacity-0 pointer-events-none border border-slate-700">
+        <i class="fa-solid fa-circle-notch fa-spin text-[#00a8ff] text-sm"></i> <span id="update-spinner-text">SAVING TASK...</span>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- UI-1: DRIVER & OPERATOR APP -->
+    <!-- ============================================== -->
+    <div id="app-driver" class="hidden flex-col relative w-full max-w-[500px] mx-auto transition-opacity duration-500 opacity-0">
+        
+        <div id="drawerOverlayDrv" class="drawer-overlay" onclick="drv_closeDrawer()"></div>
+        <aside id="drawerDrv" class="drawer">
+            <div class="drawer-head">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="avatar" id="drawerAvatarDrv">GG</div>
+                    <div class="min-w-0">
+                        <p class="font-black text-[15px] uppercase truncate leading-tight" id="drawerNameDrv">Employee</p>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="drawerDeptDrv">GGM Operations</p>
+                    </div>
+                    <button onclick="drv_closeDrawer()" class="ml-auto w-8 h-8 rounded-full bg-white/10 text-slate-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                    <span id="drawerDotDrv" class="w-2 h-2 rounded-full bg-[#22c55e] pulse-soft"></span>
+                    <span id="drawerSyncDrv" data-lang="live_sync">Live • synced just now</span>
+                </div>
+            </div>
+            <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-4 pb-2">Workspace</p>
+                <button class="drawer-item active" id="drw-today-drv" onclick="drv_switchTab('today', true)"><i class="fa-solid fa-bolt"></i> <span data-lang="today_tasks">Today Tasks</span></button>
+                <button class="drawer-item" id="drw-delegated-drv" onclick="drv_switchTab('delegated', true)"><i class="fa-solid fa-users"></i> <span data-lang="delegated">Delegated</span></button>
+                
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-4 pt-5 pb-2">Actions</p>
+                <button class="drawer-item" onclick="drv_closeDrawer(); drv_forceRefresh();"><i class="fa-solid fa-rotate-right"></i> <span data-lang="refresh">Refresh data</span></button>
+                <button class="drawer-item" onclick="drv_closeDrawer(); appLogout();"><i class="fa-solid fa-power-off"></i> <span data-lang="logout">Log out</span></button>
+            </nav>
+        </aside>
+
+        <header class="px-5 pt-8 pb-5 z-20 flex justify-between items-start sticky top-0 bg-[#f8fafc]/95 backdrop-blur-md">
+            <div class="flex items-start gap-3 min-w-0">
+                <button onclick="drv_openDrawer()" class="w-10 h-10 mt-1 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0"><i class="fa-solid fa-bars"></i></button>
+                <div class="min-w-0">
+                    <p id="greetingTextDrv" class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Good afternoon,</p>
+                    <h1 class="text-[20px] sm:text-[22px] font-black text-[#1e293b] uppercase leading-tight mb-0.5 tracking-tight truncate max-w-[200px] sm:max-w-[280px]" id="welcomeNameDrv">NAME</h1>
+                    <p id="headerDeptDrv" class="text-[10px] font-black text-[#00a8ff] uppercase tracking-widest mb-1 truncate">DEPARTMENT</p>
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                        <div id="statusDotDrv" class="w-2 h-2 rounded-full bg-[#22c55e] pulse-soft"></div>
+                        <span id="syncTimeTextDrv" data-lang="live_sync">Live &bull; synced just now</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mt-1 shrink-0">
+                <button onclick="drv_toggleLang()" class="lang-btn">A/अ</button>
+                <button onclick="drv_forceRefresh()" class="w-10 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-[#3b82f6] shadow-sm"><i id="syncIconDrv" class="fa-solid fa-rotate-right"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-1 px-5 pb-36 relative">
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <button type="button" class="premium-card top-card card-home-rout text-left" onclick="drv_switchTab('today')">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <div class="font-black text-[11px] tracking-widest uppercase" data-lang="today_tasks">TODAY'S TASKS</div>
+                    <h2 class="text-5xl font-black mt-2 leading-none" id="kpiTodayDrv">0</h2>
+                </button>
+                <button type="button" class="premium-card top-card card-home-del text-left" onclick="drv_switchTab('delegated')">
+                    <i class="fa-solid fa-users"></i>
+                    <div class="font-black text-[11px] tracking-widest uppercase" data-lang="delegated">DELEGATED</div>
+                    <h2 class="text-5xl font-black mt-2 leading-none" id="kpiDelegatedDrv">0</h2>
+                </button>
+            </div>
+            <div id="tab-today-drv" class="view-section active">
+                <div id="todayListDrv" class="pb-4"></div>
+            </div>
+            <div id="tab-delegated-drv" class="view-section">
+                <div id="delegatedListDrv" class="pb-4">
+                    <div class="text-center py-12 px-6 bg-white rounded-[20px] border border-slate-100 shadow-sm mt-2">
+                        <div class="w-16 h-16 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-4"><i class="fa-solid fa-users text-3xl text-slate-300"></i></div>
+                        <p class="text-[12px] font-black text-slate-400 uppercase tracking-widest" data-lang="empty_delegated">Delegated tasks will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <div class="dark-nav-wrap">
+            <nav class="dark-bottom-nav" id="bottomNavDrv">
+                <span class="nav-indicator" id="navIndicatorDrv"></span>
+                <button onclick="drv_switchTab('today')" id="nav-today-drv" class="dark-nav-btn active"><i class="fa-solid fa-bolt"></i><span data-lang="today_tasks">TODAY'S TASKS</span></button>
+                <button onclick="drv_switchTab('delegated')" id="nav-delegated-drv" class="dark-nav-btn"><i class="fa-solid fa-users"></i><span data-lang="delegated">DELEGATED</span></button>
+            </nav>
+        </div>
+    </div>
+
+
+    <!-- ============================================== -->
+    <!-- UI-2: ADVANCED STAFF APP                       -->
+    <!-- ============================================== -->
+    <div id="app-staff" class="hidden flex-col relative w-full max-w-[500px] mx-auto transition-opacity duration-500 opacity-0">
+        
+        <div id="drawerOverlayStf" class="drawer-overlay" onclick="stf_closeDrawer()"></div>
+        <aside id="drawerStf" class="drawer">
+            <div class="drawer-head">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="avatar" id="drawerAvatarStf">GG</div>
+                    <div class="min-w-0">
+                        <p class="font-black text-[15px] uppercase truncate leading-tight" id="drawerNameStf">Employee</p>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="drawerDeptStf">GGM Tasks</p>
+                    </div>
+                    <button onclick="stf_closeDrawer()" class="ml-auto w-8 h-8 rounded-full bg-white/10 text-slate-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                    <span id="drawerDotStf" class="w-2 h-2 rounded-full bg-[#22c55e] pulse-soft"></span>
+                    <span id="drawerSyncStf">Live</span>
+                </div>
+            </div>
+            <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-4 pb-2">Workspace</p>
+                <button class="drawer-item" id="drw-dashboard-stf" onclick="stf_switchTab('dashboard', true)"><i class="fa-solid fa-house"></i> Home</button>
+                <button class="drawer-item" id="drw-routine-stf" onclick="stf_switchTab('routine', true)"><i class="fa-solid fa-clipboard-list"></i> Routine <span class="drawer-count" id="drwCountRoutine">0</span></button>
+                <button class="drawer-item" id="drw-delegated-stf" onclick="stf_switchTab('delegated', true)"><i class="fa-solid fa-briefcase"></i> Pending <span class="drawer-count" id="drwCountDelegated">0</span></button>
+                <button class="drawer-item" id="drw-review-stf" onclick="stf_switchTab('review', true)"><i class="fa-solid fa-magnifying-glass"></i> Review <span class="drawer-count" id="drwCountReview">0</span></button>
+                <button class="drawer-item" id="drw-completed-stf" onclick="stf_switchTab('completed', true)"><i class="fa-solid fa-circle-check"></i> Done <span class="drawer-count" id="drwCountDone">0</span></button>
+                
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-4 pt-5 pb-2">Actions</p>
+                <button class="drawer-item" onclick="stf_closeDrawer(); stf_forceRefresh();"><i class="fa-solid fa-rotate-right"></i> Refresh data</button>
+                <button class="drawer-item" onclick="stf_closeDrawer(); appLogout();"><i class="fa-solid fa-power-off"></i> Log out</button>
+            </nav>
+            <div class="px-6 py-5 border-t border-white/5"><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">GGM Tasks &bull; v16.1</p></div>
+        </aside>
+
+        <header class="px-5 pt-8 pb-4 z-20 flex justify-between items-start sticky top-0 bg-[#f4f7f8]/95 backdrop-blur-md">
+            <div class="flex items-start gap-3 min-w-0">
+                <button onclick="stf_openDrawer()" class="w-10 h-10 mt-1 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0"><i class="fa-solid fa-bars"></i></button>
+                <div class="min-w-0">
+                    <p id="greetingTextStf" class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Good afternoon,</p>
+                    <h1 class="text-[20px] sm:text-[22px] font-black text-[#1e293b] uppercase leading-tight mb-0.5 tracking-tight truncate max-w-[200px] sm:max-w-[280px]" id="welcomeNameStf">NAME</h1>
+                    <p id="headerDeptStf" class="text-[10px] font-black text-[#00a8ff] uppercase tracking-widest mb-1 truncate">DEPARTMENT</p>
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                        <div id="statusDotStf" class="w-2 h-2 rounded-full bg-[#22c55e] pulse-soft"></div>
+                        <span id="syncTimeTextStf">Live &bull; synced just now</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+                <button onclick="stf_openSelfTaskModal()" class="w-10 h-10 bg-[#ff6b00] rounded-xl flex items-center justify-center text-white shadow-sm shrink-0 hover:bg-[#ea580c] transition-colors"><i class="fa-solid fa-plus"></i></button>
+                <button onclick="stf_forceRefresh()" class="w-10 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-[#00a8ff] shadow-sm shrink-0"><i id="syncIconStf" class="fa-solid fa-rotate-right"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-1 px-5 pb-36 pt-2 relative">
+            <div id="tab-dashboard-stf" class="view-section active">
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <button type="button" class="premium-card top-card card-home-rout text-left" onclick="stf_switchTab('routine')"><i class="fa-solid fa-clipboard-list"></i><div class="font-black text-[11px] tracking-widest uppercase">Routine today</div><h2 class="text-5xl font-black mt-2 leading-none" id="kpiRoutineStf">0</h2></button>
+                    <button type="button" class="premium-card top-card card-home-del text-left" onclick="stf_switchTab('delegated')"><i class="fa-solid fa-briefcase"></i><div class="font-black text-[11px] tracking-widest uppercase">Pending</div><h2 class="text-5xl font-black mt-2 leading-none" id="kpiDelegatedStf">0</h2></button>
+                    <button type="button" class="premium-card top-card card-home-rev text-left" onclick="stf_switchTab('review')"><i class="fa-solid fa-magnifying-glass"></i><div class="font-black text-[11px] tracking-widest uppercase">In review</div><h2 class="text-5xl font-black mt-2 leading-none" id="kpiReviewStf">0</h2></button>
+                    <button type="button" class="premium-card top-card card-home-done text-left" onclick="stf_switchTab('completed')"><i class="fa-solid fa-check-circle"></i><div class="font-black text-[11px] tracking-widest uppercase">Done</div><h2 class="text-5xl font-black mt-2 leading-none" id="kpiDoneStf">0</h2></button>
+                </div>
+
+                <div class="premium-card p-4 mb-5">
+                    <h3 class="font-black text-slate-800 text-[13px] mb-3 flex items-center gap-2"><i class="fa-solid fa-chart-line text-[#00a8ff]"></i> Performance Scores</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center bg-blue-50/50 border border-blue-100 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-lg bg-[#00a8ff] text-white flex items-center justify-center text-[10px] shadow-sm"><i class="fa-solid fa-clipboard-check"></i></div>
+                                <span class="text-[9.5px] font-black text-slate-600 uppercase tracking-wider">Daily Score</span>
+                            </div>
+                            <span class="text-[14px] font-black text-[#00a8ff]" id="kpiDailyScore">-</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-purple-50/50 border border-purple-100 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-lg bg-[#a855f7] text-white flex items-center justify-center text-[10px] shadow-sm"><i class="fa-solid fa-calendar-check"></i></div>
+                                <span class="text-[9.5px] font-black text-slate-600 uppercase tracking-wider">Monthly Score</span>
+                            </div>
+                            <span class="text-[14px] font-black text-[#a855f7]" id="kpiMonthlyScore">-</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-orange-50/50 border border-orange-100 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-lg bg-[#ff6b00] text-white flex items-center justify-center text-[10px] shadow-sm"><i class="fa-solid fa-briefcase"></i></div>
+                                <span class="text-[9.5px] font-black text-slate-600 uppercase tracking-wider">Delegated Score</span>
+                            </div>
+                            <span class="text-[14px] font-black text-[#ff6b00]" id="kpiDelegatedScore">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="premium-card p-5"><h3 class="font-black text-slate-800 text-[15px] mb-3">Distribution</h3><div class="relative h-40 w-full flex justify-center items-center"><canvas id="taskChart"></canvas></div></div>
+            </div>
+
+            <div id="tab-routine-stf" class="view-section">
+                <div class="flex items-center gap-2 mb-4"><div class="w-1.5 h-7 bg-[#00a8ff] rounded-full"></div><h2 class="text-[24px] font-black text-[#1e293b]">Routine</h2></div>
+                <div class="flex gap-2 mb-6 overflow-x-auto pb-1" style="scrollbar-width: none;">
+                    <button id="pill-daily" onclick="stf_filterRoutine('daily')" class="tab-btn active"><i class="fa-solid fa-sun mr-1.5"></i> Today</button>
+                    <button id="pill-wmqy" onclick="stf_filterRoutine('wmqy')" class="tab-btn px-4"><i class="fa-regular fa-calendar-days mr-1.5"></i> W/M/Q/Y</button>
+                    <button id="pill-overdue" onclick="stf_filterRoutine('overdue')" class="tab-btn px-4"><i class="fa-solid fa-circle-exclamation mr-1.5 text-red-500"></i> Overdue</button>
+                </div>
+                <div id="routineListStf" class="pb-4"></div>
+            </div>
+
+            <div id="tab-delegated-stf" class="view-section">
+                <div class="flex items-center gap-2 mb-5"><div class="w-1.5 h-7 bg-[#ff6b00] rounded-full"></div><h2 class="text-[24px] font-black text-[#1e293b]">Pending</h2></div>
+                <div id="delegatedListStf" class="pb-4"></div>
+            </div>
+
+            <div id="tab-review-stf" class="view-section">
+                <div class="flex items-center gap-2 mb-5"><div class="w-1.5 h-7 bg-[#ffb800] rounded-full"></div><h2 class="text-[24px] font-black text-[#1e293b]">In review</h2></div>
+                <div class="bg-[#fffbeb] text-[#b45309] px-4 py-4 rounded-xl font-bold text-xs mb-5 border border-[#fef08a] flex items-start gap-2"><i class="fa-solid fa-circle-info mt-0.5"></i> Sent to your manager. Waiting for approval.</div>
+                <div id="reviewListStf" class="pb-4"></div>
+            </div>
+
+            <div id="tab-completed-stf" class="view-section">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-2"><div class="w-1.5 h-7 bg-[#22c55e] rounded-full"></div><h2 class="text-[24px] font-black text-[#1e293b]">Done</h2></div>
+                    <div class="flex items-center gap-1.5">
+                        <input type="date" id="doneDateFilter" onchange="stf_applyDoneDateFilter()" class="bg-white border border-slate-200 text-slate-500 font-bold text-[10px] px-2 py-1.5 rounded-lg outline-none shadow-sm focus:border-[#22c55e]">
+                        <button onclick="stf_clearDoneDateFilter()" class="bg-slate-100 text-slate-400 w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                <div class="flex gap-2 mb-6 overflow-x-auto pb-1" style="scrollbar-width: none;"><button id="done-all" onclick="stf_filterDone('all')" class="tab-btn active">All</button><button id="done-routine" onclick="stf_filterDone('routine')" class="tab-btn px-4">Routine</button><button id="done-delegated" onclick="stf_filterDone('delegated')" class="tab-btn px-4">Assigned</button></div>
+                <div id="completedListStf" class="pb-4"></div>
+            </div>
+        </main>
+
+        <div class="dark-nav-wrap">
+            <nav class="dark-bottom-nav" id="bottomNavStf">
+                <span class="nav-indicator" id="navIndicatorStf"></span>
+                <button onclick="stf_switchTab('dashboard')" id="nav-dashboard-stf" class="dark-nav-btn active"><i class="fa-solid fa-house"></i><span>Home</span></button>
+                <button onclick="stf_switchTab('routine')" id="nav-routine-stf" class="dark-nav-btn"><i class="fa-solid fa-clipboard-list"></i><span>Routine</span><div id="navBadgeRoutine" class="nav-badge-new bg-[#00a8ff] hidden">0</div></button>
+                <button onclick="stf_switchTab('delegated')" id="nav-delegated-stf" class="dark-nav-btn"><i class="fa-solid fa-briefcase"></i><span>Pending</span><div id="navBadgeDelegated" class="nav-badge-new bg-[#ff6b00] hidden">0</div></button>
+                <button onclick="stf_switchTab('review')" id="nav-review-stf" class="dark-nav-btn"><i class="fa-solid fa-magnifying-glass"></i><span>Review</span><div id="navBadgeReview" class="nav-badge-new bg-[#ffb800] hidden">0</div></button>
+                <button onclick="stf_switchTab('completed')" id="nav-completed-stf" class="dark-nav-btn"><i class="fa-solid fa-circle-check"></i><span>Done</span></button>
+            </nav>
+        </div>
+
+        <!-- Modals for Staff -->
+        <div id="selfTaskModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[140] flex-col items-center justify-end transition-opacity duration-300 pb-8 px-4 opacity-0" style="display:none;">
+            <div class="bg-white w-full max-w-sm rounded-[1.5rem] p-6 shadow-2xl transform transition-transform duration-300 translate-y-full" id="selfTaskBox">
+                <div class="flex justify-between items-center mb-5"><h3 class="font-black text-slate-800 text-[18px]">Create Self Task</h3><button onclick="stf_closeSelfTaskModal()" class="w-8 h-8 bg-slate-100 rounded-full text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div>
+                <p class="text-[11px] font-bold text-slate-500 mb-4">Add a new task for yourself.</p>
+                <textarea id="selfTaskTitle" rows="3" placeholder="What do you need to do?" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl px-4 py-3 outline-none focus:border-[#ff6b00] text-sm resize-none mb-4"></textarea>
+                <div class="mb-6"><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Due Date (Optional)</label><input type="date" id="selfTaskDueDate" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl px-4 py-3 outline-none focus:border-[#ff6b00] text-sm"></div>
+                <button id="btnCreateSelfTask" onclick="stf_submitSelfTask()" class="w-full bg-[#1E293B] text-white py-3.5 rounded-xl font-black uppercase tracking-wider"><i class="fa-solid fa-plus mr-1.5"></i> Add Task</button>
+            </div>
+        </div>
+
+        <div id="transferModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[140] flex-col items-center justify-end transition-opacity duration-300 pb-8 px-4 opacity-0" style="display:none;">
+            <div class="bg-white w-full max-w-sm rounded-[1.5rem] p-6 shadow-2xl transform transition-transform duration-300 translate-y-full" id="transferBox">
+                <div class="flex justify-between items-center mb-5"><h3 class="font-black text-slate-800 text-[18px]">Transfer task</h3><button onclick="stf_closeTransferModal()" class="w-8 h-8 bg-slate-100 rounded-full text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div>
+                <p class="text-[11px] font-bold text-slate-500 mb-4">Pick a team member. The task stays with you until they accept.</p>
+                <div class="mb-6 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-magnifying-glass text-slate-400"></i></div>
+                    <input type="text" id="transferSearch" onkeyup="stf_filterTransferStaff()" onfocus="stf_filterTransferStaff()" placeholder="Search staff name" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl pl-9 pr-4 py-3 outline-none focus:border-[#00a8ff] text-sm mb-2">
+                    <div id="transferList" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 max-h-44 overflow-y-auto hidden shadow-lg text-sm font-bold text-slate-700"></div>
+                    <input type="hidden" id="activeTransferTarget"><input type="hidden" id="activeTransferTaskId">
+                </div>
+                <button onclick="stf_confirmTransfer()" class="w-full bg-[#1E293B] text-white py-3.5 rounded-xl font-black uppercase tracking-wider"><i class="fa-solid fa-paper-plane mr-1.5"></i> Send request</button>
+            </div>
+        </div>
+
+        <div id="fileViewerModal" class="fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-md flex-col transition-opacity duration-300 opacity-0" style="display:none;">
+            <div class="flex justify-between items-center p-5 mt-6"><a id="fileExternalLink" href="#" target="_blank" rel="noopener" class="text-white font-black text-xs bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 flex items-center gap-2"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in new tab</a><button onclick="stf_closeFileViewer()" class="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <div class="file-iframe-container" id="fileIframeBox"><div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-circle-notch fa-spin text-4xl text-slate-300"></i></div><iframe id="fileIframe" class="w-full h-full bg-transparent border-0 relative z-10"></iframe></div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LAYER -->
+    <script>
+        // ==========================================
+        // SHARED SYSTEM & SAFE STORAGE
+        // ==========================================
+        function lsGet(k, d) { try { return localStorage.getItem(k) || d; } catch(e) { return d; } }
+        function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+        function lsRem(k) { try { localStorage.removeItem(k); } catch(e) {} }
+
+        /* ---- GGM Portal / session token ---- */
+        const PORTAL = window.PORTAL || {};
+        function tonkToken() { return lsGet('tonkToken', ''); }
+        function portalLoginLabels() {
+            if (!PORTAL.info || !PORTAL.info.enabled) return;
+            const m = document.getElementById('mobile');
+            if (m) { m.type = 'text'; m.placeholder = PORTAL.info.portalOnly ? 'GGM Portal username or phone' : 'Mobile number or GGM Portal username'; m.setAttribute('autocapitalize', 'none'); }
+            const p = document.getElementById('pass'); if (p) p.placeholder = PORTAL.info.portalOnly ? 'GGM Portal password' : 'Password';
+        }
+        
+        function esc(s) { return String(s == null ? "" : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function jsq(s) { return String(s == null ? "" : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/\r?\n/g,' '); }
+        function idSafe(s) { return String(s == null ? "" : s).replace(/[^A-Za-z0-9_-]/g,'_'); }
+        
+        function showAppToast(msg, type="success") { 
+            const t=document.getElementById('toast'); 
+            document.getElementById('toastMessage').innerText = msg; 
+            document.getElementById('toastIcon').className = type==="success" ? "fa-solid fa-circle-check text-[#10B981] text-[14px]" : "fa-solid fa-triangle-exclamation text-red-400 text-[14px]"; 
+            t.style.display='flex'; 
+            setTimeout(()=>{ t.style.opacity='1'; t.style.transform='translate(-50%, 15px)'; },10); 
+            setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translate(-50%, -15px)'; },4000); 
+            setTimeout(()=>{ t.style.display='none'; },4300); 
+        }
+
+        // ==========================================
+        // UPDATING SPINNER LOGIC & SMOOTH COLLAPSE
+        // ==========================================
+        let globalActiveUpdates = 0;
+        
+        function showUpdatePill() {
+            const pill = document.getElementById('update-spinner');
+            const txt = document.getElementById('update-spinner-text');
+            if(pill && txt) {
+                txt.innerText = globalActiveUpdates > 1 ? `SAVING ${globalActiveUpdates} TASKS...` : `SAVING TASK...`;
+                pill.style.transform = 'translate(-50%, 0)';
+                pill.style.opacity = '1';
+            }
+        }
+        
+        function hideUpdatePill() {
+            const pill = document.getElementById('update-spinner');
+            if(pill) { pill.style.transform = 'translate(-50%, -100px)'; pill.style.opacity = '0'; }
+        }
+
+        function smoothRemoveCard(cardId) {
+            const card = document.getElementById(cardId);
+            if(!card) return;
+            
+            card.style.pointerEvents = 'none';
+            const btns = card.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
+            
+            // Set fixed height to prepare for smooth collapse
+            const h = card.offsetHeight;
+            card.style.height = h + 'px';
+            card.style.overflow = 'hidden';
+            void card.offsetHeight; // Force browser repaint
+            
+            card.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+            card.style.transform = 'scale(0.95) translateX(15px)';
+            card.style.opacity = '0';
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)';
+                card.style.height = '0px';
+                card.style.marginTop = '0px';
+                card.style.marginBottom = '0px';
+                card.style.paddingTop = '0px';
+                card.style.paddingBottom = '0px';
+                card.style.borderWidth = '0px';
+                
+                setTimeout(() => { card.style.display = 'none'; card.remove(); }, 250);
+            }, 150);
+        }
+
+        // PARALLEL EXECUTION QUEUE (Zero Wait Time)
+        function pushToBgQueue(fnName, args) {
+            globalActiveUpdates++;
+            showUpdatePill();
+            
+            google.script.run
+                .withSuccessHandler((res) => {
+                    globalActiveUpdates--;
+                    if(globalActiveUpdates > 0) {
+                        showUpdatePill();
+                    } else {
+                        globalActiveUpdates = 0;
+                        hideUpdatePill();
+                        // Silently sync fresh data when all background tasks are done
+                        if(document.getElementById('app-driver').style.display === 'flex') {
+                            drv_loadAllTasks(drv_currentEmployee, true, true);
+                        } else if (document.getElementById('app-staff').style.display === 'flex') {
+                            stf_loadAllTasks(stf_currentEmployee, true, true);
+                        }
+                    }
+
+                    if(res && res.success === false) {
+                        showAppToast(res.message || "Failed to save", "error");
+                    } else if (res && res.fileUrl && fnName === 'stf_addRemarkToTask') {
+                        const sId = args[0];
+                        let i = stf_rawDelegatedTasks.findIndex(x => String(x.taskId).trim().toUpperCase() === sId); 
+                        if (i > -1) { stf_rawDelegatedTasks[i].staffFileUrl = res.fileUrl; stf_saveSnapshot(); }
+                    }
+                })
+                .withFailureHandler((err) => {
+                    globalActiveUpdates--;
+                    if(globalActiveUpdates > 0) {
+                        showUpdatePill();
+                    } else {
+                        globalActiveUpdates = 0;
+                        hideUpdatePill();
+                    }
+                    showAppToast("Network issue. Retrying connection.", "error");
+                })[fnName].apply(null, [tonkToken()].concat(args));
+        }
+
+        // ==========================================
+        // UI PARSER: BEAUTIFIES NAME & DESIGNATION
+        // ==========================================
+        function parseDisplayName(rawName, fallbackDept) {
+            let name = rawName, dept = fallbackDept || 'Employee';
+            try {
+                name = name.replace(/\s*-\s*\d{10}$/, '');
+                name = name.replace(/^[A-Z]+\s*-\s*/i, '');
+                const match = name.match(/^([^(]+?)\s*\(([^)]+)\)/);
+                if (match) {
+                    name = match[1].trim();
+                    if(match[2].trim()) dept = match[2].trim();
+                }
+                name = name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+            } catch(e) {}
+            return { name: name, dept: dept };
+        }
+
+        // ==========================================
+        // AUTH / SESSION
+        // ==========================================
+        function togglePass() {
+            const inp = document.getElementById('pass');
+            const icon = document.getElementById('eyeIcon');
+            if (inp.type === 'password') { inp.type = 'text'; icon.className = 'fa-regular fa-eye-slash'; }
+            else { inp.type = 'password'; icon.className = 'fa-regular fa-eye'; }
+        }
+
+        function showLoginError(msg) { document.getElementById('errorText').innerText = msg; document.getElementById('errorMsg').classList.remove('hidden'); }
+        function hideLoginError() { document.getElementById('errorMsg').classList.add('hidden'); }
+
+        function enterApp(name, fullName, role) {
+            const login = document.getElementById('loginScreen');
+            login.style.opacity = '0';
+            setTimeout(() => { login.style.display = 'none'; }, 400);
+            if (role === 'driver') drv_initApp(name); else stf_initApp(name);
+        }
+
+        function appLogin() {
+            const mobile = document.getElementById('mobile').value.trim();
+            const pass = document.getElementById('pass').value.trim();
+            hideLoginError();
+            if (!mobile || !pass) { showLoginError('Please enter mobile number and password.'); return; }
+
+            const btn = document.getElementById('loginBtn'), originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Logging in...';
+            btn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler((res) => {
+                    btn.innerHTML = originalHTML; btn.disabled = false;
+                    if (res && res.success) {
+                        lsSet('ggmUserName', res.name);
+                        lsSet('ggmTasksUserFull', res.fullName || res.name);
+                        lsSet('ggmUserRole', res.role);
+                        lsSet('ggmUserMobile', mobile); 
+                        lsSet('ggmUserDept', res.dept || 'Staff');
+                        lsSet('tonkToken', res.token || '');
+                        enterApp(res.name, res.fullName || res.name, res.role);
+                    } else {
+                        showLoginError((res && res.message) ? res.message : 'Invalid ID or Password!');
+                    }
+                })
+                .withFailureHandler(() => {
+                    btn.innerHTML = originalHTML; btn.disabled = false;
+                    showLoginError('Server error. Please check your connection and try again.');
+                })
+                .checkLogin(mobile, pass);
+        }
+
+        function appLogout() {
+            lsRem('ggmUserName'); lsRem('ggmUserRole'); lsRem('ggmTasksUserFull'); lsRem('ggmUserMobile'); lsRem('ggmUserDept'); lsRem('tonkToken');
+            ['app-driver','app-staff'].forEach((id) => {
+                const el = document.getElementById(id);
+                el.style.opacity = '0';
+                setTimeout(() => { el.style.display = 'none'; }, 300);
+            });
+            document.getElementById('mobile').value = '';
+            document.getElementById('pass').value = '';
+            hideLoginError();
+            const login = document.getElementById('loginScreen');
+            login.style.display = 'flex';
+            setTimeout(() => { login.style.opacity = '1'; }, 10);
+        }
+
+        function checkSession() {
+            portalLoginLabels();
+            if (PORTAL.boot && PORTAL.boot.token) {           // opened from GGM Portal: already signed in
+                const b = PORTAL.boot;
+                lsSet('ggmUserName', b.name); lsSet('ggmTasksUserFull', b.fullName || b.name); lsSet('ggmUserRole', b.role);
+                lsSet('ggmUserMobile', b.mobile || '-'); lsSet('ggmUserDept', b.dept || 'Staff'); lsSet('tonkToken', b.token);
+            }
+            const savedName = lsGet('ggmUserName', '');
+            const savedRole = lsGet('ggmUserRole', '');
+            const savedFull = lsGet('ggmTasksUserFull', savedName);
+            const savedMob = lsGet('ggmUserMobile', '');
+            
+            if (savedName && savedRole && savedMob && tonkToken()) {
+                document.getElementById('loginScreen').style.display = 'none';
+                enterApp(savedName, savedFull, savedRole);
+            } else if (savedName) {
+                appLogout(); 
+            }
+        }
+
+        // ==========================================
+        // UI-1: DRIVER & OPERATOR APP
+        // ==========================================
+        let drv_currentEmployee = "", drv_currentEmployeeFull = "", drv_currentLang = 'en';
+        const drv_NAV = ['today','delegated'];
+        const drv_translations = {
+            en: { today_tasks: "TODAY'S TASKS", delegated: "DELEGATED", live_sync: "Live \u2022 synced just now", refresh: "Refresh data", logout: "Log out", empty_delegated: "Delegated tasks will appear here" },
+            hi: { today_tasks: "आज के कार्य", delegated: "सौंपे गए कार्य", live_sync: "लाइव • अभी सिंक हुआ", refresh: "डेटा रिफ्रेश करें", logout: "लॉग आउट", empty_delegated: "सौंपे गए कार्य यहां दिखाई देंगे" }
+        };
+
+        function drv_applyLang() {
+            const dict = drv_translations[drv_currentLang];
+            document.querySelectorAll('#app-driver [data-lang]').forEach((el) => {
+                const key = el.getAttribute('data-lang');
+                if (dict[key]) el.innerText = dict[key];
+            });
+        }
+
+        function drv_toggleLang() { drv_currentLang = (drv_currentLang === 'en') ? 'hi' : 'en'; drv_applyLang(); }
+
+        function drv_initApp(name) {
+            drv_currentEmployee = name;
+            drv_currentEmployeeFull = lsGet('ggmTasksUserFull', name);
+            
+            const parsed = parseDisplayName(drv_currentEmployeeFull, lsGet('ggmUserDept', 'Operations'));
+            
+            document.getElementById('welcomeNameDrv').innerText = parsed.name;
+            document.getElementById('drawerNameDrv').innerText = parsed.name;
+            const deptEl = document.getElementById('drawerDeptDrv');
+            if(deptEl) deptEl.innerText = parsed.dept.toUpperCase();
+            const headerDept = document.getElementById('headerDeptDrv');
+            if(headerDept) headerDept.innerText = parsed.dept.toUpperCase();
+            
+            const parts = parsed.name.trim().split(/\s+/);
+            document.getElementById('drawerAvatarDrv').innerText = ((parts[0]||'G')[0] + (parts[1] ? parts[1][0] : (parts[0]||'G')[1] || '')).toUpperCase();
+            document.getElementById('drawerAvatarDrv').setAttribute('data-ggm-photo', '@me|' + parsed.name);   // profile photo from GGM Portal
+
+            const hr = new Date().getHours();
+            document.getElementById('greetingTextDrv').innerText = hr < 12 ? "Good morning," : hr < 18 ? "Good afternoon," : "Good evening,";
+
+            document.getElementById('app-driver').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('app-driver').style.opacity = '1';
+                drv_applyLang();
+                drv_loadAllTasks(name, false, true);
+            }, 50);
+        }
+
+        function drv_openDrawer() { document.getElementById('drawerDrv').classList.add('open'); document.getElementById('drawerOverlayDrv').classList.add('open'); document.body.classList.add('locked'); }
+        function drv_closeDrawer() { document.getElementById('drawerDrv').classList.remove('open'); document.getElementById('drawerOverlayDrv').classList.remove('open'); document.body.classList.remove('locked'); }
+
+        function drv_switchTab(tabId, fromDrawer) {
+            document.querySelectorAll('#app-driver .view-section').forEach((el) => el.classList.remove('active'));
+            document.querySelectorAll('#app-driver .dark-nav-btn').forEach((el) => el.classList.remove('active'));
+            document.querySelectorAll('#app-driver .drawer-item').forEach((el) => el.classList.remove('active'));
+
+            const view = document.getElementById('tab-' + tabId + '-drv'); if (view) view.classList.add('active');
+            const nav = document.getElementById('nav-' + tabId + '-drv'); if (nav) nav.classList.add('active');
+            const drw = document.getElementById('drw-' + tabId + '-drv'); if (drw) drw.classList.add('active');
+
+            const i = drv_NAV.indexOf(tabId), bNav = document.getElementById('bottomNavDrv');
+            if (bNav && i > -1) bNav.style.setProperty('--nav-i', i);
+            if (fromDrawer) drv_closeDrawer();
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) { window.scrollTo(0,0); }
+        }
+
+        function drv_setSyncing(isSyncing) {
+            const icon = document.getElementById('syncIconDrv'), dot = document.getElementById('statusDotDrv'), txt = document.getElementById('syncTimeTextDrv'), dDot = document.getElementById('drawerDotDrv'), dTxt = document.getElementById('drawerSyncDrv');
+            if (isSyncing) {
+                icon.classList.add('spin-slow'); dot.className = 'w-2 h-2 rounded-full bg-[#00a8ff] pulse-soft'; txt.innerText = 'Syncing...';
+                if (dDot) dDot.className = 'w-2 h-2 rounded-full bg-[#00a8ff] pulse-soft';
+                if (dTxt) dTxt.innerText = 'Syncing...';
+            } else {
+                icon.classList.remove('spin-slow'); dot.className = 'w-2 h-2 rounded-full bg-[#22c55e] pulse-soft';
+                let d = new Date(), h = d.getHours(), m = d.getMinutes(), a = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+                const tm = h + ':' + String(m).padStart(2,'0') + ' ' + a;
+                txt.innerText = (drv_currentLang === 'hi' ? 'लाइव • ' : 'Live \u2022 synced ') + tm;
+                if (dDot) dDot.className = 'w-2 h-2 rounded-full bg-[#22c55e] pulse-soft';
+                if (dTxt) dTxt.innerText = (drv_currentLang === 'hi' ? 'लाइव • ' : 'Live \u2022 ') + tm;
+            }
+        }
+
+        function drv_forceRefresh() { if (!drv_currentEmployee) return; drv_loadAllTasks(drv_currentEmployee, false, true); }
+
+        function drv_loadAllTasks(userName, isSilent, forceFresh) {
+            drv_setSyncing(true);
+            const userMob = lsGet('ggmUserMobile', '');
+            google.script.run
+                .withSuccessHandler((res) => { drv_setSyncing(false); if (res && res.sessionExpired) { appLogout(); return; } if (res) drv_renderUI(res); })
+                .withFailureHandler(() => {
+                    drv_setSyncing(false);
+                    document.getElementById('statusDotDrv').className = 'w-2 h-2 rounded-full bg-red-500';
+                    document.getElementById('syncTimeTextDrv').innerText = 'Offline';
+                })
+                .drv_getAllTasksForUser(tonkToken(), userName, userMob, forceFresh === true);
+        }
+
+        function drv_toggleRemark(taskId) {
+            const box = document.getElementById('drv-remark-box-' + idSafe(taskId));
+            if (box) { box.classList.toggle('hidden'); if (!box.classList.contains('hidden')) { const ta = box.querySelector('textarea'); if (ta) ta.focus(); } }
+        }
+
+        function drv_markStatus(taskId, status) {
+            const input = document.getElementById('drv-remark-input-' + idSafe(taskId));
+            const remarkText = input ? input.value.trim() : '';
+            
+            smoothRemoveCard('drv-card-' + idSafe(taskId));
+            if (status === 'Yes') { try { confetti({ particleCount: 80, spread: 70, origin: { y: .6 }, colors: ['#00a8ff','#22c55e'] }); } catch(e) {} }
+
+            pushToBgQueue('drv_updateTaskStatusInSheet', [taskId, status, remarkText]);
+        }
+
+        function drv_saveRemarkOnly(taskId) {
+            const input = document.getElementById('drv-remark-input-' + idSafe(taskId));
+            const remarkText = input ? input.value.trim() : '';
+            if (!remarkText) { showAppToast('Please type a note to save', 'error'); return; }
+
+            drv_toggleRemark(taskId);
+            pushToBgQueue('drv_addRemarkToTask', [taskId, remarkText]);
+        }
+
+        const drv_emptyState = (msg, icon) => `
+        <div class="text-center py-12 px-6 bg-white rounded-[20px] border border-slate-100 shadow-sm mt-2">
+            <div class="w-16 h-16 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-4"><i class="fa-solid ${icon} text-3xl text-slate-300"></i></div>
+            <p class="text-[12px] font-black text-slate-400 uppercase tracking-widest">${msg}</p>
+        </div>`;
+
+        function drv_renderUI(res) {
+            const today = res.todayTasks || [], delegated = res.delegatedTasks || [];
+            document.getElementById('kpiTodayDrv').innerText = today.length;
+            document.getElementById('kpiDelegatedDrv').innerText = delegated.length;
+
+            let todayHtml = '';
+            if (today.length === 0) {
+                todayHtml = drv_emptyState('Nothing due today. Great job!', 'fa-mug-hot');
+            } else {
+                today.forEach((t) => {
+                    const sid = idSafe(t.taskId), jid = jsq(t.taskId), letter = t.freq ? String(t.freq).charAt(0).toUpperCase() : 'N';
+                    todayHtml += `
+                    <div id="drv-card-${sid}" class="premium-card task-card card-blue">
+                        <div class="flex justify-between items-start mb-3 pl-2 gap-2">
+                            <h3 class="font-black text-slate-800 text-[14px] uppercase leading-snug flex-1">${esc(t.title)}</h3>
+                            <span class="w-7 h-7 shrink-0 flex items-center justify-center bg-[#e0f2fe] text-[#00a8ff] text-[11px] font-black rounded-full">${esc(letter)}</span>
+                        </div>
+                        ${t.staffRemark ? `<div class="ml-2 mb-3 p-2 bg-white/60 border border-slate-100 rounded-lg text-[10px] text-slate-600 font-bold uppercase"><i class="fa-solid fa-comment-dots mr-1 text-[#00a8ff]"></i> Note: ${esc(t.staffRemark)}</div>` : ''}
+                        <div class="mb-5 pl-2 text-[11px] font-bold text-slate-500 uppercase"><i class="fa-regular fa-calendar text-[#00a8ff] mr-1.5"></i> Due: ${t.dueDate === "No Date" ? "Anytime" : esc(t.dueDate)}</div>
+                        <div class="flex gap-3 border-t border-slate-100 pt-4 mb-3">
+                            <button onclick="drv_markStatus('${jid}', 'Yes')" class="drv-btn-yes flex-1"><i class="fa-solid fa-check mr-1.5"></i> Yes</button>
+                            <button onclick="drv_markStatus('${jid}', 'No')" class="drv-btn-no flex-1"><i class="fa-solid fa-xmark mr-1.5"></i> No</button>
+                        </div>
+                        <button onclick="drv_toggleRemark('${jid}')" class="btn-outline w-full bg-white"><i class="fa-regular fa-comment-dots mr-1.5"></i> Add Note</button>
+                        <div id="drv-remark-box-${sid}" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <textarea id="drv-remark-input-${sid}" rows="2" placeholder="What happened with this task?" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-3 text-xs font-bold text-slate-700 outline-none focus:border-blue-400 resize-none mb-3"></textarea>
+                            <div class="flex gap-2">
+                                <button onclick="drv_toggleRemark('${jid}')" class="w-1/3 bg-slate-200 text-slate-600 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide">Cancel</button>
+                                <button onclick="drv_saveRemarkOnly('${jid}')" class="w-2/3 bg-blue-100 text-blue-600 border border-blue-200 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide"><i class="fa-solid fa-save mr-1.5"></i> Save Note</button>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+            document.getElementById('todayListDrv').innerHTML = todayHtml;
+
+            if (delegated.length > 0) {
+                let delHtml = '';
+                delegated.forEach((t) => {
+                    delHtml += `<div class="premium-card task-card card-orange"><h3 class="font-black text-slate-800 text-[14px] uppercase pl-2">${esc(t.title || 'Untitled')}</h3></div>`;
+                });
+                document.getElementById('delegatedListDrv').innerHTML = delHtml;
+            } else {
+                document.getElementById('delegatedListDrv').innerHTML = drv_emptyState('Delegated tasks will appear here', 'fa-users');
+            }
+        }
+
+        // ==========================================
+        // UI-2: ADVANCED STAFF APP 
+        // ==========================================
+        let stf_currentEmployee = "", stf_currentEmployeeFull = "", stf_taskChartInstance = null; 
+        let stf_rawRoutineTasks = [], stf_rawDelegatedTasks = [], stf_availableStaff = [], stf_transferView = []; 
+        let stf_currentRoutineFilter = 'daily', stf_currentDoneFilter = 'all', stf_currentDoneDate = "", stf_lastStats = null; 
+        let stf_isFilePicking = false, stf_lastRenderedHash = ""; 
+        const stf_NAV = ['dashboard','routine','delegated','review','completed']; 
+        
+        function stf_initApp(name) { 
+            stf_currentEmployee = name; 
+            stf_currentEmployeeFull = lsGet('ggmTasksUserFull', name); 
+            
+            const parsed = parseDisplayName(stf_currentEmployeeFull, lsGet('ggmUserDept', 'Staff'));
+            
+            document.getElementById('welcomeNameStf').innerText = parsed.name; 
+            document.getElementById('drawerNameStf').innerText = parsed.name; 
+            const deptEl = document.getElementById('drawerDeptStf');
+            if(deptEl) deptEl.innerText = parsed.dept.toUpperCase();
+            const headerDept = document.getElementById('headerDeptStf');
+            if(headerDept) headerDept.innerText = parsed.dept.toUpperCase();
+            
+            const parts = parsed.name.trim().split(/\s+/); 
+            document.getElementById('drawerAvatarStf').innerText = ((parts[0]||'G')[0] + (parts[1] ? parts[1][0] : (parts[0]||'G')[1] || '')).toUpperCase(); 
+            document.getElementById('drawerAvatarStf').setAttribute('data-ggm-photo', '@me|' + parsed.name);   // profile photo from GGM Portal
+            
+            const hr = new Date().getHours(); 
+            document.getElementById('greetingTextStf').innerText = hr < 12 ? "Good morning," : hr < 18 ? "Good afternoon," : "Good evening,"; 
+            
+            document.getElementById('app-staff').style.display = 'flex'; 
+            setTimeout(() => { 
+                document.getElementById('app-staff').style.opacity = '1'; 
+                if(!stf_loadSnapshot(name)) stf_showSkeleton(); 
+                stf_loadAllTasks(name, true, true); 
+            }, 50); 
+        }
+        
+        /* ---------- compressors & formats ---------- */
+        function stf_compressImage(file, maxDim, quality) { 
+            return new Promise(function(resolve, reject) { 
+                if (!file.type || !file.type.startsWith('image/')) { reject(new Error('not-image')); return; } 
+                const img = new Image(); const reader = new FileReader(); 
+                reader.onload = function(e) { 
+                    img.onload = function() { 
+                        let w = img.width, h = img.height; 
+                        if (w > maxDim || h > maxDim) { if (w > h) { h = Math.round(h * (maxDim / w)); w = maxDim; } else { w = Math.round(w * (maxDim / h)); h = maxDim; } } 
+                        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h; 
+                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h); 
+                        const dataUrl = canvas.toDataURL('image/jpeg', quality); 
+                        resolve({ data: dataUrl.substring(dataUrl.indexOf(',') + 1), mimeType: 'image/jpeg' }); 
+                    }; 
+                    img.onerror = function() { reject(new Error('img-load-failed')); }; img.src = e.target.result; 
+                }; 
+                reader.onerror = function() { reject(new Error('read-failed')); }; reader.readAsDataURL(file); 
+            }); 
+        }
+
+        function stf_formatTimeNow() { let d=new Date(),h=d.getHours(),m=d.getMinutes(),a=h>=12?'PM':'AM'; h=h%12||12; return `${h}:${String(m).padStart(2,'0')} ${a}`; }
+        function stf_stampNow() { let d=new Date(),h=d.getHours(),m=d.getMinutes(),a=h>=12?'PM':'AM'; return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(h%12||12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${a}`; }
+        function stf_midnight() { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+
+        function stf_dueDiff(dueStr) { 
+            if(!dueStr || dueStr === "No Date") return null; 
+            const p = String(dueStr).split('/'); if(p.length !== 3) return null; 
+            const d = new Date(parseInt(p[2],10), parseInt(p[1],10)-1, parseInt(p[0],10)); if(isNaN(d.getTime())) return null; 
+            return Math.round((d.setHours(0,0,0,0) - stf_midnight()) / 86400000); 
+        }
+        
+        function stf_routineBucket(t) { 
+            if (t.status !== 'pending') return null; 
+            const diff = stf_dueDiff(t.dueDate);
+            const freq = String(t.freq || "").toUpperCase().trim();
+            const isQY = (freq === 'Q' || freq === 'Y' || freq === 'QUARTERLY' || freq === 'YEARLY');
+            const isDaily = (t.isDaily || freq === 'D' || freq === 'DAILY');
+
+            if (diff !== null) { 
+                if (diff < 0) {
+                    if (isDaily) return null; 
+                    return 'overdue';
+                }
+                if (diff === 0) return 'today'; 
+                if (isQY && diff > 0 && diff <= 15) return 'today'; 
+                if (isDaily) return null; 
+                return 'wmqy'; 
+            } 
+            if (isDaily) return null; 
+            return 'wmqy'; 
+        }
+
+        function stf_countUp(el, to) {
+            if(!el) return;
+            const from = parseInt(el.innerText, 10) || 0;
+            if(from === to) { el.innerText = to; return; }
+            const steps = 16; let i = 0;
+            clearInterval(el._t);
+            el._t = setInterval(() => {
+                i++; el.innerText = Math.round(from + (to - from) * (i / steps));
+                if(i >= steps) { clearInterval(el._t); el.innerText = to; }
+            }, 22);
+        }
+
+        function stf_recalcKPIs() {
+            let cRout = 0, cDelPend = 0, cRev = 0, cComp = 0;
+            stf_rawRoutineTasks.forEach(t => { 
+                if(t.status === 'completed') { cComp++; return; }
+                if(t.status === 'review') { cRev++; return; }
+                const b = stf_routineBucket(t); 
+                if(b === 'today' || b === 'overdue') cRout++;
+            });
+            stf_rawDelegatedTasks.forEach(t => { 
+                if(t.status === 'completed') { cComp++; return; }
+                if(t.status === 'review') { cRev++; return; }
+                if(t.transferStatus === 'incoming' || t.transferStatus === 'outgoing') { cDelPend++; return; }
+                cDelPend++; 
+            });
+            
+            stf_countUp(document.getElementById('kpiRoutineStf'), cRout);
+            stf_countUp(document.getElementById('kpiDelegatedStf'), cDelPend);
+            stf_countUp(document.getElementById('kpiReviewStf'), cRev);
+            stf_countUp(document.getElementById('kpiDoneStf'), cComp);
+
+            const setBadge = (id, n) => { const el = document.getElementById(id); if(!el) return; if(n > 0) { el.innerText = n > 99 ? '99+' : n; el.classList.remove('hidden'); } else el.classList.add('hidden'); }; 
+            setBadge('navBadgeRoutine', cRout); setBadge('navBadgeDelegated', cDelPend); setBadge('navBadgeReview', cRev);
+
+            const setCount = (id, n) => { const el = document.getElementById(id); if(el) el.innerText = n; }; 
+            setCount('drwCountRoutine', cRout); setCount('drwCountDelegated', cDelPend); setCount('drwCountReview', cRev); setCount('drwCountDone', cComp);
+        }
+
+        /* ---------- storage & loaders ---------- */
+        function stf_snapKey(user) { return 'ggmSnapProUltimate_' + user; }
+        function stf_saveSnapshot() { try { if(stf_currentEmployee) lsSet(stf_snapKey(stf_currentEmployee), JSON.stringify({ r: stf_rawRoutineTasks, d: stf_rawDelegatedTasks, s: stf_lastStats, st: stf_availableStaff })); } catch(e) {} }
+        function stf_loadSnapshot(user) { 
+            try { 
+                const raw = lsGet(stf_snapKey(user), null); if(!raw) return false; 
+                const snap = JSON.parse(raw); stf_rawRoutineTasks = snap.r || []; stf_rawDelegatedTasks = snap.d || []; stf_lastStats = snap.s || null; stf_availableStaff = snap.st || []; 
+                stf_lastRenderedHash = JSON.stringify({ r: stf_rawRoutineTasks, d: stf_rawDelegatedTasks, s: stf_lastStats }); 
+                stf_renderUI(stf_lastStats); return true; 
+            } catch(e) { return false; } 
+        }
+        
+        function stf_showSkeleton() { const sk = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>'; ['routineListStf','delegatedListStf','reviewListStf','completedListStf'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = sk; }); }
+        function stf_openDrawer() { document.getElementById('drawerStf').classList.add('open'); document.getElementById('drawerOverlayStf').classList.add('open'); document.body.classList.add('locked'); }
+        function stf_closeDrawer() { document.getElementById('drawerStf').classList.remove('open'); document.getElementById('drawerOverlayStf').classList.remove('open'); document.body.classList.remove('locked'); }
+        
+        function stf_setSyncing(isSyncing, isSilent = false) { 
+            const icon=document.getElementById('syncIconStf'), dot=document.getElementById('statusDotStf'), txt=document.getElementById('syncTimeTextStf'), dDot=document.getElementById('drawerDotStf'), dTxt=document.getElementById('drawerSyncStf'); 
+            if(isSyncing) { 
+                if(!isSilent) { icon.classList.add('spin-slow'); dot.className='w-2 h-2 rounded-full bg-[#00a8ff] pulse-soft'; txt.innerText="Syncing..."; if(dDot) dDot.className='w-2 h-2 rounded-full bg-[#00a8ff] pulse-soft'; if(dTxt) dTxt.innerText="Syncing..."; } 
+            } else { 
+                icon.classList.remove('spin-slow'); dot.className='w-2 h-2 rounded-full bg-[#22c55e] pulse-soft'; let tm = stf_formatTimeNow(); txt.innerText = "Live \u2022 synced " + tm; if(dDot) dDot.className='w-2 h-2 rounded-full bg-[#22c55e] pulse-soft'; if(dTxt) dTxt.innerText = "Live \u2022 " + tm; 
+            } 
+        }
+        
+        function stf_forceRefresh() { if(!stf_currentEmployee || globalActiveUpdates > 0) return; stf_loadAllTasks(stf_currentEmployee, false, true); }
+        
+        function stf_loadAllTasks(userName, isSilent = false, forceFresh = false) { 
+            if(globalActiveUpdates > 0) return; // Do not interrupt if background saves are happening
+            stf_setSyncing(true, isSilent); 
+            const userMob = lsGet('ggmUserMobile', '');
+            google.script.run.withSuccessHandler((res) => { 
+                stf_setSyncing(false); 
+                if (res && res.sessionExpired) { appLogout(); return; }   // sign-in ended: back to the login screen
+                if(res) { 
+                    if (res.error && res.error.length > 0) {
+                        showAppToast("System Alert: " + res.error, "error");
+                    }
+                    if (res.exactFullName) { stf_currentEmployeeFull = res.exactFullName; lsSet('ggmTasksUserFull', stf_currentEmployeeFull); } 
+                    stf_rawRoutineTasks = res.routineTasks || []; 
+                    stf_rawDelegatedTasks = res.delegatedTasks || []; 
+                    stf_availableStaff = res.staffList || []; 
+                    stf_lastStats = res.stats || stf_lastStats; 
+                    
+                    const currentHash = JSON.stringify({ r: stf_rawRoutineTasks, d: stf_rawDelegatedTasks, s: stf_lastStats }); 
+                    if (currentHash !== stf_lastRenderedHash || forceFresh || !isSilent) { 
+                        stf_lastRenderedHash = currentHash; 
+                        stf_renderUI(stf_lastStats); 
+                        stf_saveSnapshot(); 
+                    } 
+                } 
+            }).withFailureHandler(() => { 
+                stf_setSyncing(false); 
+                document.getElementById('statusDotStf').className = "w-2 h-2 rounded-full bg-red-500"; 
+                document.getElementById('syncTimeTextStf').innerText = "Offline \u2022 showing saved data"; 
+            }).stf_getAllTasksForUser(tonkToken(), userName, userMob, forceFresh === true); 
+        }
+
+        /* ---------- file interactions ---------- */
+        function stf_toggleRemark(taskId) { const box = document.getElementById('remark-box-' + idSafe(taskId)); if(box) { box.classList.toggle('hidden'); if(!box.classList.contains('hidden')) { const ta = box.querySelector('textarea'); if(ta) ta.focus(); } } }
+        function stf_triggerFileSelect(taskId) { stf_isFilePicking = true; const inp = document.getElementById('file-input-' + idSafe(taskId)); if(inp) inp.click(); setTimeout(() => { stf_isFilePicking = false; }, 120000); }
+        
+        function stf_handleFileSelect(input, taskId) { 
+            stf_isFilePicking = false; 
+            const preview = document.getElementById('file-preview-' + idSafe(taskId)); if(!preview) return; 
+            if (input.files.length > 5) { showAppToast("Attach max 5 files", "error"); input.value = ""; preview.classList.add('hidden'); return; } 
+            if (input.files.length > 0) { preview.innerText = input.files.length + " file(s) attached"; preview.classList.remove('hidden'); } else preview.classList.add('hidden'); 
+        }
+
+        async function stf_readFiles(taskId) { 
+            const out = []; const fileInput = document.getElementById('file-input-' + idSafe(taskId)); 
+            if (fileInput && fileInput.files && fileInput.files.length > 0) { 
+                showAppToast("Processing file(s)..."); 
+                for(let i=0; i<fileInput.files.length; i++) { 
+                    const f = fileInput.files[i]; 
+                    if (f.size > 50 * 1024 * 1024) { showAppToast(`File ${f.name} too large. Max 50MB.`, "error"); continue; } 
+                    try { 
+                        if(f.type === 'image/jpeg' || f.type === 'image/png' || f.type === 'image/webp') { 
+                            const compressed = await stf_compressImage(f, 1280, 0.72); 
+                            out.push({ filename: f.name, mimeType: compressed.mimeType, base64: compressed.data }); 
+                        } else { 
+                            out.push(await GGMUpload.pack(f, tonkToken()));   /* over 5 MB: sent to Drive in pieces (BigUpload.js) */ 
+                        } 
+                    } catch(e) { 
+                        try { out.push(await GGMUpload.pack(f, tonkToken())); } catch (e2) { showAppToast(String((e2 && e2.message) || e2), "error"); } 
+                    } 
+                } 
+                fileInput.value = ""; 
+            } 
+            return out; 
+        }
+
+        async function stf_submitTask(taskId, type, isJustNote = false) { 
+            const input = document.getElementById('remark-input-' + idSafe(taskId)), remarkText = input ? input.value.trim() : ""; 
+            if(isJustNote && !remarkText) { showAppToast("Please type a note to save", "error"); return; } 
+            
+            const strictIdStr = String(taskId).trim().toUpperCase(); 
+            const ts = stf_stampNow(); 
+            const filesData = await stf_readFiles(taskId); 
+            
+            let isSelf = false;
+            if (type === 'delegated') {
+                const tObj = stf_rawDelegatedTasks.find(x => String(x.taskId).trim().toUpperCase() === strictIdStr);
+                if (tObj && String(tObj.givenBy).trim().toLowerCase() === 'self') {
+                    isSelf = true;
+                }
+            }
+
+            if (!isJustNote) { 
+                smoothRemoveCard('card-' + idSafe(taskId));
+                await new Promise(r => setTimeout(r, 200)); 
+                
+                if(type === 'routine' || isSelf) { try { confetti({ particleCount: 80, spread: 70, origin: { y: .6 }, colors: ['#00a8ff','#22c55e'] }); } catch(e){} } 
+                else { try { confetti({ particleCount: 80, spread: 70, origin: { y: .6 }, colors: ['#ff6b00','#ffb800'] }); } catch(e){} } 
+                
+                const targetStatus = type === 'routine' ? 'completed' : (isSelf ? 'completed' : 'review'); 
+                
+                const list = (type === 'routine') ? stf_rawRoutineTasks : stf_rawDelegatedTasks; 
+                const index = list.findIndex(x => String(x.taskId).trim().toUpperCase() === strictIdStr); 
+                if(index > -1) { 
+                    list[index].status = targetStatus; 
+                    list[index].actualDate = ts; 
+                    if(remarkText) list[index].staffRemark = remarkText; 
+                } 
+                
+                stf_recalcKPIs();
+            } else { 
+                const list = (type === 'routine') ? stf_rawRoutineTasks : stf_rawDelegatedTasks; 
+                const index = list.findIndex(x => String(x.taskId).trim().toUpperCase() === strictIdStr); 
+                if(index > -1) { if(remarkText) list[index].staffRemark = remarkText; } 
+                stf_toggleRemark(taskId); 
+                
+                stf_lastRenderedHash = JSON.stringify({ r: stf_rawRoutineTasks, d: stf_rawDelegatedTasks, s: stf_lastStats }); 
+                stf_renderUI(stf_lastStats); stf_saveSnapshot(); 
+            } 
+            
+            pushToBgQueue('stf_addRemarkToTask', [strictIdStr, remarkText, type, filesData, isJustNote, isSelf]); 
+        }
+
+        function stf_openFileViewer(url) { if(!url) return; let embedUrl = String(url).trim(); if(embedUrl.indexOf('drive.google.com/file/d/') > -1) embedUrl = embedUrl.replace(/\/(view|edit).*$/, '/preview'); document.getElementById('fileExternalLink').href = String(url).trim(); document.getElementById('fileIframe').src = embedUrl; const modal = document.getElementById('fileViewerModal'); modal.style.display = 'flex'; setTimeout(()=>{ modal.classList.remove('opacity-0'); modal.classList.add('opacity-100'); },10); }
+        function stf_closeFileViewer() { const modal = document.getElementById('fileViewerModal'); modal.classList.remove('opacity-100'); modal.classList.add('opacity-0'); setTimeout(()=>{ modal.style.display='none'; document.getElementById('fileIframe').src=''; },300); }
+        
+        function stf_openSelfTaskModal() { document.getElementById('selfTaskTitle').value = ""; document.getElementById('selfTaskDueDate').value = ""; const modal = document.getElementById('selfTaskModal'), box = document.getElementById('selfTaskBox'); modal.style.display = 'flex'; setTimeout(() => { modal.style.opacity = '1'; box.style.transform = 'translateY(0)'; }, 10); }
+        function stf_closeSelfTaskModal() { const modal = document.getElementById('selfTaskModal'), box = document.getElementById('selfTaskBox'); modal.style.opacity = '0'; box.style.transform = 'translateY(100%)'; setTimeout(() => { modal.style.display = 'none'; }, 300); }
+        
+        function stf_submitSelfTask() { 
+            const title = document.getElementById('selfTaskTitle').value.trim(), dueDateStr = document.getElementById('selfTaskDueDate').value; 
+            if(!title) { showAppToast("Please enter a task description", "error"); return; } 
+            stf_closeSelfTaskModal();
+            pushToBgQueue('createSelfTask', [stf_currentEmployeeFull || stf_currentEmployee, title, dueDateStr]); 
+        }
+
+        function stf_openTransferModal(taskId) { document.getElementById('activeTransferTaskId').value = taskId; document.getElementById('transferSearch').value = ""; document.getElementById('activeTransferTarget').value = ""; const modal=document.getElementById('transferModal'), box=document.getElementById('transferBox'); modal.style.display='flex'; setTimeout(()=>{ modal.style.opacity='1'; box.style.transform='translateY(0)'; },10); stf_renderTransferStaff(stf_availableStaff); }
+        function stf_closeTransferModal() { const modal=document.getElementById('transferModal'), box=document.getElementById('transferBox'); modal.style.opacity='0'; box.style.transform='translateY(100%)'; setTimeout(()=>{ modal.style.display='none'; },300); }
+        
+        function stf_renderTransferStaff(list) { 
+            stf_transferView = list || []; let html = ''; 
+            stf_transferView.forEach((s, i) => { html += `<div class="px-4 py-3 border-b border-slate-100 uppercase cursor-pointer" onclick="stf_selectStaff(${i})">${esc(s.label)}</div>`; }); 
+            if(!html) html = '<div class="px-4 py-3 text-slate-400">No staff found</div>'; 
+            document.getElementById('transferList').innerHTML = html; document.getElementById('transferList').classList.remove('hidden'); 
+        }
+        
+        function stf_filterTransferStaff() { const q = document.getElementById('transferSearch').value.toLowerCase(); stf_renderTransferStaff(stf_availableStaff.filter(s => String(s.label).toLowerCase().indexOf(q) > -1)); }
+        function stf_selectStaff(i) { const s = stf_transferView[i]; if(!s) return; document.getElementById('transferSearch').value = s.label; document.getElementById('activeTransferTarget').value = s.value; document.getElementById('transferList').classList.add('hidden'); }
+        
+        function stf_confirmTransfer() { 
+            const taskId = document.getElementById('activeTransferTaskId').value, targetStaff = document.getElementById('activeTransferTarget').value; 
+            if(!targetStaff) { showAppToast("Select a staff name first", "error"); return; } 
+            stf_closeTransferModal(); 
+            pushToBgQueue('requestTransfer', [taskId, targetStaff]); 
+        }
+        
+        async function stf_respondTransfer(taskId, action) { 
+            smoothRemoveCard('card-' + idSafe(taskId));
+            
+            const strictIdStr = String(taskId).trim().toUpperCase(); 
+            const index = stf_rawDelegatedTasks.findIndex(x => String(x.taskId).trim().toUpperCase() === strictIdStr);
+            if(index > -1) {
+                stf_rawDelegatedTasks[index].transferStatus = 'none';
+                if(action === 'accept') { stf_rawDelegatedTasks[index].originalOwner = stf_currentEmployeeFull || stf_currentEmployee; }
+            }
+            stf_recalcKPIs();
+
+            pushToBgQueue('processTransferResponse', [strictIdStr, action, stf_currentEmployeeFull || stf_currentEmployee]); 
+        }
+
+        /* ---------- FILTERS ---------- */
+        function stf_filterRoutine(type) { 
+            stf_currentRoutineFilter = type; 
+            document.getElementById('pill-daily').className = 'tab-btn' + (type==='daily' ? ' active' : ''); 
+            const pillWmqy = document.getElementById('pill-wmqy'); 
+            if(pillWmqy) pillWmqy.className = 'tab-btn px-4' + (type==='wmqy' ? ' active' : ''); 
+            const pillOverdue = document.getElementById('pill-overdue');
+            if(pillOverdue) {
+                if(type === 'overdue') {
+                    pillOverdue.className = 'tab-btn px-4 active tab-btn-red';
+                    pillOverdue.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-1.5"></i> Overdue';
+                } else {
+                    pillOverdue.className = 'tab-btn px-4';
+                    pillOverdue.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-1.5 text-red-500"></i> Overdue';
+                }
+            }
+            stf_renderRoutineList(); 
+        }
+        
+        function stf_filterDone(type) { 
+            stf_currentDoneFilter = type; 
+            ['all','routine','delegated'].forEach(id => { const el = document.getElementById('done-' + id); if(!el) return; el.className = 'tab-btn' + (type===id ? ' active' : '') + (id==='all' ? '' : ' px-4'); }); 
+            stf_renderCompletedList(); 
+        }
+        
+        function stf_applyDoneDateFilter() { stf_currentDoneDate = document.getElementById('doneDateFilter').value; stf_renderCompletedList(); }
+        function stf_clearDoneDateFilter() { document.getElementById('doneDateFilter').value = ""; stf_applyDoneDateFilter(); }
+        
+        const stf_emptyState = (msg, icon, col) => `
+        <div class="text-center py-10 px-6 bg-white rounded-2xl border border-slate-100 premium-shadow mt-2">
+            <div class="w-16 h-16 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-4"><i class="fa-solid ${icon} text-3xl ${col} opacity-60"></i></div>
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">${msg}</p>
+        </div>`;
+
+        function stf_dateSorter(a, b) {
+            if(a.dueDate === "No Date") return -1;
+            if(b.dueDate === "No Date") return 1;
+            const pA=a.dueDate.split('/'), pB=b.dueDate.split('/');
+            if(pA.length===3 && pB.length===3) return new Date(pA[2],pA[1]-1,pA[0]).getTime() - new Date(pB[2],pB[1]-1,pB[0]).getTime();
+            return 0;
+        }
+
+        function stf_renderRoutineList() {
+            let html = ''; 
+            const mappedFilter = (stf_currentRoutineFilter === 'daily') ? 'today' : stf_currentRoutineFilter;
+            const filtered = stf_rawRoutineTasks.filter(t => stf_routineBucket(t) === mappedFilter);
+            filtered.sort(stf_dateSorter);
+            
+            if(filtered.length === 0) {
+                let msg = stf_currentRoutineFilter==='daily' ? "Nothing due today" : (stf_currentRoutineFilter==='wmqy' ? "No W/M/Q/Y tasks found" : "No overdue tasks! You're caught up.");
+                let icon = stf_currentRoutineFilter==='overdue' ? 'fa-glass-cheers' : 'fa-mug-hot';
+                let color = stf_currentRoutineFilter==='overdue' ? 'text-[#22c55e]' : 'text-[#00a8ff]';
+                html = stf_emptyState(msg, icon, color);
+            } else {
+                filtered.forEach((t) => {
+                    const sid = idSafe(t.taskId), jid = jsq(t.taskId), letter = t.freq ? String(t.freq).charAt(0).toUpperCase() : 'N', diff = stf_dueDiff(t.dueDate);
+                    
+                    let isOverdueTab = (diff !== null && diff < 0);
+                    let cTheme = isOverdueTab ? 'card-red bg-red-50/30' : 'card-blue';
+                    let tColor = isOverdueTab ? 'text-red-600' : 'text-slate-800';
+                    let iColor = isOverdueTab ? 'text-red-500' : 'text-[#00a8ff]';
+                    let bCircle = isOverdueTab ? 'bg-red-100 text-red-600' : 'bg-[#e0f2fe] text-[#00a8ff]';
+                    let bStyle = isOverdueTab ? 'border-red-200' : 'border-slate-100';
+
+                    let badge = ''; 
+                    if(diff === 0) badge = `<span class="${isOverdueTab ? 'bg-red-500' : 'bg-[#00a8ff]'} text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle">Today</span>`; 
+                    else if(diff !== null && diff > 0) badge = `<span class="bg-slate-100 text-slate-500 text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle">In ${diff}d</span>`;
+                    else if(diff !== null && diff < 0) badge = `<span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle">${Math.abs(diff)}d Overdue</span>`;
+                    
+                    html += `
+                    <div id="card-${sid}" class="premium-card task-card ${cTheme}">
+                        <div class="flex justify-between items-start mb-3 pl-2 gap-2">
+                            <h3 class="font-black ${tColor} text-[14px] uppercase leading-snug flex-1">${esc(t.title)} ${badge}</h3>
+                            <span class="w-7 h-7 shrink-0 flex items-center justify-center ${bCircle} text-[11px] font-black rounded-full">${esc(letter)}</span>
+                        </div>
+                        ${t.staffRemark ? `
+                        <div class="ml-2 mb-3 p-2 bg-white/60 border ${bStyle} rounded-lg text-[10px] ${tColor} font-bold uppercase">
+                            <i class="fa-solid fa-comment-dots mr-1 ${iColor}"></i> Saved Note: ${esc(t.staffRemark)}
+                        </div>` : ''}
+                        <div class="mb-5 pl-2 text-[11px] font-bold text-slate-500 uppercase">
+                            <i class="fa-regular fa-calendar ${iColor} mr-1.5"></i> Due: ${t.dueDate === "No Date" ? "Anytime" : esc(t.dueDate)}
+                        </div>
+                        <div class="flex gap-3 border-t ${bStyle} pt-4">
+                            <button onclick="stf_toggleRemark('${jid}')" class="btn-outline flex-1 bg-white">
+                                <i class="fa-regular fa-comment-dots mr-1.5"></i> Note
+                            </button>
+                            <button onclick="stf_submitTask('${jid}', 'routine', false)" class="btn-done flex-1">
+                                <i class="fa-solid fa-check ${iColor} mr-1.5"></i> Done
+                            </button>
+                        </div>
+                        <div id="remark-box-${sid}" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border ${bStyle}">
+                            <textarea id="remark-input-${sid}" rows="2" placeholder="What happened with this task?" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-3 text-xs font-bold text-slate-700 outline-none focus:border-blue-400 resize-none mb-3"></textarea>
+                            <div class="flex gap-2 mb-2">
+                                <button onclick="stf_toggleRemark('${jid}')" class="w-1/3 bg-slate-200 text-slate-600 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-slate-300">Cancel</button>
+                                <button onclick="stf_submitTask('${jid}', 'routine', true)" class="w-2/3 bg-blue-100 text-blue-600 border border-blue-200 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-blue-200"><i class="fa-solid fa-save mr-1.5"></i> Save Note Only</button>
+                            </div>
+                            <button onclick="stf_submitTask('${jid}', 'routine', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md"><i class="fa-solid fa-check-double mr-1.5"></i> Mark Done with Note</button>
+                        </div>
+                    </div>`;
+                }); 
+            }
+            document.getElementById('routineListStf').innerHTML = html;
+        }
+
+        function stf_renderCompletedList() {
+            let combined = []; 
+            if(stf_currentDoneFilter==='all' || stf_currentDoneFilter==='routine') combined = combined.concat(stf_rawRoutineTasks.filter(t => t.status==='completed')); 
+            if(stf_currentDoneFilter==='all' || stf_currentDoneFilter==='delegated') combined = combined.concat(stf_rawDelegatedTasks.filter(t => t.status==='completed'));
+            
+            if(stf_currentDoneDate) { 
+                const parts = stf_currentDoneDate.split('-'); 
+                if(parts.length === 3) { 
+                    const targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; 
+                    combined = combined.filter(t => { 
+                        const actualDStr = t.actualDate ? t.actualDate.split(' ')[0] : ""; 
+                        const dueDStr = t.dueDate ? t.dueDate.split(' ')[0] : ""; 
+                        return actualDStr === targetDate || (!actualDStr && dueDStr === targetDate); 
+                    }); 
+                } 
+            }
+            
+            const toMs = (s) => { 
+                if(!s) return 0; const p = String(s).split(' '); const d = p[0].split('/'); if(d.length !== 3) return 0; 
+                let h = 0, m = 0; if(p.length >= 2 && p[1].indexOf(':') > -1) { const tm = p[1].split(':'); h = parseInt(tm[0],10)||0; m = parseInt(tm[1],10)||0; if(p[2] === 'PM' && h !== 12) h += 12; if(p[2] === 'AM' && h === 12) h = 0; } 
+                return new Date(d[2], d[1]-1, d[0], h, m).getTime(); 
+            };
+            
+            combined.sort((a,b) => toMs(b.actualDate || b.dueDate) - toMs(a.actualDate || a.dueDate));
+            let html = ''; 
+            if(combined.length === 0) {
+                html = stf_emptyState("No finished tasks found", "fa-box-open", "text-[#22c55e]");
+            } else {
+                combined.forEach((t) => { 
+                    const isDelegated = t.type === 'delegated', subLabel = isDelegated ? 'Submitted:' : 'Completed:', iconName = isDelegated ? 'fa-upload' : 'fa-check-circle', colorClass = isDelegated ? 'text-[#ffb800]' : 'text-[#22c55e]'; 
+                    const sub = t.actualDate ? `<br><span class="${colorClass} mt-1.5 inline-block"><i class="fa-solid ${iconName} mr-1"></i> ${subLabel} ${esc(t.actualDate)}</span>` : ''; 
+                    const appr = (isDelegated && t.approvalDate) ? `<br><span class="text-[#22c55e] mt-1.5 inline-block"><i class="fa-solid fa-check-double mr-1"></i> Reviewed: ${esc(t.approvalDate)}</span>` : ''; 
+                    const rem = t.staffRemark ? `<br><span class="text-slate-500 mt-1.5 inline-block font-medium"><i class="fa-regular fa-comment-dots mr-1"></i> Note: ${esc(t.staffRemark)}</span>` : ''; 
+                    
+                    let adminFile = ''; 
+                    if(t.photoLink && t.photoLink.includes('http')) { 
+                        let links = t.photoLink.split(',').filter(l=>l.trim().includes('http')); 
+                        links.forEach((l,i) => { adminFile += `<div onclick="stf_openFileViewer('${jsq(l.trim())}')" class="file-link"><i class="fa-solid fa-paperclip text-[#ff6b00]"></i> View Admin File ${links.length>1?i+1:''}</div>`; }); 
+                    } 
+                    let staffFile = ''; 
+                    if(t.staffFileUrl && t.staffFileUrl.includes('http')) { 
+                        let links = t.staffFileUrl.split(',').filter(l=>l.trim().includes('http')); 
+                        links.forEach((l,i) => { staffFile += `<div onclick="stf_openFileViewer('${jsq(l.trim())}')" class="file-link !bg-blue-600 !text-white"><i class="fa-solid fa-paperclip text-white"></i> View Staff File ${links.length>1?i+1:''}</div>`; }); 
+                    } 
+                    
+                    html += `
+                    <div class="premium-card task-card card-green opacity-75">
+                        <h3 class="font-black text-slate-500 line-through text-[12px] mb-3 uppercase pl-2">${esc(t.title)}</h3>
+                        <div class="flex justify-between items-end text-[10px] font-bold uppercase tracking-wider pl-2 gap-2">
+                            <span class="text-slate-400 leading-relaxed"><i class="fa-regular fa-calendar mr-1"></i> Due: ${esc(t.dueDate)} ${sub}${appr}${rem}</span>
+                            <span class="text-[#22c55e] bg-[#e6f4ea] px-3 py-1.5 rounded-lg border border-[#a3e635] shrink-0"><i class="fa-solid fa-check mr-1"></i> Done</span>
+                        </div>
+                        ${adminFile ? `<div class="mt-4">${adminFile}</div>` : ''}
+                        ${staffFile ? `<div class="mt-2">${staffFile}</div>` : ''}
+                    </div>`; 
+                });
+            }
+            document.getElementById('completedListStf').innerHTML = html;
+        }
+
+        function stf_renderUI(stats) {
+            let delPendingHTML = '', reviewHTML = '', cRout = 0, cRoutSoon = 0, cDelPend = 0, cRev = 0, cComp = 0;
+            
+            stf_rawRoutineTasks.forEach(t => { 
+                const sid = idSafe(t.taskId); 
+                if(t.status === 'completed') { cComp++; return; } 
+                if(t.status === 'review') { 
+                    cRev++; 
+                    const myRemark = t.staffRemark ? `<div class="sir-remark bg-white text-[#b45309] border-yellow-200"><i class="fa-solid fa-quote-left mr-1.5 mt-0.5"></i> ${esc(t.staffRemark)}</div>` : ''; 
+                    reviewHTML += `
+                    <div id="card-${sid}" class="premium-card task-card card-yellow bg-[#fffbeb]">
+                        <h3 class="font-black text-slate-800 text-[14px] mb-4 uppercase pl-2">${esc(t.title)}</h3>
+                        ${myRemark}
+                        <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-4 pl-2 uppercase gap-2">
+                            <span><i class="fa-regular fa-calendar text-[#ffb800] mr-1.5"></i> Due: ${t.dueDate === "No Date" ? "Anytime" : esc(t.dueDate)}</span>
+                            <span class="bg-white px-2.5 py-1 rounded border border-yellow-200 text-[#b45309] shrink-0">Routine</span>
+                        </div>
+                        <div class="border-t border-yellow-200 pt-3 text-center text-[#d97706] text-[10px] font-black uppercase tracking-wider">
+                            <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Submitted: ${esc(t.actualDate || t.dueDate)}
+                        </div>
+                    </div>`; 
+                    return; 
+                } 
+                const b = stf_routineBucket(t); 
+                if(b === 'today' || b === 'overdue') cRout++; else if(b === 'wmqy') cRoutSoon++; 
+            });
+
+            stf_rawDelegatedTasks.slice().sort(stf_dateSorter).forEach((t) => { 
+                const sid = idSafe(t.taskId), jid = jsq(t.taskId); 
+                if(t.status === 'completed') { cComp++; return; } 
+                if(t.status === 'review') { 
+                    cRev++; 
+                    const myRemark = t.staffRemark ? `<div class="sir-remark bg-white text-[#b45309] border-yellow-200"><i class="fa-solid fa-quote-left mr-1.5 mt-0.5"></i> ${esc(t.staffRemark)}</div>` : ''; 
+                    
+                    let adminFile = ''; 
+                    if(t.photoLink && t.photoLink.includes('http')) { 
+                        let links = t.photoLink.split(',').filter(l=>l.trim().includes('http')); 
+                        links.forEach((l,i) => { adminFile += `<div onclick="stf_openFileViewer('${jsq(l.trim())}')" class="file-link"><i class="fa-solid fa-paperclip text-[#ff6b00]"></i> View Admin File ${links.length>1?i+1:''}</div>`; }); 
+                    } 
+                    let staffFile = ''; 
+                    if(t.staffFileUrl && t.staffFileUrl.includes('http')) { 
+                        let links = t.staffFileUrl.split(',').filter(l=>l.trim().includes('http')); 
+                        links.forEach((l,i) => { staffFile += `<div onclick="stf_openFileViewer('${jsq(l.trim())}')" class="file-link !bg-blue-600 !text-white"><i class="fa-solid fa-paperclip text-white"></i> View Staff File ${links.length>1?i+1:''}</div>`; }); 
+                    } 
+
+                    reviewHTML += `
+                    <div id="card-${sid}" class="premium-card task-card card-yellow bg-[#fffbeb]">
+                        <h3 class="font-black text-slate-800 text-[14px] mb-4 uppercase pl-2">${esc(t.title)}</h3>
+                        ${myRemark}${adminFile}${staffFile}
+                        <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-4 pl-2 uppercase gap-2">
+                            <span><i class="fa-regular fa-calendar text-[#ffb800] mr-1.5"></i> Due: ${t.dueDate === "No Date" ? "Anytime" : esc(t.dueDate)}</span>
+                            <span class="bg-white px-2.5 py-1 rounded border border-yellow-200 text-slate-500 shrink-0">From: ${esc(t.givenBy || 'Admin')}</span>
+                        </div>
+                        <div class="border-t border-yellow-200 pt-3 text-center text-[#d97706] text-[10px] font-black uppercase tracking-wider">
+                            <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Submitted: ${esc(t.actualDate || t.dueDate)}
+                        </div>
+                    </div>`; 
+                    return; 
+                } 
+                
+                cDelPend++; 
+                if (t.transferStatus === 'incoming') { 
+                    delPendingHTML += `
+                    <div id="card-${sid}" class="premium-card task-card card-blue bg-blue-50/50">
+                        <div class="sir-remark text-blue-600 bg-blue-100 border-blue-200"><i class="fa-solid fa-share mr-1.5 mt-0.5"></i> Transfer from: ${esc(t.originalOwner)}</div>
+                        <h3 class="font-black text-slate-800 text-[14px] mb-3 uppercase pl-2">${esc(t.title)}</h3>
+                        <div class="text-[11px] font-bold text-slate-500 mb-4 pl-2 uppercase"><i class="fa-regular fa-calendar text-[#00a8ff] mr-1.5"></i> Due: ${esc(t.dueDate)}</div>
+                        <div class="flex gap-3 border-t border-blue-100 pt-4">
+                            <button onclick="stf_respondTransfer('${jid}', 'accept')" class="w-1/2 bg-[#00a8ff] text-white rounded-xl py-3 font-black text-xs uppercase"><i class="fa-solid fa-check mr-1.5"></i> Accept</button>
+                            <button onclick="stf_respondTransfer('${jid}', 'reject')" class="w-1/2 bg-white border border-red-200 text-red-500 rounded-xl py-3 font-black text-xs uppercase"><i class="fa-solid fa-xmark mr-1.5"></i> Decline</button>
+                        </div>
+                    </div>`; 
+                    return; 
+                } 
+                if (t.transferStatus === 'outgoing') { 
+                    delPendingHTML += `
+                    <div id="card-${sid}" class="premium-card task-card card-gray bg-slate-50 opacity-90">
+                        <h3 class="font-black text-slate-500 text-[14px] mb-2 uppercase pl-2">${esc(t.title)}</h3>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase mb-5 pl-2"><i class="fa-solid fa-clock mr-1.5"></i> Waiting for ${esc(String(t.transferTo).split('(')[0].trim())} to accept</div>
+                        <div class="border-t border-slate-200 pt-4">
+                            <button onclick="stf_respondTransfer('${jid}', 'cancel')" class="w-full bg-white border border-slate-300 text-slate-500 py-3 rounded-xl font-black text-xs uppercase"><i class="fa-solid fa-ban mr-1.5"></i> Cancel request</button>
+                        </div>
+                    </div>`; 
+                    return; 
+                } 
+
+                const isRej = t.status === 'rejected'; 
+                const diff = stf_dueDiff(t.dueDate); 
+                let badge = ''; 
+                if(!isRej && diff !== null && diff < 0) badge = `<span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle">${Math.abs(diff)}d overdue</span>`; 
+                else if(!isRej && diff === 0) badge = `<span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle">Today</span>`; 
+                
+                let rejDateStr = t.approvalDate ? ` <span class="opacity-75 font-normal ml-1">(${esc(t.approvalDate)})</span>` : ''; 
+                const rem = (isRej && t.remark) ? `<div class="sir-remark"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i> <span>Sent back: ${esc(t.remark)}${rejDateStr}</span></div>` : ''; 
+                
+                const extNote = t.extraNote ? `<div class="extra-note"><i class="fa-solid fa-thumbtack mt-0.5"></i> <span>${esc(t.extraNote)}</span></div>` : ''; 
+                
+                let adminFile = ''; 
+                if(t.photoLink && t.photoLink.includes('http')) { 
+                    let links = t.photoLink.split(',').filter(l=>l.trim().includes('http')); 
+                    links.forEach((l,i) => { adminFile += `<div onclick="stf_openFileViewer('${jsq(l.trim())}')" class="file-link"><i class="fa-solid fa-paperclip text-[#ff6b00]"></i> View Admin File ${links.length>1?i+1:''}</div>`; }); 
+                } 
+                
+                const isSelf = String(t.givenBy).trim().toLowerCase() === 'self';
+                const submitBtnText = isRej ? 'Resend' : (isSelf ? 'Mark Done' : 'Send to Review');
+                const submitBtnIcon = isRej ? 'fa-upload' : (isSelf ? 'fa-check-double' : 'fa-paper-plane');
+
+                delPendingHTML += `
+                <div id="card-${sid}" class="premium-card task-card ${isRej ? 'card-red bg-red-50/30' : 'card-orange'}">
+                    <h3 class="font-black text-slate-800 text-[14px] mb-4 uppercase leading-snug pl-2">${esc(t.title)} ${badge}</h3>
+                    ${extNote}${rem}${adminFile}
+                    ${t.staffRemark ? `<div class="ml-2 mb-3 p-2 bg-orange-50 border border-orange-100 rounded-lg text-[10px] text-orange-600 font-bold uppercase"><i class="fa-solid fa-comment-dots mr-1 text-[#ff6b00]"></i> Saved Note: ${esc(t.staffRemark)}</div>` : ''}
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-5 pl-2 uppercase gap-2">
+                        <span><i class="fa-regular fa-calendar text-[#ff6b00] mr-1.5"></i> Due: ${t.dueDate === "No Date" ? "Anytime" : esc(t.dueDate)}</span>
+                        <span class="bg-slate-50 px-2.5 py-1 rounded border border-slate-200 shrink-0">From: ${esc(t.givenBy || 'Admin')}</span>
+                    </div>
+                    <div class="flex gap-2 border-t border-slate-100 pt-4">
+                        <button onclick="stf_openTransferModal('${jid}')" class="btn-transfer" title="Transfer"><i class="fa-regular fa-paper-plane"></i></button>
+                        <button onclick="stf_triggerFileSelect('${jid}')" class="btn-transfer" title="Attach Files"><i class="fa-solid fa-paperclip text-[#ff6b00]"></i></button>
+                        <button onclick="stf_toggleRemark('${jid}')" class="btn-outline flex-1 bg-white"><i class="fa-regular fa-comment-dots mr-1.5"></i> Note</button>
+                        <button onclick="stf_submitTask('${jid}', 'delegated', false)" class="btn-done flex-1"><i class="fa-solid ${submitBtnIcon} mr-1.5"></i> ${submitBtnText}</button>
+                    </div>
+
+                    <input type="file" id="file-input-${sid}" multiple accept="*/*" class="hidden" onchange="stf_handleFileSelect(this, '${jid}')">
+                    <div id="file-preview-${sid}" class="hidden text-[10px] bg-blue-50 text-blue-600 p-2 rounded-lg font-bold mt-3 text-center w-full uppercase"></div>
+
+                    <div id="remark-box-${sid}" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <textarea id="remark-input-${sid}" rows="2" placeholder="Type your note here..." class="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:border-[#ff6b00] resize-none mb-3"></textarea>
+                        
+                        <div class="flex gap-2 mb-2">
+                            <button onclick="stf_toggleRemark('${jid}')" class="w-1/3 bg-slate-200 text-slate-600 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-slate-300">Cancel</button>
+                            <button onclick="stf_submitTask('${jid}', 'delegated', true)" class="w-2/3 bg-orange-100 text-orange-600 border border-orange-200 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-orange-200"><i class="fa-solid fa-save mr-1.5"></i> Save Note</button>
+                        </div>
+                        <button onclick="stf_submitTask('${jid}', 'delegated', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md"><i class="fa-solid ${submitBtnIcon} mr-1.5"></i> ${submitBtnText}</button>
+                    </div>
+                </div>`; 
+            });
+
+            document.getElementById('delegatedListStf').innerHTML = delPendingHTML || stf_emptyState("No pending assigned tasks", "fa-briefcase", "text-[#ff6b00]"); 
+            document.getElementById('reviewListStf').innerHTML = reviewHTML || stf_emptyState("Nothing waiting for approval", "fa-hourglass-half", "text-[#ffb800]"); 
+            stf_renderRoutineList(); stf_renderCompletedList();
+
+            stf_countUp(document.getElementById('kpiRoutineStf'), cRout);
+            stf_countUp(document.getElementById('kpiDelegatedStf'), cDelPend);
+            stf_countUp(document.getElementById('kpiReviewStf'), cRev);
+            stf_countUp(document.getElementById('kpiDoneStf'), cComp);
+
+            const setBadge = (id, n) => { const el = document.getElementById(id); if(!el) return; if(n > 0) { el.innerText = n > 99 ? '99+' : n; el.classList.remove('hidden'); } else el.classList.add('hidden'); }; 
+            setBadge('navBadgeRoutine', cRout); setBadge('navBadgeDelegated', cDelPend); setBadge('navBadgeReview', cRev);
+
+            const setCount = (id, n) => { const el = document.getElementById(id); if(el) el.innerText = n; }; 
+            setCount('drwCountRoutine', cRout); setCount('drwCountDelegated', cDelPend); setCount('drwCountReview', cRev); setCount('drwCountDone', cComp);
+
+            if(stats) { 
+                document.getElementById('kpiDailyScore').innerText = stats.dailyScore !== undefined ? stats.dailyScore : "-";
+                document.getElementById('kpiMonthlyScore').innerText = stats.monthlyScore !== undefined ? stats.monthlyScore : "-";
+                const dPct = stats.delegatedMonthlyTotal === 0 ? 100 : Math.round((stats.delegatedMonthlyDone / stats.delegatedMonthlyTotal) * 100); 
+                document.getElementById('kpiDelegatedScore').innerText = dPct + '%'; 
+            }
+            
+            try { 
+                const canvas = document.getElementById('taskChart'); 
+                if(canvas) { 
+                    const dt = [cRout, cDelPend, cRev, cComp], hasData = dt.some(v => v > 0); 
+                    if(stf_taskChartInstance) { stf_taskChartInstance.destroy(); stf_taskChartInstance = null; } 
+                    stf_taskChartInstance = new Chart(canvas.getContext('2d'), { type: 'doughnut', data: { labels: ['Routine','Pending','Review','Done'], datasets: [{ data: hasData ? dt : [1], backgroundColor: hasData ? ['#00a8ff','#ff6b00','#ffb800','#22c55e'] : ['#F1F5F9'], borderWidth: 0, hoverOffset: 1, borderRadius: 2 }] }, options: { responsive:true, maintainAspectRatio:false, animation:false, cutout:'72%', plugins:{ legend:{ position:'Center', labels:{ usePointStyle:true, padding:12, font:{ family:"'Inter'", size:10, weight:'800' }, color:'#475569' } } } } }); 
+                } 
+            } catch(e) {}
+        }
+
+        function stf_switchTab(tabId, fromDrawer) { 
+            document.querySelectorAll('#app-staff .view-section').forEach(el => el.classList.remove('active')); 
+            document.querySelectorAll('#app-staff .dark-nav-btn').forEach(el => el.classList.remove('active')); 
+            document.querySelectorAll('#app-staff .drawer-item').forEach(el => el.classList.remove('active')); 
+            
+            const view = document.getElementById('tab-' + tabId + '-stf'); if (view) view.classList.add('active'); 
+            const nav = document.getElementById('nav-' + tabId + '-stf'); if (nav) nav.classList.add('active'); 
+            const drw = document.getElementById('drw-' + tabId + '-stf'); if (drw) drw.classList.add('active'); 
+            
+            const i = stf_NAV.indexOf(tabId), bNav = document.getElementById('bottomNavStf'); 
+            if(bNav && i > -1) bNav.style.setProperty('--nav-i', i); 
+            if(fromDrawer) stf_closeDrawer(); 
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) { window.scrollTo(0,0); } 
+        }
+
+        window.onload = checkSession;
+    </script>
+</body>
+</html>

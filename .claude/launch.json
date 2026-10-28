@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nav-preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Desktop-Main-Dashboard/5fd74f88-328b-4f0b-a7d0-8493bba14df1/scratchpad"],
+      "port": 8765
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+<style>
+  .form-field { margin-bottom: 24px; }
+  .mdc-text-field { width: 100%; }
+  /* Card ko chota aur center mein karne ke liye */
+  .mini-card { max-width: 380px; margin: 40px auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  /* Extra text boxes ko chupane ke liye */
+  .hide-me { display: none !important; }
+</style>
+
+<div class="mdc-card mini-card">
+  <div class="mdc-card__content app-card__content" style="text-align: center; padding: 32px 24px;">
+    <h2 class="mdc-typography--headline6" style="margin-top: 0; margin-bottom: 24px; color: #1976d2; font-weight: bold;">
+      Select New Date
+    </h2>
+
+    <!-- Inko hide kar diya gaya hai, par backend ko ID bhejne ke liye inka yahan hona zaroori hai -->
+    <input type="text" id="id" class="hide-me">
+    <input type="text" id="name" class="hide-me">
+    <input type="text" id="task" class="hide-me">
+
+    <div class="form-field" style="margin-bottom: 24px;">
+      <div class="mdc-text-field mdc-text-field--filled" id="date-field" style="width: 100%;">
+        <span class="mdc-text-field__ripple"></span>
+        <span class="mdc-floating-label mdc-floating-label--float-above" id="planned-date-label">Planned Date</span>
+        <input type="text" id="planned_date" class="mdc-text-field__input datepicker-input" aria-labelledby="planned-date-label" required data-provide="datepicker" data-date-start-date="-0d" data-date-today-highlight="true" data-date-format="dd/mm/yyyy" data-date-autoclose="true" style="text-align: center; font-weight: bold; font-size: 16px;">
+        <i class="material-icons mdc-text-field__icon mdc-text-field__icon--trailing" tabindex="0" role="button">calendar_today</i>
+        <span class="mdc-line-ripple"></span>
+      </div>
+    </div>
+
+    <div>
+      <button id="revise-task-button" class="mdc-button mdc-button--raised" style="width: 100%; height: 48px; background-color: #1976d2;">
+        <span class="mdc-button__ripple"></span><span class="mdc-button__label">Revise Task Plan</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 1. Jaise hi ye page load ho, calendar apne aap open ho jaye
+  setTimeout(function() {
+    if ($('#planned_date').length) {
+      $('#planned_date').datepicker('show');
+    }
+  }, 400);
+
+  // 2. 1-Click Magic: Jaise hi aap date select karenge, button apne aap dab jayega!
+  $('#planned_date').datepicker().on('changeDate', function(e) {
+     setTimeout(function() {
+        var btn = document.getElementById('revise-task-button');
+        if(btn && !btn.disabled) {
+            btn.click(); // Ye main.html wale button click function ko automatically trigger kar dega
+        }
+     }, 150);
+  });
+</script>

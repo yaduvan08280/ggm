@@ -1,0 +1,83 @@
+<div class="mdc-card">
+  <div class="mdc-card__content app-card__content">
+    <h2 class="mdc-typography--headline6" style="margin: 0 0 24px 0;">Follow Up Tasks</h2>
+    
+    <!-- Search Fields -->
+    <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 250px;">
+        <div class="mdc-text-field mdc-text-field--outlined mdc-text-field--with-leading-icon" style="width: 100%;">
+          <i class="material-icons mdc-text-field__icon mdc-text-field__icon--leading">person_search</i>
+          <input type="text" id="searchName" class="mdc-text-field__input">
+          <div class="mdc-notched-outline">
+            <div class="mdc-notched-outline__leading"></div>
+            <div class="mdc-notched-outline__notch"><span class="mdc-floating-label">Search by name</span></div>
+            <div class="mdc-notched-outline__trailing"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="flex: 1; min-width: 250px;">
+        <div class="mdc-text-field mdc-text-field--outlined mdc-text-field--with-leading-icon" style="width: 100%;">
+          <i class="material-icons mdc-text-field__icon mdc-text-field__icon--leading">search</i>
+          <input type="text" id="searchTask" class="mdc-text-field__input">
+          <div class="mdc-notched-outline">
+            <div class="mdc-notched-outline__leading"></div>
+            <div class="mdc-notched-outline__notch"><span class="mdc-floating-label">Search by task</span></div>
+            <div class="mdc-notched-outline__trailing"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mdc-data-table" style="width: 100%;">
+      <div class="mdc-data-table__table-container">
+        <table class="mdc-data-table__table">
+          <thead>
+            <tr class="mdc-data-table__header-row">
+              <th class="mdc-data-table__header-cell mdc-data-table__header-cell--numeric taskID" style="display:none;">ID</th>
+              <th class="mdc-data-table__header-cell">Name</th>
+              <th class="mdc-data-table__header-cell">Number</th>
+              <th class="mdc-data-table__header-cell">Task</th>
+              <th class="mdc-data-table__header-cell">Planned Date</th>
+              <th class="mdc-data-table__header-cell">Mark Complete</th>
+              <th class="mdc-data-table__header-cell">Revise</th>
+            </tr>
+          </thead>
+          <tbody id="searchResults" class="mdc-data-table__content"></tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div id="no-results-message" class="mdc-typography--body1 invisible" style="text-align: center; padding: 24px; color: var(--mdc-theme-primary);">
+      <i class="material-icons" style="font-size: 48px; display: block; margin: 0 auto 16px;">check_circle_outline</i>
+      No Tasks Pending for Today
+    </div>
+  </div>
+</div>
+
+<template id="rowTemplate">
+  <tr class="mdc-data-table__row">
+    <td class="mdc-data-table__cell mdc-data-table__cell--numeric taskID" style="display:none;"></td>
+    <td class="mdc-data-table__cell doerName"></td>
+    <td class="mdc-data-table__cell number"></td>
+    <td class="mdc-data-table__cell task" style="white-space: normal; word-wrap: break-word; max-width: 250px;"></td>
+    <td class="mdc-data-table__cell planned_date"></td>
+    <td class="mdc-data-table__cell">
+      <div class="button-container" style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="mdc-button mdc-button--outlined done-button"><span class="mdc-button__ripple"></span><i class="material-icons mdc-button__icon">check</i><span class="mdc-button__label">Done</span></button>
+        <button class="mdc-button mdc-button--outlined confirm-button-new mdc-theme--error d-none"><span class="mdc-button__ripple"></span><i class="material-icons mdc-button__icon">check_circle</i><span class="mdc-button__label">Confirm</span></button>
+      </div>
+    </td>
+    <td class="mdc-data-table__cell">
+      <button class="mdc-button mdc-button--outlined revise-button"><span class="mdc-button__ripple"></span><i class="material-icons mdc-button__icon">update</i><span class="mdc-button__label">Revise</span></button>
+    </td>
+  </tr>
+</template>
+
+<style>
+  .d-none { display: none !important; }
+  .invisible { visibility: hidden !important; }
+  .mdc-data-table { border-radius: 8px; border: 1px solid rgba(0, 0, 0, 0.12); }
+  .mdc-data-table__cell { border-right: 1px solid rgba(0, 0, 0, 0.08); border-bottom: 1px solid rgba(0, 0, 0, 0.08); }
+  .mdc-data-table__header-cell { border-right: 1px solid rgba(0, 0, 0, 0.08); border-bottom: 2px solid rgba(0, 0, 0, 0.12); }
+</style>

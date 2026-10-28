@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GGM System Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F1E9; --surface:#FCFAF5; --surface2:#FFFFFF;
+  --ink:#1B1A17; --ink-soft:#6C685D; --ink-faint:#9A968B;
+  --line:#E8E3D6; --line-soft:#F0ECE1;
+  --amber:#F2C14E; --amber-deep:#D9A52C; --amber-wash:#FBEFCB;
+  --charcoal:#232220;
+  --ok:#4F9D69; --ok-wash:#E1F0E6; --bad:#CF4F33; --bad-wash:#F8E2DB; --warn:#C98A12; --warn-wash:#FBEFCB;
+  --info:#3A6EA5; --info-wash:#E2EBF5;
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  --shadow:0 1px 2px rgba(27,26,23,.04), 0 8px 24px -12px rgba(27,26,23,.12);
+  --gs-line:#E2E3E3; --gs-head:#F8F9FA; --gs-sel:#C2DBFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono,code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.86em}
+code{background:var(--line-soft);padding:1px 6px;border-radius:6px}
+a{color:var(--info)}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 24px 90px}
+header.top{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.brand-mark{width:40px;height:40px;border-radius:11px;background:var(--amber);position:relative;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.brand-mark::before,.brand-mark::after{content:"";position:absolute;background:var(--charcoal);top:9px;width:3px;height:22px;transform:skewX(-18deg)}
+.brand-mark::before{left:12px}.brand-mark::after{left:21px}
+h1{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.lede{color:var(--ink-soft);font-size:16px;max-width:760px;margin:10px 0 26px}
+h2{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:56px 0 6px;scroll-margin-top:20px}
+h2 .n{color:var(--amber-deep);margin-right:8px}
+h3{font-size:17px;font-weight:700;margin:28px 0 8px}
+p{margin:8px 0;max-width:820px}
+ul,ol{margin:8px 0 8px 22px;max-width:840px}
+li{margin:4px 0}
+.sub{color:var(--ink-soft);margin-bottom:18px}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 8px}
+.toc a{text-decoration:none;color:var(--ink);background:var(--surface2);border:1px solid var(--line);padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600}
+.toc a:hover{border-color:var(--amber-deep)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 24px;box-shadow:var(--shadow);margin:16px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.kpi{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px}
+.kpi b{display:block;font-size:22px;letter-spacing:-.02em}
+.kpi span{color:var(--ink-soft);font-size:13px}
+.callout{border-radius:var(--r-md);padding:14px 18px;margin:14px 0;border:1px solid}
+.callout.bad{background:var(--bad-wash);border-color:#EFC3B6}
+.callout.warn{background:var(--warn-wash);border-color:#EED9A2}
+.callout.ok{background:var(--ok-wash);border-color:#BFDCC8}
+.callout.info{background:var(--info-wash);border-color:#C3D5EA}
+.callout b:first-child{display:block;margin-bottom:2px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface2);margin:14px 0}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px}
+table.t th,table.t td{padding:10px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+table.t th{background:var(--surface);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;white-space:nowrap}
+table.t tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.p-bad{background:var(--bad-wash);color:var(--bad)}
+.p-warn{background:var(--warn-wash);color:#8A5E07}
+.p-ok{background:var(--ok-wash);color:#2E6B43}
+.p-info{background:var(--info-wash);color:var(--info)}
+.p-mute{background:var(--line-soft);color:var(--ink-soft)}
+.step{display:flex;gap:14px;margin:12px 0}
+.step .num{flex:0 0 30px;height:30px;border-radius:50%;background:var(--charcoal);color:var(--amber);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+.label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin:22px 0 8px}
+figure{margin:16px 0}
+figcaption{color:var(--ink-soft);font-size:13px;margin-top:8px}
+
+/* ===== architecture svg ===== */
+.arch{width:100%;height:auto;display:block}
+.arch text{font-family:'Inter',system-ui,sans-serif}
+
+/* ===== portal mockups (hub's own look) ===== */
+.stage{background:#E9E4D6;border-radius:var(--r-lg);padding:26px;display:flex;gap:26px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.phone{width:300px;border-radius:34px;background:#111;padding:10px;box-shadow:0 20px 40px -18px rgba(0,0,0,.45)}
+.phone .scr{background:var(--bg);border-radius:26px;overflow:hidden;min-height:560px;position:relative}
+.desk{flex:1 1 640px;max-width:760px;border-radius:14px;background:#fff;box-shadow:0 20px 40px -18px rgba(0,0,0,.35);overflow:hidden;border:1px solid #d9d4c6}
+.desk .bar{height:30px;background:#ECE8DD;display:flex;align-items:center;gap:6px;padding:0 12px}
+.desk .bar i{width:10px;height:10px;border-radius:50%;background:#D5CFC0;display:block}
+.desk .bar .url{margin-left:12px;flex:1;height:18px;border-radius:9px;background:#fff;font-size:10.5px;color:#888;display:flex;align-items:center;padding:0 10px}
+.desk .scr{background:var(--bg);padding:22px 26px 30px}
+.m-top{display:flex;align-items:center;justify-content:space-between}
+.m-brand{display:flex;align-items:center;gap:9px}
+.m-brand .brand-mark{width:28px;height:28px;border-radius:8px}
+.m-brand .brand-mark::before,.m-brand .brand-mark::after{top:6px;height:16px;width:2.5px}
+.m-brand .brand-mark::before{left:8px}.m-brand .brand-mark::after{left:15px}
+.m-bn{font-weight:800;font-size:13.5px;letter-spacing:-.02em;line-height:1}
+.m-bs{font-size:8.5px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase}
+.m-acct{width:34px;height:34px;border-radius:11px;background:var(--charcoal);color:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;position:relative}
+.m-hello{margin:18px 0 12px}
+.m-hello b{font-size:19px;font-weight:800;letter-spacing:-.03em;display:block;line-height:1.15}
+.m-hello span{font-size:11.5px;color:var(--ink-soft)}
+.m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.phone .m-grid{grid-template-columns:1fr 1fr;gap:10px}
+.m-tile{position:relative;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:var(--surface);box-shadow:var(--shadow);min-height:104px;display:flex;flex-direction:column}
+.m-chip{width:32px;height:32px;border-radius:9px;background:var(--charcoal);color:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;margin-bottom:9px}
+.m-name{font-size:12px;font-weight:700;line-height:1.25}
+.m-meta{margin-top:auto;padding-top:6px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+.m-meta.hot{color:var(--bad)}
+.badge{position:absolute;top:-7px;right:-7px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--bad);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2.5px solid var(--bg);font-feature-settings:"tnum" 1}
+.badge.dot{min-width:12px;width:12px;height:12px;padding:0;top:-3px;right:-3px}
+.m-lock{position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;color:var(--ink-faint);background:var(--line-soft);padding:2px 6px;border-radius:6px}
+.m-sec{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin:16px 0 8px}
+.m-login{margin:34px 16px;background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+.m-login .h{background:var(--charcoal);color:#F4F0E5;padding:15px 16px}
+.m-login .h .m-bs{color:#9C988A}
+.m-login .b{padding:16px}
+.m-login h4{font-size:17px;font-weight:800;letter-spacing:-.02em}
+.m-login p{font-size:11px;color:var(--ink-soft);margin:2px 0 12px}
+.m-f{margin-bottom:10px}
+.m-f label{display:block;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-bottom:3px}
+.m-f div{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;background:#fff;color:var(--ink-soft)}
+.m-btn{background:var(--charcoal);color:#F6F2E7;border-radius:18px;text-align:center;padding:9px;font-size:12px;font-weight:600}
+.m-btn.amber{background:var(--amber);color:var(--charcoal)}
+.m-link{text-align:center;font-size:11px;font-weight:600;color:var(--ink-soft);margin-top:10px;text-decoration:underline}
+.otp{display:flex;gap:6px;justify-content:center;margin:6px 0 12px}
+.otp span{width:30px;height:38px;border:1.5px solid var(--line);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.otp span.f{border-color:var(--amber-deep)}
+.flow{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.flow .phone{width:250px}
+.flow .phone .scr{min-height:430px}
+.flow-cap{text-align:center;font-size:12px;font-weight:700;color:var(--ink-soft);margin-top:8px}
+.menu-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:20px 20px 0 0;padding:16px;box-shadow:0 -10px 30px -10px rgba(0,0,0,.25)}
+.menu-sheet .mb{border:1px solid var(--line);background:#fff;border-radius:14px;padding:9px 12px;font-size:11.5px;font-weight:600;margin-top:7px}
+.scrim{position:absolute;inset:0;background:rgba(27,26,23,.35)}
+
+/* ===== google sheets mockup ===== */
+.gs{border:1px solid #DADCE0;border-radius:10px;overflow:hidden;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#202124;margin:14px 0}
+.gs-toolbar{background:#F9FBFD;border-bottom:1px solid #DADCE0;padding:8px 12px;display:flex;align-items:center;gap:10px}
+.gs-toolbar .ic{width:22px;height:22px;border-radius:5px;background:#0F9D58;flex:0 0 auto;position:relative}
+.gs-toolbar .ic::after{content:"";position:absolute;inset:6px 5px;border:2px solid #fff;border-radius:1px}
+.gs-toolbar .nm{font-size:14px;color:#202124}
+.gs-toolbar .menu{margin-left:auto;background:#E8F0FE;color:#1967D2;font-weight:700;font-size:11.5px;padding:4px 10px;border-radius:14px}
+.gs-scroll{overflow-x:auto}
+table.gst{border-collapse:collapse;white-space:nowrap}
+table.gst td,table.gst th{border:1px solid var(--gs-line);padding:4px 7px;height:24px;font-weight:400}
+table.gst th.cl{background:var(--gs-head);color:#5F6368;font-size:10.5px;text-align:center;font-weight:400;padding:2px 6px}
+table.gst td.rn{background:var(--gs-head);color:#5F6368;font-size:10.5px;text-align:center;width:34px;padding:0}
+table.gst tr.h td{font-weight:700;background:#E8EAF6}
+table.gst tr.g td{font-weight:700;text-align:center;color:#fff;font-size:11px;letter-spacing:.04em}
+table.gst td.frz{background:#FAFAFA}
+table.gst td.hid{background:repeating-linear-gradient(45deg,#f3f3f3,#f3f3f3 4px,#fafafa 4px,#fafafa 8px);color:#999}
+.cb{display:inline-block;width:14px;height:14px;border:2px solid #5F6368;border-radius:2px;vertical-align:middle;position:relative}
+.cb.on{background:#1A73E8;border-color:#1A73E8}
+.cb.on::after{content:"";position:absolute;left:3px;top:0;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.dd{display:inline-flex;align-items:center;gap:4px;background:#E8EAED;border-radius:10px;padding:1px 8px;font-size:11px}
+.dd::after{content:"▾";font-size:9px;color:#5F6368}
+.dd.r{background:#FCE8E6;color:#C5221F}
+.dd.empty{background:transparent;color:#bbb;border:1px dashed #ccc}
+td.off{background:#F1F3F4!important;color:#BDC1C6}
+td.err{background:#FCE8E6!important}
+.gs-tabs{display:flex;gap:2px;background:#F1F3F4;border-top:1px solid #DADCE0;padding:0 8px;overflow-x:auto}
+.gs-tabs button{font:inherit;font-size:12px;border:0;background:none;padding:8px 14px;color:#444;cursor:pointer;white-space:nowrap;border-radius:0}
+.gs-tabs button.on{background:#fff;color:#188038;font-weight:700;box-shadow:inset 0 -3px 0 #188038}
+.gs-tabs button .h{color:#9AA0A6;font-weight:400}
+.gs-pane{display:none}
+.gs-pane.on{display:block}
+.gs-note{padding:10px 14px;background:#FEF7E0;border-top:1px solid #F6E3A8;font-size:12px;color:#5f4b00;font-family:'Inter',system-ui,sans-serif}
+.ok{color:#188038;font-weight:700}.er{color:#C5221F;font-weight:700}.pd{color:#B06000;font-weight:700}
+
+@media(max-width:820px){
+  .wrap{padding:26px 16px 70px}
+  h1{font-size:27px}
+  h2{font-size:21px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .stage{padding:14px}
+  .desk{flex-basis:100%}
+}
+@media print{ .toc{display:none} body{background:#fff} .card,.stage{box-shadow:none} }
+/* ===== additions v3 ===== */
+.sw{display:inline-flex;align-items:center;width:46px;height:26px;border-radius:13px;background:#D6D0C0;position:relative;flex:0 0 auto}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw.on{background:var(--ok)}
+.sw.on::after{left:23px}
+.adm-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.adm-row .t{flex:1;font-size:12px;line-height:1.35}
+.adm-row .t b{display:block;font-size:13px}
+.adm-apps{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:11.5px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.adm-apps span:nth-child(even){font-weight:700}
+.lock-f div{background:var(--line-soft)!important;color:var(--ink)!important;font-weight:600;display:flex;justify-content:space-between}
+.lock-f div::after{content:"🔒";font-size:10px}
+table.t td.q{font-weight:600;width:34%}
+.done-tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ok);margin-right:6px}
+/* ===== system map page ===== */
+.lane{stroke:#D6D0C0;stroke-dasharray:4 5}
+.svgcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;box-shadow:var(--shadow);margin:16px 0;overflow-x:auto}
+.svgcard svg{display:block;width:100%;min-width:760px;height:auto}
+svg text{font-family:'Inter',system-ui,sans-serif}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:var(--ink-soft);margin:6px 2px 0}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.flowcard h4{font-size:14px;margin-bottom:6px}
+.flowcard ol{margin:0 0 0 18px;font-size:13.5px}
+.flowcard li{margin:3px 0}
+td.warn{background:#FFF6E0}
+td.bad{background:#FCE8E6}
+.k{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;background:var(--line-soft);padding:1px 5px;border-radius:5px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand-mark"></div>
+  <div><div style="font-weight:800;letter-spacing:-.02em">GGM Portal</div><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)">System map · as built on 4 Oct 2026 (code in this folder)</div></div>
+</header>
+<h1>How the system works, who checks what, and what can break it</h1>
+<p class="lede">Every label below comes from the code in this folder. "Connected" means the app has the Portal connector, but it only takes effect once its three Script properties are pasted. Where an app is not connected yet, its old login still runs, as noted.</p>
+
+<nav class="toc">
+  <a href="#map">1 · System map</a>
+  <a href="#verify">2 · Sign-in &amp; tile tap: who verifies what</a>
+  <a href="#session">3 · The check on every request</a>
+  <a href="#bg">4 · Background jobs</a>
+  <a href="#write">5 · Entry → sheet, per app</a>
+  <a href="#master">6 · The shared task sheet</a>
+  <a href="#break">7 · What can break it</a>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="map"><span class="n">1</span>System map</h2>
+<p class="sub">One login (the hub) in front of 8 Apps Script apps. Every app runs as <span class="k">itadmin@</span> and reads and writes Google Sheets directly. Five apps write the same Delegated task sheet.</p>
+
+<div class="svgcard">
+<svg viewBox="0 0 1120 700" role="img" aria-label="System map">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6C685D"/></marker>
+    <marker id="aA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#D9A52C"/></marker>
+    <marker id="aB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3A6EA5"/></marker>
+    <marker id="aG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4F9D69"/></marker>
+    <marker id="aR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#CF4F33"/></marker>
+  </defs>
+
+  <!-- phone -->
+  <rect x="20" y="285" width="125" height="96" rx="16" fill="#fff" stroke="#E8E3D6"/>
+  <text x="82" y="320" text-anchor="middle" font-size="14" font-weight="700" fill="#1B1A17">Staff phone</text>
+  <text x="82" y="340" text-anchor="middle" font-size="11.5" fill="#6C685D">or browser</text>
+  <text x="82" y="362" text-anchor="middle" font-size="10.5" fill="#9A968B">token in localStorage</text>
+  <line x1="147" y1="318" x2="172" y2="318" stroke="#6C685D" stroke-width="2" marker-end="url(#a1)"/>
+  <line x1="172" y1="348" x2="147" y2="348" stroke="#6C685D" stroke-width="2" marker-end="url(#a1)"/>
+
+  <!-- hub -->
+  <rect x="175" y="140" width="270" height="380" rx="20" fill="#232220"/>
+  <text x="310" y="172" text-anchor="middle" font-size="16" font-weight="800" fill="#F2C14E">GGM Portal (hub)</text>
+  <text x="310" y="191" text-anchor="middle" font-size="11" fill="#9C988A">folder: main hub app · master sheet</text>
+  <g font-size="12" fill="#F4F0E5">
+    <rect x="195" y="206" width="230" height="44" rx="9" fill="#2E2C29"/><text x="207" y="225" font-weight="700">Users</text><text x="207" y="241" font-size="10.5" fill="#B9B4A6">password hash · email · phone · admin</text>
+    <rect x="195" y="256" width="230" height="44" rx="9" fill="#2E2C29"/><text x="207" y="275" font-weight="700">Access</text><text x="207" y="291" font-size="10.5" fill="#B9B4A6">✓ per app + Role / Site / Doer name</text>
+    <rect x="195" y="306" width="230" height="44" rx="9" fill="#2E2C29"/><text x="207" y="325" font-weight="700">Apps + Script properties</text><text x="207" y="341" font-size="9.5" fill="#B9B4A6">URLs · app secrets · HUB_SECRET · PEPPER</text>
+    <rect x="195" y="356" width="230" height="44" rx="9" fill="#2E2C29"/><text x="207" y="375" font-weight="700">Sync · Badges · Lists · Settings</text><text x="207" y="391" font-size="10.5" fill="#B9B4A6">written by the 1-min / 5-min / daily jobs</text>
+    <rect x="195" y="406" width="230" height="44" rx="9" fill="#2E2C29"/><text x="207" y="425" font-weight="700">App Logins · Import · Log</text><text x="207" y="441" font-size="10.5" fill="#B9B4A6">id exceptions · one-time import · audit</text>
+  </g>
+  <text x="310" y="478" text-anchor="middle" font-size="11" fill="#F2C14E">Portal-only switch (Admin screen)</text>
+  <text x="310" y="497" text-anchor="middle" font-size="10.5" fill="#9C988A">OTP reset by email · lockout 5 tries</text>
+
+  <!-- hub ↔ apps -->
+  <line x1="447" y1="215" x2="586" y2="215" stroke="#D9A52C" stroke-width="2.5" marker-end="url(#aA)"/>
+  <text x="516" y="206" text-anchor="middle" font-size="10.5" fill="#8A5E07" font-weight="700">① launch pass</text>
+  <line x1="447" y1="300" x2="586" y2="300" stroke="#3A6EA5" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#aB)"/>
+  <text x="516" y="291" text-anchor="middle" font-size="10.5" fill="#3A6EA5" font-weight="700">② sync · switch · counts</text>
+  <line x1="586" y1="385" x2="449" y2="385" stroke="#4F9D69" stroke-width="2.5" marker-end="url(#aG)"/>
+  <text x="516" y="376" text-anchor="middle" font-size="10.5" fill="#2E6B43" font-weight="700">③ verify · directory</text>
+  <line x1="447" y1="470" x2="586" y2="578" stroke="#9A968B" stroke-width="1.6" stroke-dasharray="3 4" marker-end="url(#a1)"/>
+  <text x="470" y="540" font-size="10" fill="#6C685D">link only</text>
+
+  <!-- apps -->
+  <g font-size="13" font-weight="700" fill="#1B1A17">
+    <rect x="590" y="28"  width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="50">Indent Flow</text>
+    <rect x="590" y="90"  width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="112">Fuel &amp; Car Tasks</text>
+    <rect x="590" y="152" width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="174">GGM Assets</text>
+    <rect x="590" y="214" width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="236">Staff Dashboard</text>
+    <rect x="590" y="276" width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="298">Main Admin Dashboard</text>
+    <rect x="590" y="338" width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="360">Newai Checklist</text>
+    <rect x="590" y="400" width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="422">Tonk Checklist</text>
+    <rect x="590" y="462" width="270" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/><text x="604" y="484">Jaipur Checklist</text>
+  </g>
+  <g font-size="10.5" fill="#6C685D">
+    <text x="604" y="70">own sheet · Sessions tab · role + site</text>
+    <text x="604" y="132">fleet sheet · _AUTH tab · email key</text>
+    <text x="604" y="194">assets + vehicle sheets · cache session · site</text>
+    <text x="604" y="256">Delegated + routine + renewal · cache session</text>
+    <text x="604" y="318">Delegated + routine + renewal · cache session</text>
+    <text x="604" y="380">Newai routine (MM) + Delegated · cache</text>
+    <text x="604" y="442">Tonk routine + Delegated · DRIVER / STAFF</text>
+    <text x="604" y="504">Jaipur routine · USER / ADMIN</text>
+  </g>
+  <g fill="#D9A52C"><circle cx="846" cy="43" r="4.5"/><circle cx="846" cy="105" r="4.5"/><circle cx="846" cy="167" r="4.5"/><circle cx="846" cy="229" r="4.5"/><circle cx="846" cy="291" r="4.5"/><circle cx="846" cy="353" r="4.5"/><circle cx="846" cy="415" r="4.5"/><circle cx="846" cy="477" r="4.5"/></g>
+
+  <!-- dashboards -->
+  <rect x="590" y="546" width="270" height="70" rx="12" fill="#F0ECE1" stroke="#D6D0C0" stroke-dasharray="5 4"/>
+  <text x="604" y="570" font-size="13" font-weight="700" fill="#1B1A17">Mines · Collection · Levanto</text>
+  <text x="604" y="590" font-size="10.5" fill="#6C685D">public links · hub only hides the URL</text>
+  <text x="604" y="606" font-size="10.5" fill="#6C685D">open in a new tab</text>
+
+  <!-- shared delegated sheet -->
+  <rect x="900" y="214" width="200" height="226" rx="14" fill="#FBEFCB" stroke="#EED9A2"/>
+  <text x="1000" y="240" text-anchor="middle" font-size="13" font-weight="800" fill="#1B1A17">Delegated sheet</text>
+  <text x="1000" y="256" text-anchor="middle" font-size="10.5" fill="#8A5E07">1tEUck… (shared)</text>
+  <g font-size="11.5" fill="#1B1A17">
+    <text x="918" y="284">• Master  (tasks, A–X)</text>
+    <text x="918" y="306">• Users  (old logins)</text>
+    <text x="918" y="328">• Doer List  (names, mobile)</text>
+    <text x="918" y="350">• Leave</text>
+  </g>
+  <text x="918" y="384" font-size="10.5" fill="#8A5E07">5 apps write Master:</text>
+  <text x="918" y="400" font-size="10.5" fill="#8A5E07">column meanings clash</text>
+  <text x="918" y="416" font-size="10.5" fill="#8A5E07">(see section 6)</text>
+  <g stroke="#B07A12" stroke-width="1.6">
+    <line x1="862" y1="241" x2="898" y2="262" marker-end="url(#a1)"/>
+    <line x1="862" y1="303" x2="898" y2="300"/>
+    <line x1="862" y1="365" x2="898" y2="345"/>
+    <line x1="862" y1="427" x2="898" y2="400"/>
+  </g>
+
+  <!-- task delegation -->
+  <rect x="900" y="462" width="200" height="74" rx="12" fill="#FCE8E6" stroke="#EFC3B6"/>
+  <text x="1000" y="486" text-anchor="middle" font-size="13" font-weight="700" fill="#1B1A17">Task Delegation</text>
+  <text x="1000" y="504" text-anchor="middle" font-size="10.5" fill="#CF4F33">NOT connected · no login</text>
+  <text x="1000" y="520" text-anchor="middle" font-size="10.5" fill="#CF4F33">anyone with the link can write</text>
+  <line x1="1000" y1="460" x2="1000" y2="442" stroke="#CF4F33" stroke-width="2" marker-end="url(#aR)"/>
+
+  <!-- levanto data -->
+  <rect x="900" y="566" width="200" height="54" rx="12" fill="#fff" stroke="#E8E3D6"/>
+  <text x="1000" y="588" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1B1A17">"New Base" sheet</text>
+  <text x="1000" y="606" text-anchor="middle" font-size="10.5" fill="#CF4F33">public · password hashes</text>
+  <path d="M310 522 L310 650 L1000 650 L1000 622" fill="none" stroke="#4F9D69" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#aG)"/>
+  <text x="640" y="668" text-anchor="middle" font-size="10.5" fill="#2E6B43">Levanto badge: hub reads Grade Alerts every 5 min (read-only)</text>
+</svg>
+<div class="legend">
+  <span><i style="background:#D9A52C"></i>① launch pass: signed with that app's secret, 90 s, single use</span>
+  <span><i style="background:#3A6EA5"></i>② hub → app: signed POST (provision · mode · counts · meta · listUsers)</span>
+  <span><i style="background:#4F9D69"></i>③ app → hub: signed POST (verify a password · list users for "Assign to")</span>
+  <span><i style="background:#CF4F33"></i>unprotected writer</span>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="verify"><span class="n">2</span>Sign-in and tile tap: who verifies what</h2>
+<p class="sub">Read top to bottom. Every check is on a server: the phone is never trusted, it only carries tokens.</p>
+
+<div class="svgcard">
+<svg viewBox="0 0 1100 640" role="img" aria-label="Sign-in and launch sequence">
+  <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1B1A17"/></marker></defs>
+  <g font-size="12.5" font-weight="800" text-anchor="middle" fill="#1B1A17">
+    <rect x="45" y="14" width="130" height="34" rx="9" fill="#fff" stroke="#E8E3D6"/><text x="110" y="36">Phone</text>
+    <rect x="265" y="14" width="130" height="34" rx="9" fill="#232220"/><text x="330" y="36" fill="#F2C14E">Hub (Code.js)</text>
+    <rect x="485" y="14" width="130" height="34" rx="9" fill="#FBEFCB" stroke="#EED9A2"/><text x="550" y="36">Master sheet</text>
+    <rect x="705" y="14" width="130" height="34" rx="9" fill="#fff" stroke="#E8E3D6"/><text x="770" y="36">App (Portal.js)</text>
+    <rect x="925" y="14" width="130" height="34" rx="9" fill="#FBEFCB" stroke="#EED9A2"/><text x="990" y="36">App's sheet</text>
+  </g>
+  <g class="lane"><line x1="110" y1="50" x2="110" y2="625"/><line x1="330" y1="50" x2="330" y2="625"/><line x1="550" y1="50" x2="550" y2="625"/><line x1="770" y1="50" x2="770" y2="625"/><line x1="990" y1="50" x2="990" y2="625"/></g>
+  <g stroke="#1B1A17" stroke-width="1.6" fill="none">
+    <line x1="112" y1="85" x2="326" y2="85" marker-end="url(#s1)"/>
+    <line x1="332" y1="122" x2="546" y2="122" marker-end="url(#s1)"/>
+    <line x1="328" y1="198" x2="114" y2="198" marker-end="url(#s1)"/>
+    <line x1="112" y1="250" x2="326" y2="250" marker-end="url(#s1)"/>
+    <line x1="328" y1="330" x2="114" y2="330" marker-end="url(#s1)"/>
+    <line x1="112" y1="372" x2="766" y2="372" marker-end="url(#s1)"/>
+    <line x1="772" y1="450" x2="986" y2="450" marker-end="url(#s1)"/>
+    <line x1="768" y1="490" x2="114" y2="490" marker-end="url(#s1)"/>
+    <line x1="112" y1="545" x2="766" y2="545" marker-end="url(#s1)"/>
+    <line x1="772" y1="590" x2="986" y2="590" marker-end="url(#s1)"/>
+  </g>
+  <g font-size="11.5" fill="#1B1A17">
+    <text x="120" y="78">1  login(username / phone / email, password)</text>
+    <text x="340" y="115">2  read Users (cached 60 s)</text>
+    <rect x="340" y="134" width="300" height="46" rx="8" fill="#E1F0E6"/>
+    <text x="350" y="152" font-size="11">3  hash = HMAC-SHA256(salt + password, PEPPER) ×151</text>
+    <text x="350" y="169" font-size="11">    5 wrong tries → locked 10 min · inactive → refused</text>
+    <text x="120" y="191">4  session token (signed with HUB_SECRET, 12 h) + home screen</text>
+    <text x="120" y="243">5  tap a tile → launchApp(session, app)</text>
+    <rect x="340" y="262" width="330" height="54" rx="8" fill="#E1F0E6"/>
+    <text x="350" y="280" font-size="11">6  token signature valid · user still active · password unchanged</text>
+    <text x="350" y="297" font-size="11">    Access ✓ for this app · app has APP_SECRET · logs OPEN</text>
+    <text x="120" y="323">7  app URL + ?pt=pass  (claims: username, name, id-in-app, role, site, doer)</text>
+    <text x="120" y="365">8  the app opens in the portal's frame:  GET /exec?pt=…</text>
+    <rect x="780" y="384" width="300" height="54" rx="8" fill="#E1F0E6"/>
+    <text x="790" y="402" font-size="11">9  pass signed with PORTAL_SECRET · right app id</text>
+    <text x="790" y="419" font-size="11">    not expired (90 s) · not reused (cache)</text>
+    <text x="780" y="443">10  create session (Indent Sessions · Fuel _AUTH · cache)</text>
+    <text x="120" y="483">11  page + window.PORTAL.boot = { token, user }  → no login screen</text>
+    <text x="120" y="538">12  every action: google.script.run.fn(token, …)</text>
+    <text x="780" y="583">13  check session (section 3) → read / write rows</text>
+  </g>
+</svg>
+</div>
+
+<div class="grid2">
+  <div class="card flowcard" style="margin:0">
+    <h4>Own link, switch OFF (direct login)</h4>
+    <ol>
+      <li>The app's login form sends username/phone + password to its own server.</li>
+      <li>The app calls the hub: <span class="k">POST ?portal=1 · op verify</span>, signed with its secret.</li>
+      <li>The hub checks the signature, that the switch is OFF, the password (same lockout), and the Access ✓.</li>
+      <li>The hub returns the claims → the app creates its own session ("D" token / direct).</li>
+    </ol>
+  </div>
+  <div class="card flowcard" style="margin:0">
+    <h4>Own link, switch ON</h4>
+    <ol>
+      <li>No pass in the URL → the app shows "Open through GGM Portal".</li>
+      <li>Its login form is refused (the app's PORTAL_ONLY = true, and the hub also refuses).</li>
+      <li>Only sessions started from a launch pass are accepted on every request.</li>
+      <li>Emergency: set PORTAL_ONLY = false in that app's Script properties.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="session"><span class="n">3</span>The check on every request</h2>
+<p class="sub">What each app checks before it reads or writes anything (once connected).</p>
+<div class="tbl-wrap"><table class="t">
+<tr><th>App</th><th>Token kept in</th><th>Checked against</th><th>Session ends when</th></tr>
+<tr><td>Indent Flow</td><td>sessionStorage <span class="k">if_token</span></td><td>cache → Sessions tab → Users (Active); only <span class="k">P-</span>/<span class="k">D-</span> tokens once connected</td><td>12 h · logout · disabled by sync · switch ON (D-)</td></tr>
+<tr><td>Fuel &amp; Car Tasks</td><td>localStorage <span class="k">jpr_fleet_token</span></td><td>cache 5 min → _AUTH tab → Users (STATUS); only <span class="k">P</span>/<span class="k">D</span> once connected</td><td>12 h · logout · disabled by sync · switch ON (D)</td></tr>
+<tr><td>Assets · Staff · Main Admin · Newai · Tonk · Jaipur</td><td>localStorage (per app)</td><td>CacheService session → revoked list → epoch / switch; role / site / doer come from the session</td><td>6 h unused · disabled by sync · switch ON (direct ones) · connecting ends old logins</td></tr>
+<tr><td>Main Admin (extra)</td><td colspan="3">Given By = session username; "Assign to" must be a portal user with Staff Dashboard ✓ (hub directory, 5-min cache)</td></tr>
+<tr><td>Assets (extra)</td><td colspan="3">A SITE user can only dispatch from / receive at / cancel for their own site; BOSS sees all</td></tr>
+<tr><td>Jaipur (extra)</td><td colspan="3">A USER can only mark their own tasks done; admin panel needs role ADMIN</td></tr>
+<tr><td class="bad">Task Delegation</td><td class="bad" colspan="3">Nothing. No login; anyone with the link can call addNew, addNext, taskComplete, assignBuddyInSheet.</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="bg"><span class="n">4</span>Background jobs (hub triggers)</h2>
+<div class="grid2">
+  <div class="card flowcard" style="margin:0">
+    <h4>Every minute: sync (portalMinuteJob)</h4>
+    <ol>
+      <li>Retry the Portal-only switch for apps that did not confirm.</li>
+      <li>For each connected app: build "wanted" per user from Users + Access + App Logins.</li>
+      <li>Missing role / site / doer, or two users with the same id in an app → <b>BLOCKED</b> (not sent).</li>
+      <li>Changed rows only → <span class="k">op provision</span> (25 per call) → the app writes its own users / switches off.</li>
+      <li>Results → Sync tab (written only if something changed) → Access "SYNC" column. Log trimmed.</li>
+    </ol>
+  </div>
+  <div class="card flowcard" style="margin:0">
+    <h4>Every 5 min: badges · daily: dropdowns</h4>
+    <ol>
+      <li>Badges: <span class="k">op counts</span> to each app, 15 users per call, in parallel → cache + Badges tab.</li>
+      <li>Levanto: the hub reads "New Base" → Grade Alerts directly.</li>
+      <li>Closing an app refreshes that one number (cache only).</li>
+      <li>Daily 06:00: <span class="k">op meta</span> → Lists tab (roles, sites, doer names) → Access dropdowns rebuilt.</li>
+      <li>Sheet edit (onPortalEdit): hashes typed passwords, rebuilds Access on Users / Apps changes, clears the cache.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="write"><span class="n">5</span>From a dashboard entry to a sheet cell</h2>
+<p class="sub">Path = page action → server function → check → where it lands.</p>
+<div class="tbl-wrap"><table class="t">
+<tr><th>App · action</th><th>Server function</th><th>Check before writing</th><th>Lands in</th></tr>
+<tr><td>Indent · any step (raise, store, purchase, approve…)</td><td><span class="k">api(action)</span> → route_</td><td>requireAuth_ / requireRole_ (stage owner, site) · script lock</td><td>Indents, Stage_Timings, History, Stock_Logs, Transfers… (own sheet)</td></tr>
+<tr><td>Fuel · fuel entry</td><td><span class="k">submitFuelForm</span></td><td>session → "Filled by" = session username (page value ignored)</td><td>FUEL DETAIL DRIVERS A–L (B = username, I = login) · photos to Drive</td></tr>
+<tr><td>Fuel · service entry</td><td><span class="k">submitServiceForm</span></td><td>same</td><td>SERVICE COST A–H (B = username)</td></tr>
+<tr><td>Fuel · task done / shift / note</td><td>submitTaskCompletion · shiftTask · apiAddTaskNote</td><td>requireSession_</td><td>MASTER (LAST_DONE…) · Checklist grid · _NOTES</td></tr>
+<tr><td>Assets · dispatch / receive</td><td><span class="k">processWebTransfer / Receive</span></td><td>session · own site unless BOSS</td><td>Asset Transfer / Receiving Form (B = username) → runMasterSync → History + Present Assets List</td></tr>
+<tr><td>Assets · add asset · cancel transfer</td><td>processAddNewAsset · cancelAssetTransfer</td><td>session · own site</td><td>Present Assets List grid + vehicle sheet tab · deletes the transfer row</td></tr>
+<tr><td>Staff · submit delegated task</td><td><span class="k">markDelegatedTaskReview</span></td><td>session (name from session)</td><td>Delegated Master H (time), J = Review, O remark, P file</td></tr>
+<tr><td>Staff · routine done</td><td>markRoutineTaskDone(Batch)</td><td>session</td><td>Routine Monthly Master (JPR / NEWAI) H, I, L/M</td></tr>
+<tr><td>Staff · leave · self task · transfer</td><td>submitAdvancedLeave · createSelfTask · requestTransfer</td><td>session (employee = session name)</td><td>Leave row · Master new row · Master R (transfer-to)</td></tr>
+<tr><td>Main Admin · new task</td><td><span class="k">addNewTask</span></td><td>session · Given By = username · doer must be a portal Staff user</td><td>Master new row A–R + U–X "Created By / Last Action"</td></tr>
+<tr><td>Main Admin · approve / reject / edit</td><td>updateTaskStatusById · rejectTaskByBoss · editTask</td><td>session</td><td>Master J, R (date), N (remark) + V–X stamp</td></tr>
+<tr><td>Main Admin · leave · renewal · routine</td><td>updateLeaveStatus · actionRenewalTask · markRoutineDone</td><td>session</td><td>Leave I/J + K/L · Task Feed U/Q/V + W/X · Monthly Master H/I + P/Q</td></tr>
+<tr><td>Newai · save batch</td><td><span class="k">batchUpdateTasks</span></td><td>session · fallback match only on own name</td><td>Newai MM sheet H, I, L · Delegated Master H, J, O, P</td></tr>
+<tr><td>Tonk · driver / staff actions</td><td>drv_* · stf_* (background queue)</td><td>session</td><td>Tonk Monthly Master H, I, L, M · Delegated Master</td></tr>
+<tr><td>Jaipur · mark done</td><td><span class="k">markTaskAsDoneInSheet</span></td><td>session · task must be the user's (unless ADMIN)</td><td>Jaipur Master I, H → updateMonthlyMaster</td></tr>
+<tr><td class="bad">Task Delegation · add / revise / complete / buddy</td><td class="bad">addNew · addNext · taskComplete · assignBuddyInSheet</td><td class="bad">none</td><td class="bad">Delegated Master A–K, F/G/H/I, J, M, C/D</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="master"><span class="n">6</span>The shared task sheet (Delegated <span class="k">Master</span>)</h2>
+<p class="sub">Five apps read and write these columns by position. Orange = two apps disagree on what the column means.</p>
+<div class="tbl-wrap"><table class="t">
+<tr><th>Col</th><th>Meaning</th><th>Written by</th><th>Note</th></tr>
+<tr><td>A</td><td>Created</td><td>Task Delegation, Main Admin, Staff/Newai/Tonk self tasks</td><td></td></tr>
+<tr><td class="warn">B</td><td class="warn">Task ID</td><td class="warn">TD "TK-001", Main Admin "TK-101…", Newai self task plain number</td><td class="warn">Mixed formats; no shared lock → two apps can create the same ID</td></tr>
+<tr><td class="warn">C</td><td class="warn">Doer</td><td class="warn">TD "Name - 98290…", Main Admin exact Doer List name, transfer accept</td><td class="warn">Tasks are found by name matching: renaming someone hides their tasks</td></tr>
+<tr><td>D · E</td><td>Task · due date</td><td>all creators</td><td>E is text in some rows, a date in others</td></tr>
+<tr><td>F · G · I</td><td>Revision 1 · 2 · count</td><td>Task Delegation</td><td></td></tr>
+<tr><td class="warn">H</td><td class="warn">TD: latest revision · others: done-at time</td><td class="warn">Task Delegation; Staff / Newai / Tonk / Main Admin</td><td class="warn">Submitting work overwrites the revision date; revision date shows as "done at"</td></tr>
+<tr><td>J</td><td>Status</td><td>everyone</td><td>Pending · Review · Completed · Rejected · Week Shifted (Staff now hides Week Shifted)</td></tr>
+<tr><td>K</td><td>Given by</td><td>TD (Google email, often blank), Main Admin (username), "Self"</td><td></td></tr>
+<tr><td>L · M · N</td><td>Photo · done by · admin remark</td><td>Main Admin · TD · Main Admin</td><td></td></tr>
+<tr><td>O · P · Q</td><td>Staff remark · file · extra note</td><td>Staff, Newai, Tonk</td><td></td></tr>
+<tr><td class="warn">R</td><td class="warn">Main Admin / Tonk: status date · Staff: transfer-to</td><td class="warn">Main Admin, Tonk onEdit, Staff</td><td class="warn">A status change wipes / fakes a transfer request in the Staff app</td></tr>
+<tr><td class="warn">S</td><td class="warn">Transfer-to (Newai, Tonk)</td><td class="warn">Newai, Tonk</td><td class="warn">Transfers made in Staff (R) and Newai/Tonk (S) never see each other</td></tr>
+<tr><td>U–X</td><td>Created By · Last Action · By · At</td><td>Main Admin (new)</td><td>Only written where the header is empty or already matches</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="break"><span class="n">7</span>Changes that can break the system</h2>
+<div class="tbl-wrap"><table class="t">
+<tr><th>Change</th><th>What breaks</th><th>Safe way</th></tr>
+<tr><td class="bad">Insert, delete or move a column in any app sheet (Master, Monthly Master, Users, FUEL DETAIL DRIVERS, Present Assets List…)</td><td>Apps read and write by column <i>position</i>: data lands in the wrong column silently. Assets also uses fixed row ranges per site (rows 4–21, 25–39…)</td><td>Only add columns at the far right. Never insert rows inside the Assets site blocks.</td></tr>
+<tr><td class="bad">Rename a tab (Master, Users, Doer List, Leave, MM, Sessions, _AUTH…)</td><td>The app can't find it; errors or empty screens</td><td>Never rename; add new tabs instead.</td></tr>
+<tr><td class="bad">Delete or change HUB_SECRET / PEPPER in the hub</td><td>PEPPER: <b>every password stops working</b>. HUB_SECRET: everyone signed out.</td><td>Never touch them. "Set up / repair tabs" only creates them if missing.</td></tr>
+<tr><td class="bad">"Connect selected app" → NO (make a new secret) without pasting it into the app</td><td>That app's tiles, sync, badges and logins all fail</td><td>Choose YES (show existing) unless the secret leaked.</td></tr>
+<tr><td class="bad">"New deployment" instead of "New version"</td><td>New /exec URL: the hub's Apps tab, bookmarks and Telegram buttons point at old code (this is what happened with the Staff Dashboard: version 84 vs 83)</td><td>Manage deployments → Edit → New version, always.</td></tr>
+<tr><td class="bad"><span class="k">clasp push</span> from a folder that is missing a file, or after editing in the browser editor</td><td>A push replaces the whole project with the folder: files only in the editor are deleted (Jaipur's page was lost this way)</td><td>Pull into a scratch folder first and compare; keep this folder as the only source.</td></tr>
+<tr><td class="warn">Rename a person (Doer List, Master C, Users C, routine sheets)</td><td>Staff / Newai / Tonk / Jaipur find tasks by name: their tasks disappear or match someone else</td><td>Change the name everywhere at once, and the Doer name in the hub Access grid.</td></tr>
+<tr><td class="warn">Two hub users map to the same id in an app (same email, App Logins, doer)</td><td>Sync blocks both rows (by design) until fixed</td><td>Check the Sync tab after adding people.</td></tr>
+<tr><td class="warn">Add a status word (e.g. "Hold") in Master J</td><td>The task apps treat unknown words as Pending</td><td>Keep to Pending / Review / Completed / Rejected / Week Shifted, or ask for the code to learn it.</td></tr>
+<tr><td class="warn">Edit Access header rows 1–2 by hand, or reorder Users / Apps columns</td><td>The hub reads app columns from those headers; wrong ticks or lost access</td><td>Change apps in the Apps tab; the grid rebuilds itself.</td></tr>
+<tr><td class="warn">Portal-only ON while the hub is broken</td><td>Nobody can open any app</td><td>Emergency: PORTAL_ONLY = false in each app's Script properties.</td></tr>
+<tr><td class="warn">itadmin@ loses access to a sheet, or the account is suspended</td><td>Every app runs as itadmin@: everything stops</td><td>Keep itadmin@ as owner of all scripts and sheets.</td></tr>
+<tr><td class="warn">Many users at once</td><td>Google allows ~30 scripts running at once per account (all apps share itadmin@); trigger runtime 6 h/day</td><td>Raise the badge interval if "too many simultaneous invocations" appears.</td></tr>
+<tr><td class="warn">Task Delegation used alongside Main Admin</td><td>No login; clashing columns H, R/S; duplicate TK IDs; two <span class="k">doGet</span>s pick a page by file order</td><td>Connect it (sign-in, Given By, clean-up) or retire it in favour of Main Admin.</td></tr>
+<tr><td>Google drops a cache entry early</td><td>Someone has to sign in again or reopen the tile</td><td>Nothing to do; expected.</td></tr>
+</table></div>
+
+<p style="margin-top:36px;color:var(--ink-faint);font-size:12.5px">Built from the code in Main Dashboard/ on 4 Oct 2026 (hub, 8 connected apps, Task Delegation, Portal connector). Plan: main hub app/PORTAL_PLAN.html · steps: PORTAL_SETUP.md.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+const vm = require('vm'), fs = require('fs');
+const props = { PORTAL_SECRET: 's', PORTAL_APP_ID: 'FUEL', PORTAL_HUB_URL: 'https://hub/exec' };
+const HtmlService = { createHtmlOutput: h => ({ getContent: () => h, html: h }) };
+const ctx = vm.createContext({ HtmlService, PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, getProperties: () => Object.assign({}, props) }) }, JSON, String });
+vm.runInContext(fs.readFileSync(require('path').join(__dirname, '..', '..', 'portal_connector/Portal.js'), 'utf8'), ctx);
+const out = vm.runInContext(`portalInject_({ getContent: () => '<html><head><title>x</title></head><body></body></html>' }, { boot: { name: 'Evil </script><script>alert(1)</script>' + String.fromCharCode(8232) }, info: portalInfo_() })`, ctx);
+const h = out.html;
+const scripts = h.match(/<script>/g).length, closes = h.match(/<\/script>/g).length;
+const m = h.match(/<script>window\.PORTAL=([\s\S]*?);<\/script>/);
+const data = JSON.parse(m[1]);
+console.log(scripts === 2 && closes === 2 ? 'PASS only the portal + photo script tags' : 'FAIL script tags ' + scripts + '/' + closes);
+const kit = h.slice(h.indexOf(';</script>') + 10);
+console.log(/^<script>\(function portalPhotoKit_\(\)/.test(kit) && kit.split('</script>').length === 2 && kit.indexOf(')();</script><title>') > 0 ? 'PASS photo script injected whole, closes once' : 'FAIL photo script');
+console.log(data.boot.name.indexOf('</script>') > -1 ? 'PASS name survives intact after parse' : 'FAIL name changed');
+console.log(data.info.hubLink === 'https://hub/exec?app=FUEL' ? 'PASS hub link' : 'FAIL hub link ' + data.info.hubLink);
+console.log(h.indexOf('<head><script>window.PORTAL=') > -1 ? 'PASS injected right after <head>' : 'FAIL position');

@@ -1,0 +1,7 @@
+# Only the hub files go to the hub project (the plan stays local).
+**/**
+!Code.js
+!Index.html
+!appsscript.json
+
+!Photos.js

@@ -1,0 +1,6 @@
+# Only the hub files are pushed from this folder.
+# Each app is pushed from inside its own folder (it has its own .clasp.json).
+**/**
+!Code.js
+!Index.html
+!appsscript.json
