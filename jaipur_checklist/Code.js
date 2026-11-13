@@ -1,7 +1,7 @@
 /**
  * =========================================================================
  * GGM WORKSPACE - COMPLETE BULLETPROOF SYSTEM V16.4 
- * (Updated: Manual Monthly Master Refresh, 7 PM Daily Sync, No Deletion)
+ * (Updated: Manual Monthly Master Refresh, 7 PM Daily Sync, Root Cleanup)
  * =========================================================================
  */
 
@@ -10,6 +10,7 @@ function onOpen() {
   ui.createMenu('GGM Checklist')
     .addItem('🚀 Sync & Submit Updates', 'submitButtonClicked')
     .addItem('🔄 Force Sync Missing Tasks', 'forceSyncMissingTasks')
+    .addItem('🗑️ Delete Deleted Tasks', 'purgeDeletedTasksFast') // <-- New High-Speed Cleanup
     .addItem('🧹 Clean Duplicates & Orphans', 'cleanMasterSheets')
     .addItem('🔄 Refresh Monthly Master', 'updateMonthlyMaster') // Manual Refresh Button
     .addItem('👥 Assign Buddy', 'showAssignBuddyDialog')
@@ -893,4 +894,137 @@ function changeEmployee(direction) {
 
   // 4. Update cell N2 with the new name
   targetCell.setValue(names[newIndex]);
+}
+
+
+/**
+ * =========================================================================
+ * HIGH-SPEED ROOT PURGE FOR DELETED TASKS (Master & Monthly Master)
+ * =========================================================================
+ * Filters all 47,000+ rows in RAM in ~2-4 seconds.
+ * Permanently removes all 300+ occurrences across 'Master' and 'Monthly Master'
+ * for any task that has been deleted from 'Task List'.
+ */
+function purgeDeletedTasksFast() {
+  if (typeof portalAssertEditor_ === "function") { portalAssertEditor_(); } 
+  
+  const ui = SpreadsheetApp.getUi();
+  
+  const confirm = ui.alert(
+    "Confirm Delete Deleted Tasks",
+    "This will permanently delete all occurrences (all 300+ entries, whether Done, Past, or Pending) from both Master and Monthly Master for any task removed from 'Task List'.\n\nDo you want to proceed?",
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  const startTime = new Date().getTime();
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const taskSheet = ss.getSheetByName("Task List");
+    const masterSheet = ss.getSheetByName("Master");
+    const monthlySheet = ss.getSheetByName("Monthly Master");
+
+    if (!taskSheet || !masterSheet) {
+      ui.alert("Error", "Required sheet ('Task List' or 'Master') is missing.", ui.ButtonSet.OK);
+      return;
+    }
+
+    // 1. Collect all active task keys from 'Task List' (Task|Doer|Dept)
+    const taskData = taskSheet.getDataRange().getValues();
+    const activeTaskKeys = new Set();
+
+    for (let i = 1; i < taskData.length; i++) {
+      const tTask = String(taskData[i][0] || "").trim();
+      const tDoer = String(taskData[i][1] || "").trim();
+      const tDept = String(taskData[i][2] || "").trim();
+      if (tTask !== "" && tDoer !== "") {
+        activeTaskKeys.add(tTask + "|" + tDoer + "|" + tDept);
+      }
+    }
+
+    const colCount = 12;
+
+    // 2. Filter Master Sheet in memory (RAM)
+    const masterData = masterSheet.getDataRange().getValues();
+    let masterDeletedCount = 0;
+
+    if (masterData.length > 1) {
+      const cleanMasterData = [masterData[0].slice(0, colCount)]; // Keep headers
+
+      for (let i = 1; i < masterData.length; i++) {
+        const mDoer = String(masterData[i][0] || "").trim();
+        const mDept = String(masterData[i][2] || "").trim();
+        const mTask = String(masterData[i][5] || "").trim();
+
+        // Skip blank rows
+        if (mDoer === "" && mTask === "") continue;
+
+        const rowKey = mTask + "|" + mDoer + "|" + mDept;
+
+        if (activeTaskKeys.has(rowKey)) {
+          let row = masterData[i].slice(0, colCount);
+          while (row.length < colCount) row.push("");
+          cleanMasterData.push(row);
+        } else {
+          masterDeletedCount++;
+        }
+      }
+
+      // Bulk write: Clear and overwrite in a single operation
+      masterSheet.clearContents();
+      masterSheet.getRange(1, 1, cleanMasterData.length, colCount).setValues(cleanMasterData);
+
+      // Re-apply Status dropdown validation (Col I / Col 9)
+      if (cleanMasterData.length > 1) {
+        const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Done'], true).build();
+        masterSheet.getRange(2, 9, cleanMasterData.length - 1, 1).setDataValidation(rule);
+      }
+    }
+
+    // 3. Filter Monthly Master Sheet in memory (RAM)
+    let monthlyDeletedCount = 0;
+    if (monthlySheet && monthlySheet.getLastRow() > 1) {
+      const monthlyData = monthlySheet.getDataRange().getValues();
+      const cleanMonthlyData = [monthlyData[0].slice(0, colCount)];
+
+      for (let i = 1; i < monthlyData.length; i++) {
+        const mDoer = String(monthlyData[i][0] || "").trim();
+        const mDept = String(monthlyData[i][2] || "").trim();
+        const mTask = String(monthlyData[i][5] || "").trim();
+
+        if (mDoer === "" && mTask === "") continue;
+
+        const rowKey = mTask + "|" + mDoer + "|" + mDept;
+
+        if (activeTaskKeys.has(rowKey)) {
+          let row = monthlyData[i].slice(0, colCount);
+          while (row.length < colCount) row.push("");
+          cleanMonthlyData.push(row);
+        } else {
+          monthlyDeletedCount++;
+        }
+      }
+
+      monthlySheet.clearContents();
+      monthlySheet.getRange(1, 1, cleanMonthlyData.length, colCount).setValues(cleanMonthlyData);
+
+      if (cleanMonthlyData.length > 1) {
+        const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Done'], true).build();
+        monthlySheet.getRange(2, 9, cleanMonthlyData.length - 1, 1).setDataValidation(rule);
+      }
+    }
+
+    SpreadsheetApp.flush();
+    const elapsedSeconds = ((new Date().getTime() - startTime) / 1000).toFixed(1);
+
+    ui.alert(
+      "Cleanup Completed Successfully ✅",
+      `Deleted ${masterDeletedCount} rows from Master and ${monthlyDeletedCount} rows from Monthly Master in ${elapsedSeconds}s.`,
+      ui.ButtonSet.OK
+    );
+
+  } catch (error) {
+    ui.alert("Cleanup Error ❌", error.message, ui.ButtonSet.OK);
+  }
 }

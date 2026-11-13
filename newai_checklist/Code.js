@@ -4,7 +4,8 @@
  * 1. Targeted Cell Updates: Solves the infinite loading bug on large sheets (26k+ rows).
  * 2. Rapid Batch Processing Engine implemented.
  * 3. Fallback logic rewritten for lightning-fast matching.
- * 4. MM Sheet Integration (Reads & Writes exclusively to 'MM' for extreme speed).
+ * 4. Checklist tasks are read from and saved to Master (Routine.js). The 'MM' tab they used
+ *    to go to was removed on 31 Oct 2026, so saves were lost; see Routine.js.
  * 5. EXACT MATCHING everywhere (Display + Fallback Save) to completely prevent cross-staff data overwrites.
  * 6. Nightly Auto-Sync to Master & Monthly Rollover added.
  * 7. Force Sync Missing Tasks added with exact formatting and matching.
@@ -17,7 +18,7 @@ const SHEET_CACHE_TTL = 30;
 const USER_CACHE_TTL  = 15;   
 const CHUNK_SIZE      = 90000;
 const K_DEL = 'NEWAI_DEL_V5';
-const K_ROU = 'NEWAI_ROU_V5';
+const K_ROU = 'NEWAI_ROU_V6';   // SUMMARY only: checklist rows are cached per person (Routine.js)
 
 function _cache() { return CacheService.getScriptCache(); }
 
@@ -109,18 +110,9 @@ function _loadDelegated() {
 function _loadRoutine() {
   const hit = _cacheGet(K_ROU);
   if (hit) return hit;
-  const out = { master: [], summary: [] };
+  const out = { summary: [] };
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let m = ss.getSheetByName('MM'); // FETCH FROM FAST MM SHEET NOW
-    if (m && m.getLastRow() > 1) {
-       out.master = _readBlock(m, 2, 1, 12);
-    } else {
-       let ms = ss.getSheetByName('Master');
-       if (ms && ms.getLastRow() > 1) {
-           out.master = _readBlock(ms, 2, 1, 12);
-       }
-    }
     let s = ss.getSheetByName('SUMMARY');
     if (s && s.getLastRow() > 1) {
        out.summary = _readBlock(s, 1, 1, 30);
@@ -131,7 +123,7 @@ function _loadRoutine() {
 }
 
 function _invalidate(which) {
-  if (which === 'routine'   || which === 'all') _cacheDrop(K_ROU);
+  if (which === 'routine'   || which === 'all') { _cacheDrop(K_ROU); _rtReset(); }
   if (which === 'delegated' || which === 'all') _cacheDrop(K_DEL);
   _bumpVersion(); 
 }
@@ -1084,7 +1076,7 @@ function getAllTasksForUser_(userName, mobileNumber, forceFresh) {
   const searchName = String(userName || "").trim().toLowerCase();
   const searchMobile = String(mobileNumber || "").trim();
   
-  if (forceFresh === true) { _invalidate('all'); }
+  if (forceFresh === true) { _invalidate('delegated'); }   // checklist rows stay: saves patch them, sheet edits drop them
 
   const uKey = 'NEWAI_UR|' + searchName + '|' + _getVersion();
   if (forceFresh !== true) {
@@ -1134,12 +1126,12 @@ function getAllTasksForUser_(userName, mobileNumber, forceFresh) {
 
   try {
       const rouData = _loadRoutine();
-      if (rouData && rouData.master) {
-          const data = rouData.master;
+      if (rouData) {
+          const data = _rtLoad(_rtUserKeys(validNamesForMobile, searchMobile)).map(_rtAsRow);
           for (let i = 0; i < data.length; i++) {
             if (!data[i][0] || !_isNameMatch(data[i][0], searchName, validNamesForMobile, searchMobile)) continue; 
             
-            let tId = data[i][3] ? String(data[i][3]).trim() : ("ROW_" + (i + 2)); 
+            let tId = data[i][3] ? String(data[i][3]).trim() : ("ROW_" + data[i].rowNum); 
             let rawL = data[i][11] ? String(data[i][11]).trim() : ""; 
             let staffRemark = rawL; let staffFileUrl = "";
             
@@ -1286,7 +1278,7 @@ function getAllTasksForUser_(userName, mobileNumber, forceFresh) {
 }
 
 // ==========================================
-// BULLETPROOF TARGETED CELL BATCH UPDATE (WRITES EXCLUSIVELY TO 'MM')
+// BATCH UPDATE: delegated → Delegation sheet, checklist → Master (Routine.js)
 // ==========================================
 function batchUpdateTasks(token, tasks) {
   var sess = ckSessionOrNull_(token);
@@ -1316,12 +1308,16 @@ function batchUpdateTasks(token, tasks) {
     let tz = Session.getScriptTimeZone();
 
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let mmSheet = ss.getSheetByName('MM'); // FAST WRITING DIRECTLY TO MM
+    let master = ss.getSheetByName('Master');
+    let rtUser = _rtUser(sess.name, sess.mobile);
+    let doneAtUI = Utilities.formatDate(new Date(), tz, "dd/MM/yyyy hh:mm a");
     
     let delSheet = null;
     try { delSheet = SpreadsheetApp.openById(DELEGATED_SHEET_ID).getSheetByName('Master'); } catch(e){}
 
     let updatedCount = 0;
+    let missed = [];    // tasks that were NOT saved, with the reason: the app shows them, never "updated"
+    let anyDelegated = false;
 
     for(let i = 0; i < tasks.length; i++) {
       let t = tasks[i];
@@ -1334,8 +1330,10 @@ function batchUpdateTasks(token, tasks) {
       let finalFileStr = t.finalFileStr;
 
       // DELEGATED UPDATE
-      if (t.type === 'delegated' && delSheet) {
-         let row = _findTargetRow(delSheet, 'delegated', searchId, qTitle, qDoer, qDate, tz);
+      if (t.type === 'delegated') {
+         anyDelegated = true;
+         let row = delSheet ? _findTargetRow(delSheet, 'delegated', searchId, qTitle, qDoer, qDate, tz) : -1;
+         if (row < 1) missed.push({ taskId: t.taskId, why: delSheet ? 'This task is no longer in the sheet. Refresh and try again.' : 'Could not open the Delegation sheet.' });
          if (row > 0) {
             if (!isJustNote) {
                 delSheet.getRange(row, 8).setValue(exactTimeStr);
@@ -1347,36 +1345,38 @@ function batchUpdateTasks(token, tasks) {
          }
       }
       
-      // ROUTINE UPDATE (Writes only to MM Sheet)
+      // CHECKLIST UPDATE: the Master row with this Task ID (+ the same row in Monthly Master)
       else if (t.type === 'routine') {
-         let mmRow = mmSheet ? _findTargetRow(mmSheet, 'routine', searchId, qTitle, qDoer, qDate, tz) : -1;
-         let updatedAny = false;
-         
-         if (mmRow > 0 && mmSheet) {
-            if (!isJustNote) {
-                mmSheet.getRange(mmRow, 8).setValue(exactTimeStr);
-                mmSheet.getRange(mmRow, 9).setValue("Done");
-            }
-            
-            // Newai Checklist saves Files & Remarks BOTH in Column L (12)
-            let combinedNoteMM = []; 
-            if (remarkText) combinedNoteMM.push(remarkText); 
-            if (finalFileStr) combinedNoteMM.push(finalFileStr);
-            
-            if (combinedNoteMM.length > 0) {
-                let fRngMM = mmSheet.getRange(mmRow, 12); 
-                let existingLMM = String(fRngMM.getValue()).trim();
-                fRngMM.setValue(existingLMM ? existingLMM + "\n" + combinedNoteMM.join("\n") : combinedNoteMM.join("\n"));
-            }
-            updatedAny = true;
+         let hit = master ? _rtFindRow(master, searchId, qTitle, qDate, tz, rtUser) : { why: 'The Master tab is missing.' };
+         if (!hit.row) { missed.push({ taskId: t.taskId, why: hit.why }); continue; }
+         if (!isJustNote) {
+             let early = _rtTooEarly(hit, rtUser, tz);
+             if (early) { missed.push({ taskId: t.taskId, why: early }); continue; }
+             master.getRange(hit.row, 8, 1, 2).setValues([[exactTimeStr, "Done"]]);
          }
-         
-         if (updatedAny) updatedCount++;
+
+         // Newai Checklist saves Files & Remarks BOTH in Column L (12)
+         let combinedNote = [];
+         if (remarkText) combinedNote.push(remarkText);
+         if (finalFileStr) combinedNote.push(finalFileStr);
+         let newRemark = null;
+         if (combinedNote.length > 0) {
+             let existingL = String(hit.vals[11] || "").trim();
+             newRemark = existingL ? existingL + "\n" + combinedNote.join("\n") : combinedNote.join("\n");
+             master.getRange(hit.row, 12).setValue(newRemark);
+         }
+         _rtMirror(ss, String(hit.vals[3] || "").trim(), exactTimeStr, isJustNote ? null : "Done", newRemark);
+         _rtPatch(hit.vals[0], hit.row, isJustNote ? null : doneAtUI, isJustNote ? null : "Done", newRemark);
+         updatedCount++;
       }
     }
 
     SpreadsheetApp.flush();
-    _invalidate('all');
+    _invalidate(anyDelegated ? 'delegated' : 'none');   // checklist rows were patched in the cache above
+    if (missed.length) {
+      return { success: false, count: updatedCount, missed: missed,
+               message: (updatedCount ? updatedCount + ' saved. ' : '') + missed.length + ' not saved: ' + missed[0].why };
+    }
     return { success: true, count: updatedCount };
 
   } catch(e) {

@@ -1,30 +1,22 @@
 /**
  * ============================================================================
  *  G G MINERALS  —  DOCUMENT RENEWAL & TASK DELEGATION SYSTEM
- *  Google Apps Script for "Detail Filled Sheet"
+ *  Google Apps Script bound to the "Renewal Record" sheet.
+ *  Shared renewal logic (Feed Inputs, applying a renewal) is in RenewalCore.js.
  * ============================================================================
  */
 
 // ---------------------------------------------------------------- constants
 var FEED       = 'Task Feed';
-var LOG        = 'Renewal Log';
-var ENTRY_TABS = {
-  'VEH': 'Vehicle Documents',
-  'POL': 'Personal Policies',
-  'MIN': 'Mining Documents'
-};
 
 var FEED_FIRST_ROW = 5;
 var FEED_LAST_ROW  = 154;   // 150 display rows
 var F_ID = 2, F_TITLE = 5, F_ASSIGNEE = 7, F_RENEWED = 14, F_NEWDATE = 15, F_COST = 16, F_DONE = 17;
-var F_DOCLINK = 20, F_STATUS = 21, F_REMARK = 22;
+var F_DOCLINK = 20, F_STATUS = 21, F_REMARK = 22, F_ACTION_AT = 24;
 
-var LOG_FIRST_ROW = 5;
-var L_LOGGED = 2, L_DOCID = 3, L_PREV = 7, L_NEW = 8, L_RENEWED = 9, L_COST = 10, L_BY = 11, L_NOTE = 12;
-
-var E_FIRST_ROW = 5;
-var E_ID = 1, E_VALIDUNTIL = 7;
-var E_DOCLINK = 20;
+// Task Feed column → Feed Inputs field. These cells hold formulas that show the Feed Inputs row of
+// the document in column B; whatever is typed into them is moved to Feed Inputs (onEdit).
+var FEED_INPUT_COLS = { 14: 'renewedOn', 15: 'newValid', 16: 'cost', 17: 'done', 20: 'link', 21: 'status', 22: 'remark', 23: 'actionBy', 24: 'actionAt' };
 
 
 // ---------------------------------------------------------------- menu
@@ -36,8 +28,10 @@ function onOpen() {
     .addItem('📋  How many tasks are open?', 'showTaskCount')
     .addItem('📧  E-mail today\'s task list to me', 'emailTaskList')
     .addSeparator()
+    .addItem('🔧  Repair Task Feed (typed cells)', 'repairFeed')
     .addItem('⚙️  Re-run setup (checkboxes + menu)', 'setup')
     .addToUi();
+  try { repairFeed_(); } catch (e) {}   // viewers cannot write; editors get any stray typed cells saved
 }
 
 /** Run this once after pasting the script. */
@@ -59,49 +53,95 @@ function setup() {
 }
 
 
+// ---------------------------------------------------------------- Task Feed input cells
+/** The formula a Task Feed input cell holds: the value from Feed Inputs for the document in column B. */
+function feedFormulaR1C1_(col) {
+  var k = RC_FIELDS.indexOf(FEED_INPUT_COLS[col]) + 2;
+  var look = "INDEX('" + RC_INPUTS + "'!C" + k + ",MATCH(R[0]C2,'" + RC_INPUTS + "'!C1,0))";
+  if (col === F_DONE) return '=IF(R[0]C2="",FALSE,IFERROR(' + look + '=TRUE,FALSE))';
+  return '=IF(R[0]C2="","",IFERROR(IF(LEN(' + look + ')=0,"",' + look + '),""))';
+}
+
+/** Moves anything typed into the Task Feed input cells of rows r0.. / columns c0.. to Feed Inputs
+ *  (under the Doc ID in column B of that row) and puts the formulas back. Returns cells saved. */
+function captureFeedEdits_(feed, r0, nr, c0, nc) {
+  var rStart = Math.max(r0, FEED_FIRST_ROW), rEnd = Math.min(r0 + nr - 1, FEED_LAST_ROW);
+  if (rStart > rEnd) return 0;
+  var cols = Object.keys(FEED_INPUT_COLS).map(Number).filter(function (c) { return c >= c0 && c < c0 + nc; });
+  if (!cols.length) return 0;
+  var n = rEnd - rStart + 1, ss = feed.getParent();
+  var ids = feed.getRange(rStart, F_ID, n, 1).getValues();
+  var changes = {}, saved = 0;
+  cols.forEach(function (c) {
+    var rng = feed.getRange(rStart, c, n, 1), f = rng.getFormulasR1C1(), v = rng.getValues(), stray = false;
+    for (var i = 0; i < n; i++) {
+      if (f[i][0]) continue;
+      stray = true;
+      var id = String(ids[i][0] || '').trim();
+      if (!id) continue;
+      var val = v[i][0];
+      if (c === F_DONE) val = (val === true || String(val).trim().toUpperCase() === 'TRUE' || String(val).trim().toUpperCase() === 'DONE');
+      (changes[id] = changes[id] || {})[FEED_INPUT_COLS[c]] = val;
+      saved++;
+    }
+    if (stray) rng.setFormulaR1C1(feedFormulaR1C1_(c));
+  });
+  if (!saved) return 0;
+  var inputs = rcReadInputs_(ss);
+  Object.keys(changes).forEach(function (id) {
+    var ch = changes[id], cur = inputs[id] || {};
+    // an unticked box or emptied cell for a document with nothing saved yet: nothing to keep
+    if (!inputs[id] && Object.keys(ch).every(function (f) { return ch[f] === '' || ch[f] === false; })) return;
+    // Ticking DONE fills RENEWED ON with today when it is still empty
+    if (ch.done === true && !(ch.renewedOn instanceof Date) && !(cur.renewedOn instanceof Date)) {
+      var t = new Date(); ch.renewedOn = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    }
+    rcSetInputs_(ss, id, ch);
+  });
+  return saved;
+}
+
+function onEdit(e) {
+  if (!e || !e.range) return;
+  var sh = e.range.getSheet();
+  if (sh.getName() !== FEED) return;
+  captureFeedEdits_(sh, e.range.getRow(), e.range.getNumRows(), e.range.getColumn(), e.range.getNumColumns());
+}
+
+function repairFeed_() {
+  var feed = SpreadsheetApp.getActive().getSheetByName(FEED);
+  return feed ? captureFeedEdits_(feed, FEED_FIRST_ROW, FEED_LAST_ROW - FEED_FIRST_ROW + 1, F_RENEWED, F_ACTION_AT - F_RENEWED + 1) : 0;
+}
+
+function repairFeed() {
+  var n = repairFeed_();
+  SpreadsheetApp.getUi().alert(n ? n + ' typed cell(s) were saved under their document.' : 'The Task Feed is in order.');
+}
+
+
 // ---------------------------------------------------------------- main action
 function completeTickedRenewals() {
   var ss   = SpreadsheetApp.getActive();
   var ui   = SpreadsheetApp.getUi();
-  var feed = ss.getSheetByName(FEED);
-  var log  = ss.getSheetByName(LOG);
-  if (!feed || !log) { ui.alert('Task Feed or Renewal Log sheet is missing.'); return; }
+  if (!ss.getSheetByName(FEED) || !ss.getSheetByName(RC_LOG)) { ui.alert('Task Feed or Renewal Log sheet is missing.'); return; }
+  repairFeed_();
 
-  var nRows = FEED_LAST_ROW - FEED_FIRST_ROW + 1;
-  // Fetch up to Column V (Remark) to ensure we capture the Document Link, Status, and Remark data
-  var values = feed.getRange(FEED_FIRST_ROW, 1, nRows, F_REMARK).getValues();
-
-  // ---- 1. collect every ticked row into memory FIRST -----------------------
-  var jobs = [], problems = [];
-  for (var i = 0; i < values.length; i++) {
-    var row      = values[i];
-    var done     = row[F_DONE - 1];
-    var isTicked = (done === true) || (String(done).trim().toUpperCase() === 'DONE');
-    if (!isTicked) continue;
-
-    var sheetRow = FEED_FIRST_ROW + i;
-    var docId    = String(row[F_ID - 1] || '').trim();
-    var title    = String(row[F_TITLE - 1] || '');
-    var renewed  = row[F_RENEWED - 1];
-    var newDate  = row[F_NEWDATE - 1];
-    var cost     = row[F_COST - 1];
-    var docLink  = String(row[F_DOCLINK - 1] || '').trim();
-
-    if (!docId)              { problems.push('Row ' + sheetRow + ': ticked but the row is empty.'); continue; }
-    if (!(newDate instanceof Date)) {
-      problems.push('Row ' + sheetRow + ' (' + docId + '): NEW VALID UNTIL is missing or is not a date.');
-      continue;
-    }
-    if (!(renewed instanceof Date)) renewed = new Date();   // default to today
-
-    jobs.push({ feedRow: sheetRow, docId: docId, title: title,
-                renewed: renewed, newDate: newDate,
-                cost: (typeof cost === 'number' ? cost : 0),
-                docLink: docLink });
-  }
-
+  // ---- 1. every ticked document, checked before anything is written ----------
+  var inputs = rcReadInputs_(ss), jobs = [], problems = [];
+  Object.keys(inputs).forEach(function (id) {
+    var x = inputs[id];
+    if (x.done !== true) return;
+    var t = new Date();
+    var d = {
+      renewedOn: x.renewedOn instanceof Date ? x.renewedOn : new Date(t.getFullYear(), t.getMonth(), t.getDate()),
+      newValid: x.newValid, cost: typeof x.cost === 'number' ? x.cost : 0,
+      link: String(x.link || '').trim(), title: rcTitle_(ss, id)
+    };
+    var p = rcCheckRenewal_(ss, id, d);
+    if (p) problems.push(p); else jobs.push({ id: id, d: d });
+  });
   if (problems.length) {
-    ui.alert('Please fix these first:\n\n' + problems.join('\n'));
+    ui.alert('Nothing was changed. Please fix these first:\n\n' + problems.join('\n'));
     return;
   }
   if (!jobs.length) {
@@ -110,112 +150,25 @@ function completeTickedRenewals() {
     return;
   }
 
-  // ---- 2. cache each entry tab's Doc ID column -----------------------------
-  var idIndex = {};
-  for (var pfx in ENTRY_TABS) {
-    var sh = ss.getSheetByName(ENTRY_TABS[pfx]);
-    if (!sh) continue;
-    var last = sh.getLastRow();
-    if (last < E_FIRST_ROW) continue;
-    var ids = sh.getRange(E_FIRST_ROW, E_ID, last - E_FIRST_ROW + 1, 1).getValues();
-    for (var k = 0; k < ids.length; k++) {
-      var id = String(ids[k][0] || '').trim();
-      if (id) idIndex[id] = { sheet: sh, row: E_FIRST_ROW + k };
-    }
-  }
-
-  // ---- 3. find the first free line in the Renewal Log ----------------------
-  var logLast = log.getLastRow();
-  var logIds  = logLast >= LOG_FIRST_ROW
-      ? log.getRange(LOG_FIRST_ROW, L_DOCID, logLast - LOG_FIRST_ROW + 1, 1).getValues()
-      : [];
-  var nextLogRow = LOG_FIRST_ROW;
-  for (var m = 0; m < logIds.length; m++) {
-    if (String(logIds[m][0] || '').trim() !== '') nextLogRow = LOG_FIRST_ROW + m + 1;
-  }
-
-  // ---- 4. apply every job and build batch payload for log -------------------
-  var who  = Session.getActiveUser().getEmail() || 'unknown';
-  var now  = new Date();
-  var ok = 0, skipped = [];
-  var logDataPayload = [];
-
-  for (var j = 0; j < jobs.length; j++) {
-    var job = jobs[j];
-    var target = idIndex[job.docId];
-    if (!target) { skipped.push(job.docId + ' - not found on any entry tab'); continue; }
-
-    var validCell = target.sheet.getRange(target.row, E_VALIDUNTIL);
-    var previous  = validCell.getValue();
-
-    // Write the new expiry date back into the entry tab
-    validCell.setValue(job.newDate);
-    
-    // Write the Document Link back into the entry tab (Column T) if provided
-    if (job.docLink) {
-      target.sheet.getRange(target.row, E_DOCLINK).setValue(job.docLink);
-    }
-
-    // Accumulate the line for the Renewal Log
-    // Layout: [Timestamp, DocID, (blank, blank, blank), Prev Date, New Date, Renewed, Cost, By, Note]
-    // Since columns 4, 5, 6 are skipped, we just set the specific columns using an array or setValue
-    // Due to the gap, it's safer to keep the targeted setValues for the exact columns.
-    
-    // Asymmetric leap: Combining the log updates into fewer API calls where possible,
-    // but preserving exact column placement mapping.
-    log.getRange(nextLogRow, L_LOGGED ).setValue(now);
-    log.getRange(nextLogRow, L_DOCID  ).setValue(job.docId);
-    log.getRange(nextLogRow, L_PREV   ).setValue(previous);
-    log.getRange(nextLogRow, L_NEW    ).setValue(job.newDate);
-    log.getRange(nextLogRow, L_RENEWED).setValue(job.renewed);
-    log.getRange(nextLogRow, L_COST   ).setValue(job.cost);
-    log.getRange(nextLogRow, L_BY     ).setValue(who);
-    log.getRange(nextLogRow, L_NOTE   ).setValue(job.title);
-    
-    nextLogRow++;
-    ok++;
-  }
-
-  // ---- 5. clear the inputs in Task Feed on every row we handled ------------
-  for (var c = 0; c < jobs.length; c++) {
-    var rowToClear = jobs[c].feedRow;
-    
-    // Clear RENEWED ON, NEW VALID UNTIL, TOTAL COST (N:P)
-    feed.getRange(rowToClear, F_RENEWED, 1, 3).clearContent();
-    
-    // Properly uncheck the DONE box (Q) without breaking data validation
-    feed.getRange(rowToClear, F_DONE).uncheck();
-    
-    // Clear Documents Link, Status, Remark (T:V)
-    feed.getRange(rowToClear, F_DOCLINK, 1, 3).clearContent();
-  }
-
+  // ---- 2. apply each one; the new expiry is read back before it counts as done --
+  var who = Session.getActiveUser().getEmail() || 'unknown', done = [], failed = [];
+  jobs.forEach(function (j) {
+    try {
+      rcApplyRenewal_(ss, j.id, j.d, who);
+      rcClearInputs_(ss, j.id);
+      done.push(j.id + '  →  valid until ' + rcShow_(j.d.newValid));
+    } catch (e) { failed.push(e.message); }
+  });
   SpreadsheetApp.flush();
 
-  var msg = ok + ' renewal' + (ok === 1 ? '' : 's') + ' completed and logged.';
-  if (skipped.length) msg += '\n\nSkipped:\n' + skipped.join('\n');
-  msg += '\n\nThose tasks have left the Task Feed and will return automatically ' +
-         'when the next renewal falls due.';
+  var msg = done.length + ' renewal' + (done.length === 1 ? '' : 's') + ' completed and logged.';
+  if (done.length) msg += '\n\n' + done.join('\n') + '\n\nThey leave the Task Feed and return when the next renewal falls due.';
+  if (failed.length) msg += '\n\nNOT completed (still ticked):\n' + failed.join('\n');
   ui.alert(msg);
 }
 
 
 // ---------------------------------------------------------------- helpers
-/** Ticking DONE auto-fills RENEWED ON with today if it is empty. */
-function onEdit(e) {
-  if (!e || !e.range || !e.value) return; // Added safety check
-  var sh = e.range.getSheet();
-  if (sh.getName() !== FEED) return;
-  if (e.range.getColumn() !== F_DONE) return;
-  var row = e.range.getRow();
-  if (row < FEED_FIRST_ROW || row > FEED_LAST_ROW) return;
-
-  var ticked = (e.value === 'TRUE' || e.value === true || String(e.value).toUpperCase() === 'DONE');
-  if (!ticked) return;
-  var renewedCell = sh.getRange(row, F_RENEWED);
-  if (renewedCell.getValue() === '') renewedCell.setValue(new Date());
-}
-
 function countOpenTasks_() {
   var feed = SpreadsheetApp.getActive().getSheetByName(FEED);
   var ids  = feed.getRange(FEED_FIRST_ROW, F_ID, FEED_LAST_ROW - FEED_FIRST_ROW + 1, 1).getValues();

@@ -43,7 +43,7 @@ const PORTAL_CFG = {
 };
 
 const TABS = {
-  USERS:    { name: 'Users',      head: ['Username', 'Name', 'Phone', 'Active', 'Set Password', 'Password Hash', 'Salt', 'Last Login', 'Notes', 'Email', 'Password Set', 'Created', 'Portal Admin', 'Designation'] },
+  USERS:    { name: 'Users',      head: ['Username', 'Name', 'Phone', 'Active', 'Set Password', 'Password Hash', 'Salt', 'Last Login', 'Notes', 'Email', 'Password Set', 'Created', 'Portal Admin', 'Designation', 'Language'] },
   APPS:     { name: 'Apps',       head: ['App ID', 'Name', 'Icon', 'Color', 'URL', 'Active', 'Order', 'Match By', 'Notes', 'Type', 'Fields', 'Badges', 'Sheet ID'] },
   ACCESS:   { name: 'Access',     head: ['USER', ''], built: true },   // two header rows, built by syncAccess_()
   DESIGNATIONS: { name: 'Designations', head: ['DESIGNATION'], built: true },   // built by syncDesignations_()
@@ -60,7 +60,7 @@ const TABS = {
 };
 
 // Column positions (0-based) — must match the heads above
-const U = { USER: 0, NAME: 1, PHONE: 2, ACTIVE: 3, SETPW: 4, HASH: 5, SALT: 6, LAST: 7, NOTES: 8, EMAIL: 9, PWSET: 10, CREATED: 11, ADMIN: 12, DESIG: 13 };
+const U = { USER: 0, NAME: 1, PHONE: 2, ACTIVE: 3, SETPW: 4, HASH: 5, SALT: 6, LAST: 7, NOTES: 8, EMAIL: 9, PWSET: 10, CREATED: 11, ADMIN: 12, DESIG: 13, LANG: 14 };
 const A = { ID: 0, NAME: 1, ICON: 2, COLOR: 3, URL: 4, ACTIVE: 5, ORDER: 6, MATCH: 7, NOTES: 8, TYPE: 9, FIELDS: 10, BADGES: 11, SHEET: 12 };
 const L = { USER: 0, APP: 1, LOCAL: 2, ROLE: 3 };
 
@@ -70,7 +70,7 @@ const FIELD_LABEL = { role: 'Role', site: 'Site', doer: 'Doer name' };
 const BADGE_WORDS = {
   INDENT: 'waiting on you', FUEL: 'due', ASSETS: 'to receive', STAFF: 'pending',
   MAINADMIN: 'to review', LEVANTO: 'need attention', NEWAI_TASKS: 'pending', TONK_TASKS: 'pending', JAIPUR_TASKS: 'pending',
-  DELEGATION: 'to follow up',
+  DELEGATION: 'to follow up', ATTENDANCE: 'to mark or check',
   // the App IDs used in the live Apps tab
   PURCHASE: 'waiting on you', 'STAFF DASHBOARD': 'pending', 'MAIN ADMIN': 'to review',
   'JAIPUR CHECKLIST': 'pending', 'NEWAI CHECKLIST': 'pending', 'TONK CHECKLIST': 'pending'
@@ -89,6 +89,7 @@ const DEFAULT_APPS = [
   ['TONK_TASKS', 'Tonk Checklist', '🗂️', '#BE185D', '', true, 7, 'Doer name', 'folder tonk_checklist · Role = DRIVER or STAFF screen', 'CONNECTED', 'role,doer', true, ''],
   ['JAIPUR_TASKS', 'Jaipur Checklist', '📝', '#0F766E', '', true, 8, 'Doer name', 'folder jaipur_checklist · Role USER (needs doer) or ADMIN', 'CONNECTED', 'role,doer', true, ''],
   ['DELEGATION', 'Task Delegation', '📌', '#1D4ED8', '', true, 12, 'Username', 'folder task delegation · v2 login (Portal Users tab in the Delegated sheet)', 'CONNECTED', '', true, '1tEUckPww1GiD-PgP7yxMxt70W1Q-ueoUGXdI8_-Aq8A'],
+  ['ATTENDANCE', 'Attendance', 'users', '#65A30D', 'https://script.google.com/macros/s/AKfycbwwDXQ9YSe28Hx9hpuiEG-StKcczsHdnSjwmigfdXpMRQqlM6CTrNgElQQYGXjvzJZL8w/exec', true, 13, 'Username', 'folder employee_attendance · v2 login (Portal Users tab in the Employee Attendance sheet) · Role Supervisor needs a Site; HR/Admin blank site = all sites', 'CONNECTED', 'role,site', true, '1Msf0vgketMqVUvd_f_CXOI_YejatEro8iM9BrhGtJVs'],
   ['MINES', 'Mines Dashboard', 'mine', '#57534E', 'https://script.google.com/macros/s/AKfycbwFb2igRK_NkLwrWbjohB8mCFZGwTM2g1BE7k3uTYwkQ5UWR6e034M2AYCLsEECFLiegg/exec', true, 9, 'Username', 'public link', 'LINK', '', false, ''],
   ['COLLECTION', 'Collection Dashboard', 'wallet', '#9A3412', 'https://script.google.com/macros/s/AKfycbxo81rUG8fcE8IhD_iYFTc2haI1y37QIKCulwYlIfy62yIx_tz34VOaCYWg8X8NdnXu/exec', true, 10, 'Username', 'public link', 'LINK', '', false, ''],
   ['LEVANTO', 'Levanto Production', 'factory', '#1F2937', 'https://script.google.com/macros/s/AKfycbw2Gu-OCMbkCj3oDa5prBNQc_9UR3kFfK8c0aRnA2Hbdvh0hjC7nnDz03WbVe-jSZQ/exec', true, 11, 'Username', 'public link · badge read from its sheet', 'LINK', '', true, '']
@@ -196,6 +197,22 @@ function launchApp(session, appId, why) {
 }
 
 /** Change own password from the portal. Signs out every other phone of this user. */
+/** EN / Hindi switch in the portal. Saved on the person's row (Users → Language), so every
+ *  phone they sign in on, and every app they open from the portal, follows it. */
+function setLanguage(session, lang) {
+  const user = requireSession_(session);
+  lang = lang === 'hi' ? 'hi' : 'en';
+  withLock_(function () {
+    const sh = sheet_(TABS.USERS);
+    const head = sh.getRange(1, U.LANG + 1);
+    if (!String(head.getValue()).trim()) head.setValue('Language').setFontWeight('bold');
+    sh.getRange(user.row, U.LANG + 1).setValue(lang === 'hi' ? 'Hindi' : 'English');
+  });
+  forgetTabs_();
+  log_(user.username, 'LANGUAGE', '', lang);
+  return { lang: lang };
+}
+
 function changePassword(session, oldPw, newPw) {
   const user = requireSession_(session);
   oldPw = String(oldPw || '');
@@ -475,7 +492,8 @@ function claimsFor_(user, app, acc) {
     s: acc.site || '',
     d: acc.doer || '',
     e: user.email || '',
-    p: user.phone || ''
+    p: user.phone || '',
+    lg: user.lang || 'en'   // the language the person chose in the portal; apps open in it
   };
 }
 
@@ -586,7 +604,8 @@ function userFromRow_(r, i) {
     salt: String(r[U.SALT] || ''),
     email: String(r[U.EMAIL] || '').trim(),
     admin: isOn_(r[U.ADMIN]),
-    designation: String(r[U.DESIG] || '').trim()
+    designation: String(r[U.DESIG] || '').trim(),
+    lang: /^(hi|hindi|हि)/i.test(String(r[U.LANG] || '').trim()) ? 'hi' : 'en'   // Language column: Hindi / English
   };
 }
 
@@ -858,7 +877,7 @@ function buildHome_(user) {
     });
   let me = null;   // the home screen must open even if photos cannot be read
   try { me = photoList_().filter(function (p) { return p.u.toLowerCase() === user.username.toLowerCase(); })[0]; } catch (e) {}
-  return { user: { username: user.username, name: user.name, admin: user.admin, designation: user.designation, photo: me ? me.t : '' }, apps: apps,
+  return { user: { username: user.username, name: user.name, admin: user.admin, designation: user.designation, photo: me ? me.t : '', lang: user.lang }, apps: apps,
            sheets: linkItemsFor_('sheet', user.username), forms: linkItemsFor_('form', user.username) };
 }
 

@@ -195,6 +195,7 @@ function checklistLayout_(cSheet) {
 
   var map = {};
   var currentMonth = null;
+  var blocks = [];   // [{ month, start, end }] in column order (1-based columns)
 
   for (var c2 = 0; c2 < lastCol; c2++) {
     if (monthCells[c2] !== null) currentMonth = monthCells[c2];
@@ -203,8 +204,11 @@ function checklistLayout_(cSheet) {
     if (currentMonth !== null && /^\d{1,2}$/.test(dv)) {
       var day = +dv;
       if (day >= 1 && day <= 31) {
-        var key = currentMonth + '-' + day;
-        if (!map[key]) map[key] = c2 + 1;
+        // A month name comes round again every year: the block further right is the newer one.
+        map[currentMonth + '-' + day] = c2 + 1;
+        var b = blocks[blocks.length - 1];
+        if (!b || b.month !== currentMonth || day === 1 && b.end < c2) blocks.push({ month: currentMonth, start: c2 + 1, end: c2 + 1 });
+        else b.end = c2 + 1;
       }
     }
   }
@@ -224,8 +228,68 @@ function checklistLayout_(cSheet) {
     dayRow   : dayIdx + 1,
     dataStart: dayIdx + 2,
     map      : map,
-    mapped   : mapped
+    mapped   : mapped,
+    blocks   : blocks
   };
+}
+
+/**
+ * Adds month blocks to the right of the Checklist until the month of `dateObj`
+ * is there: one blank spacer column, the month name merged above, day numbers
+ * 1..N below, the previous month's formatting and widths copied across. The
+ * calendar used to stop at the last month someone built by hand (31 Oct 2026),
+ * so every write after it failed. Returns the months added, e.g. ['NOVEMBER'].
+ */
+function ensureChecklistMonth_(cSheet, dateObj) {
+  var layout = checklistLayout_(cSheet);
+  if (!layout || !layout.blocks.length) return [];
+  var last = layout.blocks[layout.blocks.length - 1];
+  var target = dateObj.getMonth();
+  var steps = (target - last.month + 12) % 12;
+  if (steps === 0 || steps > 2) return [];       // there already, or not a month that follows (never guesses a year back)
+  var added = [];
+  for (var k = 1; k <= steps; k++) {
+    var month = (last.month + k) % 12;
+    var year = dateObj.getFullYear() - (month > target ? 1 : 0);
+    last = appendChecklistMonth_(cSheet, layout, last, month, year);
+    added.push(CHECKLIST_MONTH_NAMES_[month]);
+  }
+  SpreadsheetApp.flush();
+  return added;
+}
+
+var CHECKLIST_MONTH_NAMES_ = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+
+function appendChecklistMonth_(cSheet, layout, prev, month, year) {
+  var days  = new Date(year, month + 1, 0).getDate();
+  var start = prev.end + 2;                       // one spacer column, like between the existing months
+  var end   = start + days - 1;
+  if (cSheet.getMaxColumns() < end + 1) cSheet.insertColumnsAfter(cSheet.getMaxColumns(), end + 1 - cSheet.getMaxColumns());
+  var rows = Math.max(cSheet.getLastRow(), layout.dataStart);
+  var width = Math.min(days, prev.end - prev.start + 1);
+
+  // the previous month's look, from the day-number row down (the merged header is styled below)
+  var body = rows - layout.dayRow + 1;
+  cSheet.getRange(layout.dayRow, prev.start, body, width).copyTo(cSheet.getRange(layout.dayRow, start, body, width), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  if (days > width) cSheet.getRange(layout.dayRow, prev.end, body, 1).copyTo(cSheet.getRange(layout.dayRow, start + width, body, days - width), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  var ph = cSheet.getRange(layout.monthRow, prev.start);
+  var look = { bg: ph.getBackground(), fc: ph.getFontColor(), fw: ph.getFontWeight(), fs: ph.getFontSize(), ff: ph.getFontFamily() };
+  var w = cSheet.getColumnWidth(prev.start);
+  cSheet.setColumnWidths(start, days, w);
+  cSheet.setColumnWidth(start - 1, cSheet.getColumnWidth(prev.start - 1 > 0 ? prev.start - 1 : prev.start));
+
+  // month name over the block, day numbers under it, nothing in the task rows yet
+  var head = cSheet.getRange(layout.monthRow, start, layout.dayRow - layout.monthRow, days);
+  head.breakApart();
+  head.merge().setValue(CHECKLIST_MONTH_NAMES_[month])   // every header row above the day numbers, like the months before
+    .setHorizontalAlignment('center').setVerticalAlignment('middle')
+    .setBackground(look.bg).setFontColor(look.fc).setFontWeight(look.fw).setFontSize(look.fs).setFontFamily(look.ff);
+  var nums = [];
+  for (var d = 1; d <= days; d++) nums.push(d);
+  cSheet.getRange(layout.dayRow, start, 1, days).setValues([nums]);
+  if (rows >= layout.dataStart) cSheet.getRange(layout.dataStart, start, rows - layout.dataStart + 1, days).clearContent();
+  Logger.log('Checklist: added ' + CHECKLIST_MONTH_NAMES_[month] + ' ' + year + ' in columns ' + start + '-' + end);
+  return { month: month, start: start, end: end };
 }
 
 /** Column number for a given Date in the checklist grid, or 0. */

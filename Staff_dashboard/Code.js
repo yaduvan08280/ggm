@@ -132,6 +132,8 @@ function _loadRoutine() {
   return out;
 }
 
+// Unused since 4 Nov 2026: Newai checklist tasks now come from the Newai Master (NewaiRoutine.js).
+// Monthly Master is rebuilt from Master every night, so ticks saved only there were lost.
 function _loadNewaiRoutine() {
   const hit = _cacheGet(K_ROU_NEWAI);
   if (hit) return hit;
@@ -161,7 +163,7 @@ function _loadRenewals() {
 }
 
 function _invalidate(which) {
-  if (which === 'routine'   || which === 'all') { _cacheDrop(K_ROU); _cacheDrop(K_ROU_NEWAI); }
+  if (which === 'routine'   || which === 'all') _cacheDrop(K_ROU);   // the Newai checklist copy is separate (NewaiRoutine.js)
   if (which === 'delegated' || which === 'all') _cacheDrop(K_DEL);
   if (which === 'renewal'   || which === 'all') _cacheDrop(K_REN);
   if (which === 'leave'     || which === 'all') _cacheDrop(K_LEV);
@@ -324,10 +326,12 @@ function mobileLogin_(mobile, password) {
 function getAllTasksForUser(token, userNameIgnored, forceFresh) {
   var sess = staffSessionOrNull_(token);
   if (!sess) return { sessionExpired: true };
-  return getAllTasksForUser_(sess.name, forceFresh);
+  return getAllTasksForUser_(sess.name, forceFresh, sess.full, sess.phone);
 }
 
-function getAllTasksForUser_(userName, forceFresh) {
+/** doerFull / phone: the exact doer name ("NEWAI - SONU (CDE PLANT) - 79…") and portal phone,
+ *  used to find the person's Newai checklist rows (NewaiRoutine.js). */
+function getAllTasksForUser_(userName, forceFresh, doerFull, phone) {
   const searchName = String(userName || "").trim().toLowerCase();
   const firstName = searchName.split(" ")[0]; 
 
@@ -388,10 +392,10 @@ function getAllTasksForUser_(userName, forceFresh) {
     return (dw.length === 1 && dw[0] === firstName) || (myWords.length === 1 && dw.indexOf(firstName) > -1);
   };
 
-  function processRoutineData(rouData, locationPrefix, locName) {
+  function processRoutineData(rouData, locationPrefix, locName, preMatched) {
       const data = rouData.master;
       for (let i = 0; i < data.length; i++) {
-        if (!data[i][0] || !isNameMatch(data[i][0])) continue; 
+        if (!data[i][0] || (!preMatched && !isNameMatch(data[i][0]))) continue; 
 
         let tId = locationPrefix + (data[i][3] ? String(data[i][3]).trim() : ("ROW_" + (i + 2))); 
         let staffRemark = data[i][11] ? String(data[i][11]).trim() : ""; 
@@ -461,8 +465,15 @@ function getAllTasksForUser_(userName, forceFresh) {
       }
   }
 
-  try { processRoutineData(_loadRoutine(), "JPR_", "jaipur"); } catch(e) {}
-  if (isPeon) { try { processRoutineData(_loadNewaiRoutine(), "NEWAI_", "newai"); } catch(e) {} }
+  // A Newai person's checklist is the Newai one: matching their name against the Jaipur
+  // sheet only picked up other people's rows (same first name).
+  const doer = String(doerFull || userName || "");
+  const isNewaiDoer = /^\s*NEWAI\s*-/i.test(doer);
+  if (!isNewaiDoer || isPeon) { try { processRoutineData(_loadRoutine(), "JPR_", "jaipur"); } catch(e) {} }
+  if (_nwWanted(doer, isPeon)) {
+      try { processRoutineData({ master: _nwLoad(doer, phone).recs.map(_nwAsRow), summary: [] }, "NEWAI_", "newai", true); }
+      catch(e) { console.error('Newai checklist: ' + e); result.error = "Newai checklist could not be loaded. Pull to refresh."; }
+  }
 
   try {
       const del = _loadDelegated();
@@ -607,7 +618,12 @@ function markRoutineTaskDone(token, taskId, fileDataArray) {
       let exactTimeStr = Utilities.formatDate(new Date(), "Asia/Kolkata", "dd/MM/yyyy HH:mm:ss"); 
       let isNewai = String(taskId).includes("NEWAI_");
       let cleanId = String(taskId).replace("NEWAI_", "").replace("JPR_", "").trim().toUpperCase();
-      let sheet = SpreadsheetApp.openById(isNewai ? NEWAI_ROUTINE_SHEET_ID : ROUTINE_SHEET_ID).getSheetByName("Monthly Master");
+      if (isNewai) {
+          let nw = _nwSave(sess, [{ id: cleanId, done: true, files: finalFileStr }]);
+          _bumpVersion();
+          return nw.saved ? { success: true } : { success: false, message: nw.missed[0].why };
+      }
+      let sheet = SpreadsheetApp.openById(ROUTINE_SHEET_ID).getSheetByName("Monthly Master");
 
       let r = _getFastRow(sheet, "D", cleanId);
       if (r > 1) {
@@ -632,23 +648,29 @@ function markRoutineTaskDoneBatch(token, taskIdsArray) {
   try {
     let exactTimeStr = Utilities.formatDate(new Date(), "Asia/Kolkata", "dd/MM/yyyy HH:mm:ss"); 
     let updatedCount = 0;
-    
-    const processSheetBulk = (sheetId, idsList) => {
-        if (!idsList || idsList.length === 0) return;
-        let sheet = SpreadsheetApp.openById(sheetId).getSheetByName("Monthly Master");
-        idsList.forEach(id => {
-            let r = _getFastRow(sheet, "D", id);
-            if(r > 1) { sheet.getRange(r, 8, 1, 2).setValues([[exactTimeStr, "Done"]]); updatedCount++; }
-        });
-    };
+    let missed = [];    // not saved, with the reason: the page puts these back and says why
 
     let jprIds = taskIdsArray.filter(id => !String(id).includes("NEWAI_")).map(id => String(id).replace("JPR_", "").trim().toUpperCase());
     let newaiIds = taskIdsArray.filter(id => String(id).includes("NEWAI_")).map(id => String(id).replace("NEWAI_", "").trim().toUpperCase());
 
-    processSheetBulk(ROUTINE_SHEET_ID, jprIds);
-    processSheetBulk(NEWAI_ROUTINE_SHEET_ID, newaiIds);
-
-    if (updatedCount > 0) { SpreadsheetApp.flush(); _invalidate('routine'); }
+    if (jprIds.length) {
+        let sheet = SpreadsheetApp.openById(ROUTINE_SHEET_ID).getSheetByName("Monthly Master");
+        jprIds.forEach(id => {
+            let r = _getFastRow(sheet, "D", id);
+            if (r > 1) { sheet.getRange(r, 8, 1, 2).setValues([[exactTimeStr, "Done"]]); updatedCount++; }
+            else missed.push({ taskId: "JPR_" + id, why: "This task is no longer in the sheet. Refresh and try again." });
+        });
+        if (updatedCount > 0) { SpreadsheetApp.flush(); _invalidate('routine'); }
+    }
+    if (newaiIds.length) {
+        let nw = _nwSave(sess, newaiIds.map(id => ({ id: id, done: true })));
+        updatedCount += nw.saved; missed = missed.concat(nw.missed);
+        _bumpVersion();
+    }
+    if (missed.length) {
+        return { success: false, updated: updatedCount, missed: missed,
+                 message: (updatedCount ? updatedCount + " saved. " : "") + missed.length + " not saved: " + missed[0].why };
+    }
     return { success: true, updated: updatedCount };
   } catch(e) { return { success: false, message: e.toString() }; }
   finally { lock.releaseLock(); }
@@ -748,7 +770,12 @@ function addRemarkToTask(token, taskId, remarkText, type, fileDataArray, isJustN
     } else if (type === 'routine') {
         let isNewai = searchId.startsWith("NEWAI_");
         let cleanId = searchId.replace("NEWAI_", "").replace("JPR_", "").trim();
-        let sheet = SpreadsheetApp.openById(isNewai ? NEWAI_ROUTINE_SHEET_ID : ROUTINE_SHEET_ID).getSheetByName("Monthly Master");
+        if (isNewai) {
+            let nw = _nwSave(sess, [{ id: cleanId, done: !isJustNote, remark: remarkText, files: finalFileStr }]);
+            _bumpVersion();
+            return nw.saved ? { success: true, fileUrl: finalFileStr } : { success: false, message: nw.missed[0].why };
+        }
+        let sheet = SpreadsheetApp.openById(ROUTINE_SHEET_ID).getSheetByName("Monthly Master");
 
         let r = _getFastRow(sheet, "D", cleanId);
         if (r > 1) {
@@ -758,10 +785,10 @@ function addRemarkToTask(token, taskId, remarkText, type, fileDataArray, isJustN
             SpreadsheetApp.flush(); _invalidate('routine'); return { success: true, fileUrl: finalFileStr };
         }
     } else if (type === 'renewal') {
-        let sheet = SpreadsheetApp.openById(RENEWAL_SHEET_ID).getSheetByName('TASK FEED');
-        let r = _getFastRow(sheet, "B", searchId);
-        if (r > 1) {
-            if (remarkText) sheet.getRange(r, 22).setValue(remarkText);
+        // Saved under the Doc ID in 'Feed Inputs' (RenewalCore.js); the Task Feed shows it from there
+        let ss = SpreadsheetApp.openById(RENEWAL_SHEET_ID);
+        if (rcFindDoc_(ss, searchId)) {
+            if (remarkText) rcSetInputs_(ss, searchId, { remark: remarkText });
             SpreadsheetApp.flush(); _invalidate('renewal'); return { success: true };
         }
     }
@@ -776,28 +803,30 @@ function submitRenewalTaskDone(token, taskId, payload) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(20000); } catch(e) { return {success: false, message: "System is busy."}; }
   try {
+    let ss = SpreadsheetApp.openById(RENEWAL_SHEET_ID);
+    let searchId = String(taskId).trim().toUpperCase();
+    if (!rcFindDoc_(ss, searchId)) return { success: false, message: "Task ID not found in sheet." };
+
+    // Real dates (not "dd/mm/yyyy" text), checked before anything is saved or uploaded
+    let d = { renewedOn: rcParseDay_(payload.renewedOn), newValid: rcParseDay_(payload.newValidUntil) };
+    let problem = rcCheckRenewal_(ss, searchId, d);
+    if (problem) return { success: false, message: problem.replace(searchId + ': ', '') };
+
     let fileStr = "";
     if (payload.files && payload.files.length > 0) {
         fileStr = _uploadFiles(payload.files, RENEWAL_DRIVE_FOLDER_ID);
         if (fileStr.startsWith("ERR:")) return { success: false, message: fileStr };
     }
 
-    let sheet = SpreadsheetApp.openById(RENEWAL_SHEET_ID).getSheetByName('TASK FEED');
-    let searchId = String(taskId).trim().toUpperCase();
-    let r = _getFastRow(sheet, "B", searchId);
+    let cost = Number(String(payload.totalCost || '').replace(/[^\d.]/g, '')) || 0;
+    let fields = { renewedOn: d.renewedOn, newValid: d.newValid, cost: cost, done: false, status: 'Review' };
+    if (fileStr) fields.link = fileStr;
+    if (payload.staffRemark) fields.remark = payload.staffRemark;
+    // Saved under the Doc ID in 'Feed Inputs' (RenewalCore.js); the Task Feed shows it from there
+    rcSetInputs_(ss, searchId, fields);
 
-    if (r > 1) {
-        let fmtDate = (dStr) => { if (!dStr) return ""; let parts = dStr.split('-'); return (parts.length === 3) ? `${parts[2]}/${parts[1]}/${parts[0]}` : dStr; };
-
-        sheet.getRange(r, 14, 1, 3).setValues([[fmtDate(payload.renewedOn), fmtDate(payload.newValidUntil), payload.totalCost]]);
-        if (fileStr) sheet.getRange(r, 20).setValue(fileStr); 
-        sheet.getRange(r, 21).setValue("Review");
-        if(payload.staffRemark) sheet.getRange(r, 22).setValue(payload.staffRemark);
-
-        SpreadsheetApp.flush(); _invalidate('renewal');
-        return { success: true };
-    }
-    return { success: false, message: "Task ID not found in sheet." };
+    SpreadsheetApp.flush(); _invalidate('renewal');
+    return { success: true };
   } catch(e) { return { success: false, message: e.toString() }; } 
   finally { lock.releaseLock(); }
 }

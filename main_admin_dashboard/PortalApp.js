@@ -18,8 +18,8 @@ var MA_COLS = {
   MASTER_CREATED: 21,  // Delegated Master   U Created By · V Last Action · W Last Action By · X Last Action At
   MASTER_ACTION: 22,   //                    (V–X on later changes)
   LEAVE_BY: 11,        // Delegated Leave     K Decided By · L Decided At
-  RENEWAL_BY: 23,      // Renewal Task Feed   W Action By · X Action At   (header row 4)
-  ROUTINE_BY: 16       // Routine Master / Monthly Master   P Marked By · Q Marked At
+                       // (Renewals: Action By / Action At now go to the Feed Inputs tab - RenewalCore.js)
+  ROUTINE_BY: 16      // Routine Master / Monthly Master   P Marked By · Q Marked At
 };
 
 function portalAdapter_() {
@@ -68,9 +68,15 @@ function maPortalDoers_() {
   var cache = CacheService.getScriptCache();
   var hit = cache.get('ma_doers');
   if (hit) return JSON.parse(hit);
-  var staffApp = portalP_('PORTAL_STAFF_APP_ID') || 'STAFF';
+  // The live hub calls it "STAFF DASHBOARD"; asking for "STAFF" got "Unknown app" and the
+  // old Delegated Doer List (25 names) was shown instead of every portal doer.
+  var ids = [portalP_('PORTAL_STAFF_APP_ID'), 'STAFF DASHBOARD', 'STAFF'].filter(Boolean), list = null, err;
+  for (var i = 0; i < ids.length && !list; i++) {
+    try { list = portalCallHub_('directory', { app: ids[i] }); } catch (e) { err = e; }
+  }
+  if (!list) throw err;
   var seen = {};
-  var doers = (portalCallHub_('directory', { app: staffApp }) || [])
+  var doers = list
     .map(function (x) { return String(x.d || x.lu || '').trim(); })
     .filter(function (d) { if (!d || seen[d]) return false; seen[d] = true; return true; })
     .sort(function (a, b) { return a.localeCompare(b); });

@@ -96,7 +96,7 @@ function ggmGate_(e) {
     gate.error = 'You are not in this app\'s user list yet. Ask the IT admin to tick it for you in GGM Portal.';
     return gate;
   }
-  gate.boot = { token: ggmNewToken_(u), user: ggmPublic_(u) };
+  gate.boot = { token: ggmNewToken_(u), user: ggmPublic_(u), lang: portalLangOf_(c) };   // + portal language
   cache.put('ggm_pt_' + c.j, JSON.stringify(gate.boot), GGM_.PASS_REUSE);
   return gate;
 }
@@ -107,7 +107,7 @@ function ggmPage_(out, gate) {
               boot: (gate && gate.boot) || null, error: (gate && gate.error) || '' };
   var bad = new RegExp('[' + String.fromCharCode(60, 8232, 8233) + ']', 'g');   // < and the two JS line separators
   var js = JSON.stringify(cfg).replace(bad, function (ch) { return String.fromCharCode(92) + 'u' + ('000' + ch.charCodeAt(0).toString(16)).slice(-4); });
-  var tag = '<script>window.PORTAL_CFG=' + js + ';</script>' + GGM_CLIENT_ + portalPhotoTag_();   // + profile photos (below)
+  var tag = '<script>window.PORTAL_CFG=' + js + ';</script>' + GGM_CLIENT_ + portalPhotoTag_() + portalLangTag_();   // + profile photos, language (below)
   var html = out.getContent();
   html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, function (m) { return m + tag; }) : tag + html;
   return HtmlService.createHtmlOutput(html);
@@ -455,4 +455,72 @@ function portalPhotoKit_() {
   window.GGMPhotos = { refresh: function () { load(true); }, find: find, paint: paint };
   function start() { css(); load(false); soon(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+}
+
+/* ------------------------------------------------------------- language
+   The portal's English / Hindi choice arrives in the launch pass (claim "lg") and is
+   handed to the page as PORTAL.boot.lang. The page script below remembers it for this
+   app and applies it: an app with its own Hindi defines window.ggmApplyLang(lang) and
+   switches itself; any other app is translated to Hindi by Google's page translator. */
+function portalLangOf_(claims) {
+  var l = String((claims && claims.lg) || '').toLowerCase();
+  return l === 'hi' || l === 'en' ? l : '';
+}
+function portalLangTag_() {
+  return '<script>(' + portalLangKit_.toString() + ')();' + String.fromCharCode(60) + '/script>';
+}
+function portalLangKit_() {
+  if (window.GGMLang) return;
+  var KEY = 'ggm_lang', lang = '';
+  var boot = (window.PORTAL && window.PORTAL.boot) || (window.PORTAL_CFG && window.PORTAL_CFG.boot) || null;
+  if (boot && (boot.lang === 'hi' || boot.lang === 'en')) {
+    lang = boot.lang;
+    try { localStorage.setItem(KEY, lang); } catch (e) {}
+  } else {
+    try { lang = localStorage.getItem(KEY) || ''; } catch (e) {}      // opened again later without the portal
+  }
+  window.GGMLang = { lang: lang || 'en', chosen: lang };
+
+  // Google's translator remembers its last language in a "googtrans" cookie and would turn a
+  // page Hindi again by itself (apps that always load it: Main Admin, Newai). English chosen
+  // in the portal must win, so the cookie goes before any translator loads.
+  if (lang === 'en') {
+    var host = location.hostname.split('.'), doms = [''];
+    for (var d = 0; d < host.length - 1; d++) doms.push('.' + host.slice(d).join('.'));
+    doms.forEach(function (dm) { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (dm ? '; domain=' + dm : ''); });
+  }
+
+  function machine() {
+    if (document.getElementById('ggm-gt')) return;
+    var st = document.createElement('style');
+    st.textContent = '.goog-te-banner-frame,.skiptranslate>iframe,#goog-gt-tt,.goog-te-balloon-frame,.goog-tooltip{display:none!important}' +
+      'body{top:0!important}.goog-text-highlight{background:none!important;box-shadow:none!important}#ggm-gt{display:none!important}';
+    (document.head || document.documentElement).appendChild(st);
+    var box = document.createElement('div'); box.id = 'ggm-gt'; document.body.appendChild(box);
+    var waits = 0, sends = 0;
+    function pick() {
+      var c = document.querySelector('.goog-te-combo');
+      if (c && c.options && c.options.length > 1) {
+        if (document.documentElement.className.indexOf('translated') > -1) return;   // done
+        c.value = 'hi'; c.dispatchEvent(new Event('change'));
+        if (++sends < 4) setTimeout(pick, 900);
+        return;
+      }
+      if (++waits < 50) setTimeout(pick, 300);
+    }
+    window.ggmGtInit = function () {
+      try { new google.translate.TranslateElement({ pageLanguage: 'en', includedLanguages: 'en,hi', autoDisplay: false }, 'ggm-gt'); } catch (e) {}
+      pick();
+    };
+    var s = document.createElement('script');
+    s.src = 'https://translate.google.com/translate_a/element.js?cb=ggmGtInit';
+    document.body.appendChild(s);
+  }
+  function apply() {
+    if (!lang) return;
+    if (typeof window.ggmApplyLang === 'function') { try { window.ggmApplyLang(lang); } catch (e) {} return; }
+    if (lang === 'hi') machine();
+  }
+  function go() { setTimeout(apply, 0); }       // after the page's own start-up code
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 }

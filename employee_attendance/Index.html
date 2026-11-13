@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="theme-color" content="#232220">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>try{var t0=localStorage.getItem('att_theme');if(t0==='light'||t0==='dark')document.documentElement.setAttribute('data-theme',t0);}catch(e){}</script>
+<script>window.ATT_BOOT=<?!= boot ?>;</script>
+<?!= portalTags ?>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<?!= include('Styles'); ?>
+</head>
+<body>
+
+<!-- ===================== SIGN IN ===================== -->
+<div id="loginView">
+  <div class="login">
+    <div class="login-h">
+      <div class="brand"><div class="brand-mark"></div>
+        <div><div class="brand-name">Attendance</div><div class="brand-sub">GGM Portal</div></div></div>
+    </div>
+    <div class="login-b">
+      <h1>Sign in</h1>
+      <p class="sub">Your GGM Portal username or phone, and your portal password.</p>
+      <label class="fld"><span>Username</span>
+        <input id="loginUser" autocomplete="username" autocapitalize="none" autocorrect="off" placeholder="Portal username or phone"></label>
+      <label class="fld"><span>Password</span>
+        <input id="loginPass" type="password" autocomplete="current-password" placeholder="Your password"></label>
+      <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Sign in</button>
+      <div id="loginError" class="login-err"></div>
+      <a class="login-alt" id="portalLink" target="_top" href="https://script.google.com/macros/s/AKfycbyWO02yOI3G9IcE1QjCMEvvJostJZL7_2o8DSYIMEswCtI9Ub8sI9uBTdMp_Zd0WSXvSQ/exec?app=ATTENDANCE">Open GGM Portal</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="appShell" class="hidden">
+
+  <header id="topbar">
+    <div class="avatar" id="avatar">–</div>
+    <div class="who">
+      <h2 id="whoName">–</h2>
+      <div class="meta"><span class="live-dot" id="liveDot"></span><span id="whoMeta">–</span></div>
+    </div>
+    <button class="iconbtn" id="refreshBtn" onclick="refreshNow(true)" aria-label="Refresh now"></button>
+    <button class="iconbtn" id="acctBtn" onclick="openAccount()" aria-label="Account"></button>
+  </header>
+
+  <main>
+    <!-- ---------- SUPERVISOR ---------- -->
+    <section id="v_mark" class="hidden">
+      <div class="dome">
+        <div class="ring">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="track" cx="50" cy="50" r="42" fill="none" stroke-width="10"/>
+            <circle class="fill" id="ringFill" cx="50" cy="50" r="42" fill="none" stroke-width="10"
+                    stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
+          </svg>
+          <div class="lbl"><b id="ringPct">0%</b><i id="ringCount">0 / 0</i></div>
+        </div>
+        <div class="dome-txt">
+          <h2 id="markSite">–</h2>
+          <p id="markDate">–</p>
+          <span class="clock" id="markClock">–</span>
+        </div>
+      </div>
+      <div id="markBanner"></div>
+      <div id="markKpis" class="kpi-grid kpi-4"></div>
+      <div class="searchbar">
+        <span class="s-ic" data-ic="search"></span>
+        <input id="markSearch" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+               placeholder="Search name or employee ID" oninput="onMarkSearch()">
+        <button class="s-clear hidden" id="markClear" onclick="clearMarkSearch()" aria-label="Clear search" data-ic="x"></button>
+      </div>
+      <div id="markFilters" class="chiprow"></div>
+      <button class="btn btn-ghost" style="margin-bottom:12px" onclick="openSupervisorAdd()"><span data-ic="plus"></span>Add a worker to my list</button>
+      <div id="markCount" class="listcount"></div>
+      <div id="markList"></div>
+    </section>
+
+    <!-- ---------- TODAY (HR / Admin) ---------- -->
+    <section id="v_today" class="hidden">
+      <div id="todayHead" class="when-q-hide"></div>
+      <div id="todayChips" class="chiprow"></div>
+      <div data-search="today"></div>
+      <div id="todayKpis" class="when-q-hide"></div>
+      <div class="sect when-q-hide">By site</div>
+      <div id="todaySites" class="when-q-hide"></div>
+    </section>
+
+    <!-- ---------- VERIFY ---------- -->
+    <section id="v_verify" class="hidden">
+      <div id="verifyChips" class="chiprow"></div>
+      <div id="verifyFilters" class="chiprow"></div>
+      <div class="searchbar">
+        <span class="s-ic" data-ic="search"></span>
+        <input id="verifySearch" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+               placeholder="Search name, employee ID or supervisor" oninput="onVerifySearch()">
+        <button class="s-clear hidden" id="verifyClear" onclick="clearVerifySearch()" aria-label="Clear search" data-ic="x"></button>
+      </div>
+      <button class="btn btn-ghost" style="margin-bottom:10px" onclick="openPunchUpload()"><span data-ic="clock"></span>Upload punch report — check marks</button>
+      <div id="verifyActions"></div>
+      <div id="verifyCount" class="listcount"></div>
+      <div id="verifyList"></div>
+    </section>
+
+    <!-- ---------- RECORD (HR / Admin): everyone's month, one row each ---------- -->
+    <section id="v_record" class="hidden">
+      <div class="pagehead">
+        <div><h1>Record</h1><p id="recSub">Month totals per person</p></div>
+        <button class="btn btn-amber btn-sm" id="recPrint" onclick="printRecord()"><span data-ic="print"></span>Print list</button>
+      </div>
+      <div class="filters">
+        <label class="fld"><span>Site</span><select id="recSite" onchange="pickRecordFilter()"></select></label>
+        <label class="fld"><span>Month</span><input id="recMonth" type="month" onchange="pickRecordFilter()"></label>
+      </div>
+      <label class="switch"><input type="checkbox" id="recHideZero" onchange="paintRecord()"><span class="sw"></span>Hide people with 0 present days</label>
+      <div class="searchbar">
+        <span class="s-ic" data-ic="search"></span>
+        <input id="recSearch" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+               placeholder="Search name or employee ID" oninput="onRecSearch()">
+        <button class="s-clear hidden" id="recClear" onclick="clearRecSearch()" aria-label="Clear search" data-ic="x"></button>
+      </div>
+      <div id="recKpis"></div>
+      <div id="recCount" class="listcount"></div>
+      <div id="recTable"></div>
+    </section>
+
+    <!-- ---------- STAFF ---------- -->
+    <section id="v_staff" class="hidden">
+      <div id="staffChips" class="chiprow"></div>
+      <div id="staffKpis"></div>
+      <div class="searchbar">
+        <span class="s-ic" data-ic="search"></span>
+        <input id="staffSearch" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+               placeholder="Search name, employee ID, designation or supervisor" oninput="onStaffSearch()">
+        <button class="s-clear hidden" id="staffClear" onclick="clearStaffSearch()" aria-label="Clear search" data-ic="x"></button>
+      </div>
+      <button class="btn btn-primary" style="margin-bottom:12px" onclick="openAddEmployee()"><span data-ic="plus"></span>Add employee</button>
+      <div id="staffCount" class="listcount"></div>
+      <div id="staffList"></div>
+    </section>
+
+    <!-- ---------- OVERVIEW (Admin) ---------- -->
+    <section id="v_overview" class="hidden">
+      <div id="ovHead" class="when-q-hide"></div>
+      <div data-search="overview"></div>
+      <div id="ovKpis" class="when-q-hide"></div>
+      <div class="sect when-q-hide" id="ovMonthTitle">This month by site</div>
+      <div id="ovSites" class="when-q-hide"></div>
+    </section>
+
+    <!-- ---------- TRENDS (Admin) ---------- -->
+    <section id="v_trends" class="hidden">
+      <div data-search="trends"></div>
+      <div class="when-q-hide">
+        <div id="trendKpis"></div>
+        <div class="two-col">
+          <div class="card"><h3>All-time split by site</h3><div class="chart-wrap"><canvas id="chartSite"></canvas></div></div>
+          <div class="card"><h3>Month-on-month trend</h3><div class="chart-wrap"><canvas id="chartMonth"></canvas></div></div>
+        </div>
+        <div class="card"><h3>Attendance rate by site</h3><div class="chart-wrap tall"><canvas id="chartRate"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- ---------- MORE ---------- -->
+    <section id="v_more" class="hidden">
+      <div data-search="more"></div>
+      <div class="when-q-hide">
+        <div class="sect">Manage</div>
+        <div id="moreLinks"></div>
+        <div class="sect">Site rules</div>
+        <div id="settingsList"></div>
+      </div>
+    </section>
+
+    <!-- ---------- USERS ---------- -->
+    <section id="v_users" class="hidden">
+      <div id="usersKpis"></div>
+      <div class="searchbar">
+        <span class="s-ic" data-ic="search"></span>
+        <input id="usersSearch" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+               placeholder="Search name, username or site" oninput="onUsersSearch()">
+        <button class="s-clear hidden" id="usersClear" onclick="clearUsersSearch()" aria-label="Clear search" data-ic="x"></button>
+      </div>
+      <div id="usersCount" class="listcount"></div>
+      <div id="usersList"></div>
+    </section>
+  </main>
+
+  <nav id="bottomNav"></nav>
+</div>
+
+<div id="scrim" onclick="closeSheet()"></div>
+<div id="sheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div id="sheetBody"></div>
+</div>
+<div id="toasts"></div>
+
+<?!= include('Scripts'); ?>
+</body>
+</html>

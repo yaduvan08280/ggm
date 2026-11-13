@@ -1,0 +1,1858 @@
+<script>
+/* =====================================================================
+   Attendance — client
+   Speed: the last copy of every screen is kept on the phone and drawn the
+   instant the app opens; one server call (bootstrap) then brings it up to
+   date. Opened from a GGM Portal tile, even that call is already in the page.
+   ===================================================================== */
+
+let SESSION = null;
+let CFG = { refreshSeconds: 30, scope: [], allSites: [] };
+let VIEW = null, ENTERED = false;
+let ACTIVE_SITE = 'ALL';
+let VERIFY_FILTER = 'pending', VERIFY_QUERY = '';
+let STAFF_SITE = 'ALL', STAFF_FILTER = 'all', STAFF_QUERY = '';
+let USERS_FILTER = 'all', USERS_QUERY = '';
+let MARK_DATA = null, MARK_FILTER = 'all', MARK_QUERY = '';
+let MARK_BUSY = {}, PENDING_MARKS = {};
+let pollTimer = null, midnightTimer = null;
+let CHARTS = {};
+const TOKEN_KEY = 'ggm_att_token';
+const SNAP_KEY = 'att_snap_v2';
+const TIMERS = {};
+
+const NAVS = {
+  Supervisor: [],
+  HR: [
+    { id: 'today',  ic: 'chart',  label: 'Today' },
+    { id: 'verify', ic: 'shield', label: 'Verify' },
+    { id: 'record', ic: 'list',   label: 'Record' },
+    { id: 'staff',  ic: 'users',  label: 'Staff' },
+    { id: 'more',   ic: 'gear',   label: 'More' }
+  ],
+  Admin: [
+    { id: 'overview', ic: 'mount',  label: 'Overview' },
+    { id: 'trends',   ic: 'trend',  label: 'Trends' },
+    { id: 'today',    ic: 'chart',  label: 'Today' },
+    { id: 'verify',   ic: 'shield', label: 'Verify' },
+    { id: 'record',   ic: 'list',   label: 'Record' },
+    { id: 'more',     ic: 'gear',   label: 'More' }
+  ]
+};
+const ALL_VIEWS = ['mark', 'today', 'verify', 'record', 'staff', 'overview', 'trends', 'more', 'users'];
+/* one colour per site, used on site rows everywhere */
+const SITE_COLORS = ['#3B82C4', '#4F9D69', '#C2410C', '#7C5CC4', '#0E8F86', '#B7841B', '#BE185D'];
+function siteColor(site) { const i = CFG.allSites.indexOf(site); return SITE_COLORS[(i < 0 ? 0 : i) % SITE_COLORS.length]; }
+const LIVE_VIEWS = ['mark', 'today', 'verify', 'overview'];
+
+/* ---------------- icons (line icons, the hub's style) ---------------- */
+
+const ICON = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  x: '<path d="M18 6L6 18M6 6l12 12"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>',
+  dots: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  check: '<path d="M20 6L9 17l-5-5"/>',
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  half: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/>',
+  absent: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2M17 6l3 3M15 8l2 2"/>',
+  mount: '<path d="M3 20l6-10 4 6 3-4 5 8z"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  alert: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  userplus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  left: '<path d="M15 18l-6-6 6-6"/>',
+  right: '<path d="M9 18l6-6-6-6"/>',
+  out: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  pct: '<path d="M19 5L5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+  down: '<path d="M3 7l6 6 4-4 8 8"/><path d="M14 17h7v-7"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+  print: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>'
+};
+function ic(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[name] || '') + '</svg>'; }
+function paintIcons(root) {
+  (root || document).querySelectorAll('[data-ic]').forEach(el => { if (!el.dataset.icDone) { el.insertAdjacentHTML('afterbegin', ic(el.dataset.ic)); el.dataset.icDone = 1; } });
+}
+
+/* ---------------- plumbing ---------------- */
+
+function call(fn) {
+  const args = Array.prototype.slice.call(arguments, 1);
+  return new Promise((resolve, reject) => {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn].apply(null, args);
+  });
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+/** A value for a JS string inside an onclick="…" attribute. */
+function js(s) { return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
+function $(id) { return document.getElementById(id); }
+function fmt(n) { return typeof n === 'number' ? n.toLocaleString('en-IN') : esc(n); }
+function pct(a, b) { return b ? Math.round((a / b) * 100) : 0; }
+function initials(name) {
+  const p = String(name || '?').trim().split(/\s+/);
+  return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+}
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function debounce(key, fn, ms) { clearTimeout(TIMERS[key]); TIMERS[key] = setTimeout(fn, ms || 80); }
+
+function toast(msg, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || '');
+  el.innerHTML = (kind === 'ok' ? ic('check') : kind === 'bad' ? ic('alert') : '') + '<span>' + esc(msg) + '</span>';
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, 2600);
+}
+function handleError(err) {
+  const msg = String((err && err.message) || err || 'Something went wrong');
+  if (msg.indexOf('SESSION_EXPIRED') !== -1) { forceSignOut('Your sign-in has ended. Please sign in again.'); return; }
+  $('liveDot') && $('liveDot').classList.add('stale');
+  toast(msg.replace(/^Error:\s*/, ''), 'bad');
+}
+function skeleton(n) { return new Array(n || 3).fill('<div class="skel"></div>').join(''); }
+function empty(icon, title, text) {
+  return `<div class="empty"><div class="e-ic">${ic(icon)}</div><b>${esc(title)}</b><p>${text || ''}</p></div>`;
+}
+
+/* ---------------- the phone's copy of every screen ---------------- */
+
+const STORE = {}, INFLIGHT = {};
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+function lsJson(k) { try { return JSON.parse(lsGet(k) || 'null'); } catch (e) { return null; } }
+function skey(k) { return 'att_d_' + (SESSION ? SESSION.username + '_' + SESSION.role + '_' + (SESSION.site || '') : '') + '_' + k; }
+/** The newest copy we have (memory, else the phone) — never yesterday's. */
+function got(k) {
+  if (!STORE[k]) { const v = lsJson(skey(k)); if (v && v.date === todayStr()) STORE[k] = v; }
+  return STORE[k] ? STORE[k].d : null;
+}
+function put(k, d) { STORE[k] = { d: d, at: Date.now(), date: todayStr() }; lsSet(skey(k), JSON.stringify(STORE[k])); return d; }
+function save(k) { if (STORE[k]) lsSet(skey(k), JSON.stringify(STORE[k])); }
+function age(k) { return STORE[k] && STORE[k].at ? Date.now() - STORE[k].at : Infinity; }
+/** One request per screen at a time; the answer becomes the new copy. */
+function fetchStore(k, fn) {
+  if (INFLIGHT[k]) return INFLIGHT[k];
+  const args = Array.prototype.slice.call(arguments, 2);
+  const p = call.apply(null, [fn].concat(args)).then(d => {
+    delete INFLIGHT[k];
+    $('liveDot') && $('liveDot').classList.remove('stale');
+    return put(k, d);
+  }, err => { delete INFLIGHT[k]; throw err; });
+  return (INFLIGHT[k] = p);
+}
+function ensureToday() { return got('today') ? Promise.resolve(got('today')) : fetchStore('today', 'getTodayRows', SESSION.token, 'ALL'); }
+
+/* ---------------- employee photos ----------------
+   Every avatar is <div class="emp-av" data-pid="ID">; paintPhotos() fills those that have a
+   photo (thumbs fetched once, only for people on screen, then kept on the phone). Tapping an
+   avatar opens the photo sheet: see it big, take one with the camera, or pick from the gallery. */
+
+const PH = { idx: lsJson('att_phidx') || {}, thumbs: {}, want: new Set() };
+
+/** Avatar for an employee: their photo, else initials with a camera badge. */
+function av(site, id, name, cls) {
+  return `<div class="emp-av ${cls || ''}" data-pid="${esc(id)}" onclick="photoTap(event,'${js(site)}','${js(id)}','${js(name)}')">${esc(initials(name))}<span class="cam">${ic('camera')}</span></div>`;
+}
+function thumbOf(id) {
+  const v = PH.idx[id];
+  if (!v) return null;
+  if (PH.thumbs[id] && PH.thumbs[id].v === v) return PH.thumbs[id].t;
+  const c = lsGet('att_pt_' + id);
+  if (c && c.slice(0, c.indexOf('|')) === String(v)) { PH.thumbs[id] = { v: v, t: c.slice(c.indexOf('|') + 1) }; return PH.thumbs[id].t; }
+  return null;
+}
+function paintPhotos() {
+  document.querySelectorAll('[data-pid]').forEach(el => {
+    const id = el.dataset.pid, t = thumbOf(id);
+    if (t) {
+      if (el.dataset.ph !== String(PH.idx[id])) { el.style.backgroundImage = 'url("' + t + '")'; el.classList.add('has-ph'); el.dataset.ph = String(PH.idx[id]); }
+    } else {
+      if (el.dataset.ph) { el.style.backgroundImage = ''; el.classList.remove('has-ph'); delete el.dataset.ph; }
+      if (PH.idx[id]) PH.want.add(id);
+    }
+  });
+  if (PH.want.size) debounce('thumbs', fetchThumbs, 120);
+}
+function fetchThumbs() {
+  if (!SESSION) return;
+  const ids = Array.from(PH.want).slice(0, 150);
+  ids.forEach(id => PH.want.delete(id));
+  call('getPhotoThumbs', SESSION.token, ids).then(got => {
+    Object.keys(got || {}).forEach(id => {
+      PH.thumbs[id] = { v: PH.idx[id], t: got[id] };
+      lsSet('att_pt_' + id, PH.idx[id] + '|' + got[id]);
+    });
+    paintPhotos();
+  }).catch(() => {});
+}
+function loadPhotoIndex() {
+  if (!SESSION) return;
+  call('getPhotoIndex', SESSION.token).then(idx => { PH.idx = idx || {}; lsSet('att_phidx', JSON.stringify(PH.idx)); paintPhotos(); }).catch(() => {});
+}
+new MutationObserver(() => debounce('paintph', paintPhotos, 60)).observe(document.documentElement, { childList: true, subtree: true });
+
+function photoTap(ev, site, id, name) {
+  ev.stopPropagation();
+  openPhotoSheet(site, id, name);
+}
+
+/* --- taking / picking a picture: any size in, a small clear face out --- */
+
+let SHOT = null;   // the picture waiting to be saved: { thumb, photo }
+function photoPickers(prefix) {
+  return `<div class="ph-pick">
+      <label class="btn btn-ghost btn-sm">${ic('camera')}Take photo<input type="file" accept="image/*" capture="environment" onchange="pickedPhoto(this,'${prefix}')"></label>
+      <label class="btn btn-ghost btn-sm">${ic('image')}From gallery<input type="file" accept="image/*" onchange="pickedPhoto(this,'${prefix}')"></label>
+    </div>`;
+}
+function loadImage(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('That file is not a picture this phone can read.')); };
+    img.src = url;
+  });
+}
+/** Photo: longest side ≤ 480 px, JPEG, under a sheet cell's limit. Thumb: 120 px square from the centre. */
+function shrinkPhoto(img) {
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  let side = 480, q = 0.82, out = '';
+  for (let i = 0; i < 12; i++) {
+    const k = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    x.drawImage(img, 0, 0, c.width, c.height);
+    out = c.toDataURL('image/jpeg', q);
+    if (out.length <= 46000) break;
+    if (q > 0.5) q -= 0.08; else side = Math.round(side * 0.85);
+  }
+  const t = document.createElement('canvas'), tx = t.getContext('2d'), s = Math.min(img.naturalWidth, img.naturalHeight);
+  t.width = t.height = 120;
+  tx.drawImage(img, (img.naturalWidth - s) / 2, Math.max(0, (img.naturalHeight - s) / 3), s, s, 0, 0, 120, 120);
+  return { photo: out, thumb: t.toDataURL('image/jpeg', 0.72) };
+}
+function pickedPhoto(input, prefix) {
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  const box = $(prefix + 'Prev');
+  if (box) box.innerHTML = '<div class="skel" style="height:100%;margin:0"></div>';
+  loadImage(f).then(img => {
+    SHOT = shrinkPhoto(img);
+    if (box) { box.innerHTML = ''; box.style.backgroundImage = 'url("' + SHOT.photo + '")'; box.classList.add('has-ph'); }
+    const save = $(prefix + 'Save'); if (save) save.classList.remove('hidden');
+    const kb = $(prefix + 'Size'); if (kb) kb.textContent = 'Ready · ' + Math.round(f.size / 1024) + ' KB picture made ' + Math.round(SHOT.photo.length * 0.75 / 1024) + ' KB';
+  }).catch(err => { if (box) box.innerHTML = ''; toast(err.message, 'bad'); });
+}
+function savePhoto(site, id, then) {
+  if (!SHOT) return Promise.resolve(false);
+  const shot = SHOT;
+  return call('setEmployeePhoto', SESSION.token, site, id, shot.thumb, shot.photo).then(res => {
+    if (!res.ok) { toast(res.error, 'bad'); return false; }
+    PH.idx[id] = res.ver; lsSet('att_phidx', JSON.stringify(PH.idx));
+    PH.thumbs[id] = { v: res.ver, t: shot.thumb }; lsSet('att_pt_' + id, res.ver + '|' + shot.thumb);
+    BIG[id] = shot.photo;
+    SHOT = null; paintPhotos();
+    return true;
+  });
+}
+
+const BIG = {};
+function openPhotoSheet(site, id, name) {
+  SHOT = null;
+  const has = !!PH.idx[id];
+  openSheet(`<h3>${esc(name)}</h3><p class="sheet-sub">${esc(id)} · ${esc(site)}</p>
+    <div class="ph-big" id="phPrev">${has ? '' : `<div class="ph-none">${ic('camera')}<span>No photo yet</span></div>`}</div>
+    <div id="phSize" class="listcount" style="text-align:center;margin-top:8px"></div>
+    ${photoPickers('ph')}
+    <button class="btn btn-primary hidden" id="phSave" onclick="savePhotoSheet('${js(site)}','${js(id)}','${js(name)}')">${ic('check')}Save photo</button>`);
+  if (!has) return;
+  const box = $('phPrev'), t = thumbOf(id);
+  if (t) box.style.backgroundImage = 'url("' + t + '")';
+  box.classList.add('has-ph');
+  if (BIG[id]) { box.style.backgroundImage = 'url("' + BIG[id] + '")'; return; }
+  call('getEmployeePhoto', SESSION.token, id).then(p => {
+    if (!p) return;
+    BIG[id] = p;
+    if ($('phPrev') && !SHOT) $('phPrev').style.backgroundImage = 'url("' + p + '")';
+  }).catch(() => {});
+}
+function savePhotoSheet(site, id, name) {
+  const b = $('phSave'); b.disabled = true;
+  savePhoto(site, id).then(ok => { b.disabled = false; if (ok) { toast('Photo saved for ' + name, 'ok'); closeSheet(); } })
+    .catch(err => { b.disabled = false; handleError(err); });
+}
+
+/* ---------------- boot ---------------- */
+
+document.addEventListener('DOMContentLoaded', boot);
+
+function boot() {
+  paintIcons(document);
+  $('refreshBtn').innerHTML = ic('refresh');
+  $('acctBtn').innerHTML = ic('dots');
+  ['loginUser', 'loginPass'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && SESSION) refreshNow(false); });
+
+  const B = window.ATT_BOOT;
+  if (B && B.session && B.session.ok) { adopt({ session: B.session, cfg: B.cfg, first: B.first }); return; }   // from a portal tile
+  if (B && B.error) $('loginError').textContent = B.error;
+
+  const tok = lsGet(TOKEN_KEY);
+  if (!tok) return;
+  const snap = lsJson(SNAP_KEY);
+  if (snap && snap.session && snap.session.token === tok) { SESSION = snap.session; CFG = snap.cfg || CFG; enterApp(); }   // instant: last copy
+  else $('loginBtn').textContent = 'Resuming…';
+  call('bootstrap', tok).then(res => {
+    if (res && res.ok) return adopt(res);
+    lsDel(TOKEN_KEY); lsDel(SNAP_KEY);
+    if (ENTERED) forceSignOut('Your sign-in has ended. Please sign in again.');
+    else $('loginBtn').textContent = 'Sign in';
+  }).catch(() => {
+    if (!ENTERED) $('loginBtn').textContent = 'Sign in';
+    else $('liveDot').classList.add('stale');
+  });
+}
+
+/** A session (+ first screen) from the server. */
+function adopt(res) {
+  SESSION = res.session; CFG = res.cfg || CFG;
+  lsSet(TOKEN_KEY, SESSION.token);
+  lsSet(SNAP_KEY, JSON.stringify({ session: SESSION, cfg: CFG }));
+  const f = res.first || {};
+  if (f.mark) put('mark', f.mark);
+  if (f.today) put('today', f.today);
+  if (f.overview) put('overview', f.overview);
+  if (!ENTERED) enterApp();
+  else { paintWho(); startPolling(); loadView(VIEW, false); }
+  loadPhotoIndex();
+  if (f.error) toast(f.error, 'bad');
+}
+
+function doLogin() {
+  const u = $('loginUser').value.trim(), p = $('loginPass').value;
+  if (!u || !p) { $('loginError').textContent = 'Enter your username and password.'; return; }
+  $('loginError').textContent = '';
+  $('loginBtn').disabled = true; $('loginBtn').textContent = 'Signing in…';
+  call('loginAndLoad', u, p).then(res => {
+    $('loginBtn').disabled = false; $('loginBtn').textContent = 'Sign in';
+    if (!res.ok) { $('loginError').textContent = res.error; return; }
+    $('loginPass').value = '';
+    adopt(res);
+  }).catch(err => {
+    $('loginBtn').disabled = false; $('loginBtn').textContent = 'Sign in';
+    $('loginError').textContent = String((err && err.message) || err);
+  });
+}
+
+function paintWho() {
+  const av = $('avatar');
+  av.textContent = initials(SESSION.name);
+  av.setAttribute('data-ggm-photo', SESSION.username + '|' + (SESSION.name || ''));
+  $('whoName').textContent = SESSION.name || SESSION.username;
+  $('whoMeta').textContent = SESSION.role + ' · ' + (SESSION.scope.length > 1 ? 'all ' + SESSION.scope.length + ' sites' : SESSION.scope[0] || '—');
+}
+
+function enterApp() {
+  ENTERED = true;
+  $('loginView').classList.add('hidden');
+  $('appShell').classList.remove('hidden');
+  paintWho();
+  ACTIVE_SITE = SESSION.scope.length > 1 ? 'ALL' : SESSION.scope[0];
+  STAFF_SITE = ACTIVE_SITE;
+  buildNav();
+  scheduleMidnightReload();
+  startPolling();
+  if (SESSION.role === 'Supervisor') { document.body.classList.add('no-nav'); go('mark'); }
+  else if (SESSION.role === 'HR') go('today');
+  else go('overview');
+}
+
+function buildNav() {
+  const items = NAVS[SESSION.role] || [];
+  const nav = $('bottomNav');
+  if (!items.length) { nav.classList.add('hidden'); return; }
+  nav.classList.remove('hidden');
+  nav.innerHTML = items.map(i => `<button data-v="${i.id}" onclick="go('${i.id}')">${ic(i.ic)}${esc(i.label)}</button>`).join('');
+}
+
+function go(view) {
+  VIEW = view;
+  ALL_VIEWS.forEach(v => { const el = $('v_' + v); if (el) el.classList.add('hidden'); });
+  const target = $('v_' + view);
+  if (target) target.classList.remove('hidden');
+  const inNav = (NAVS[SESSION.role] || []).some(i => i.id === view);
+  document.querySelectorAll('#bottomNav button').forEach(b =>
+    b.classList.toggle('active', b.dataset.v === view || (!inNav && b.dataset.v === 'more')));
+  window.scrollTo(0, 0);
+  mountSearch(view);
+  loadView(view, false);
+}
+
+/** Draws the screen from the copy we have, then fetches only if that copy is old (or force). */
+function loadView(view, force) {
+  switch (view) {
+    case 'mark':     return loadMark(force);
+    case 'today':    return loadToday(force);
+    case 'verify':   return loadVerify(force);
+    case 'record':   return loadRecord(force);
+    case 'staff':    return loadStaff(force);
+    case 'overview': return loadOverview(force);
+    case 'trends':   return loadTrends(force);
+    case 'more':     return loadMore(force);
+    case 'users':    return loadUsers(force);
+  }
+  return Promise.resolve();
+}
+
+function refreshNow(manual) {
+  if (!SESSION) return;
+  const b = $('refreshBtn');
+  if (manual) b.classList.add('busy');
+  Promise.resolve(loadView(VIEW, true)).finally(() => { b.classList.remove('busy'); if (manual) toast('Up to date', 'ok'); });
+}
+
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    if (document.hidden || !SESSION || $('sheet').classList.contains('open')) return;   // don't pull a form out from under someone
+    if (LIVE_VIEWS.indexOf(VIEW) !== -1) loadView(VIEW, true);
+  }, Math.max(10, CFG.refreshSeconds || 30) * 1000);
+}
+
+/** Hard reload the moment the date rolls over, so the app always points at today. */
+function scheduleMidnightReload() {
+  clearTimeout(midnightTimer);
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 3);
+  midnightTimer = setTimeout(() => location.reload(), next - now);
+}
+
+function forceSignOut(msg) {
+  lsDel(TOKEN_KEY); lsDel(SNAP_KEY);
+  clearInterval(pollTimer); clearTimeout(midnightTimer);
+  SESSION = null; ENTERED = false;
+  Object.keys(STORE).forEach(k => delete STORE[k]);
+  closeSheet();
+  $('appShell').classList.add('hidden');
+  $('loginView').classList.remove('hidden');
+  $('loginError').textContent = msg || '';
+  document.body.classList.remove('no-nav');
+}
+
+function doLogout() {
+  const t = SESSION && SESSION.token;
+  forceSignOut('');
+  if (t) call('logout', t).catch(() => {});
+}
+
+/* ---------------- bottom sheet ---------------- */
+
+function openSheet(html) {
+  $('sheetBody').innerHTML = html;
+  paintIcons($('sheetBody'));
+  $('scrim').classList.add('open');
+  $('sheet').classList.add('open');
+  $('sheet').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet() {
+  $('scrim').classList.remove('open');
+  $('sheet').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function themeNow() { return lsGet('att_theme') || 'auto'; }
+function setTheme(c) {
+  if (c === 'auto') { lsDel('att_theme'); document.documentElement.removeAttribute('data-theme'); }
+  else { lsSet('att_theme', c); document.documentElement.setAttribute('data-theme', c); }
+  document.querySelectorAll('#themeSeg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.t === c)));
+  if (VIEW === 'trends' && got('stats')) renderTrends(got('stats'));
+}
+
+function openAccount() {
+  const t = themeNow();
+  openSheet(`
+    <h3>${esc(SESSION.name || SESSION.username)}</h3>
+    <p class="sheet-sub">${esc(SESSION.role)} · ${esc(SESSION.scope.join(', '))} · signed in through GGM Portal</p>
+    <div class="seg" id="themeSeg" role="radiogroup">
+      <button data-t="auto" aria-checked="${t === 'auto'}" onclick="setTheme('auto')">Auto</button>
+      <button data-t="light" aria-checked="${t === 'light'}" onclick="setTheme('light')">Light</button>
+      <button data-t="dark" aria-checked="${t === 'dark'}" onclick="setTheme('dark')">Dark</button>
+    </div>
+    <button class="btn btn-ghost" onclick="closeSheet();refreshNow(true)">${ic('refresh')}Refresh data</button>
+    <button class="btn btn-danger" onclick="closeSheet();doLogout()">${ic('out')}Sign out</button>
+  `);
+}
+
+/* ---------------- site chips ---------------- */
+
+function renderChips(containerId, current, onPickName, counts) {
+  const el = $(containerId);
+  if (!el) return;
+  const list = SESSION.scope;
+  if (list.length < 2) { el.innerHTML = ''; return; }
+  const n = s => counts && counts[s] !== undefined ? `<span class="n">${fmt(counts[s])}</span>` : '';
+  el.innerHTML =
+    `<button class="chip ${current === 'ALL' ? 'active' : ''}" onclick="${onPickName}('ALL')">All sites${n('ALL')}</button>` +
+    list.map(s => `<button class="chip ${current === s ? 'active' : ''}" onclick="${onPickName}('${js(s)}')">${esc(s)}${n(s)}</button>`).join('');
+}
+function countBySite(rows) {
+  const c = { ALL: rows.length };
+  rows.forEach(r => { c[r.s] = (c[r.s] || 0) + 1; });
+  return c;
+}
+
+/* ---------------- KPI tiles ---------------- */
+
+/** A plain tile (the older call shape), opening onclick `go`. */
+function kpi(cls, num, label, sub, icon, go) { return tile({ cls: cls, n: num, lbl: label, sub: sub, icon: icon || 'chart', go: go || '' }); }
+
+function tile(o) {
+  return `<button class="kpi ${o.cls || ''}${o.sel ? ' sel' : ''}" onclick="${o.go}">
+    <div class="k-top"><span class="k-chip">${ic(o.icon)}</span><span class="k-go">›</span></div>
+    <div class="k-num num">${fmt(o.n)}</div><div class="k-lbl">${esc(o.lbl)}</div>
+    ${o.sub ? `<div class="k-sub">${esc(o.sub)}</div>` : ''}</button>`;
+}
+
+/* ---------------- search ---------------- */
+
+/**
+ * How well "q" matches this person. Higher is better, 0 means no match.
+ * An ID match beats a name match, the start of a word beats the middle,
+ * and a loose letter-by-letter match still gets you on the list.
+ */
+function matchScore(q, name, id) {
+  if (!q) return 1;
+  const n = String(name == null ? '' : name).toLowerCase();
+  const i = String(id == null ? '' : id).toLowerCase();
+  if (i === q || n === q) return 1000;
+  if (i.indexOf(q) === 0) return 900;
+  if (n.indexOf(q) === 0) return 880;
+  const words = n.split(/\s+/);
+  for (let w = 1; w < words.length; w++) if (words[w].indexOf(q) === 0) return 830 - w;
+  if (words.map(w => w.charAt(0)).join('').indexOf(q) === 0) return 800;
+  const ni = n.indexOf(q);
+  if (ni > 0) return 700 - Math.min(ni, 60);
+  const ii = i.indexOf(q);
+  if (ii > 0) return 660 - Math.min(ii, 60);
+  // digits typed alone find the number part of an ID: "14" → TNK-014
+  const digits = q.replace(/\D/g, '');
+  if (digits && digits === q && i.replace(/\D/g, '').replace(/^0+/, '') === digits.replace(/^0+/, '')) return 860;
+  if (q.length >= 3) {
+    const sn = subseqScore(q, n); if (sn) return 300 + sn;
+    const si = subseqScore(q, i); if (si) return 240 + si;
+  }
+  return 0;
+}
+/** Letters in order but not next to each other — "rmsh" finds "Ramesh". */
+function subseqScore(q, s) {
+  let from = 0, gaps = 0, first = -1;
+  for (let k = 0; k < q.length; k++) {
+    const at = s.indexOf(q.charAt(k), from);
+    if (at < 0) return 0;
+    if (first < 0) first = at; else gaps += at - from;
+    from = at + 1;
+  }
+  return Math.max(1, 120 - gaps * 4 - Math.min(first, 20));
+}
+/** Best matches first; extra(row) can add other fields (supervisor, designation…). */
+function rank(rows, q, nameOf, idOf, extra) {
+  if (!q) return rows;
+  return rows.map((r, i) => {
+    let s = matchScore(q, nameOf(r), idOf(r));
+    if (!s && extra) { const x = String(extra(r) || '').toLowerCase(); if (x.indexOf(q) > -1) s = x.indexOf(q) === 0 ? 500 : 400; }
+    return { r: r, i: i, s: s };
+  }).filter(x => x.s > 0).sort((a, b) => (b.s - a.s) || (a.i - b.i)).map(x => x.r);
+}
+/** Escapes, then wraps the matched run in a highlight. */
+function hl(text, q) {
+  const t = String(text == null ? '' : text);
+  if (!q) return esc(t);
+  const i = t.toLowerCase().indexOf(q);
+  if (i < 0) return esc(t);
+  return esc(t.slice(0, i)) + '<mark class="hl">' + esc(t.slice(i, i + q.length)) + '</mark>' + esc(t.slice(i + q.length));
+}
+function statusClass(status, prefix) {
+  if (status === 'Full Day') return prefix + 'full';
+  if (status === 'Half Day') return prefix + 'half';
+  if (status === 'Absent') return prefix + 'absent';
+  return '';
+}
+function statusStamp(st) { return st ? `<span class="stamp ${statusClass(st, 's-')}">${esc(st)}</span>` : '<span class="stamp s-muted">Not marked</span>'; }
+function approvalStamp(st, ap) {
+  if (!st) return '';
+  if (ap === 'Approved') return `<span class="stamp s-correct">${ic('check')}HR approved</span>`;
+  if (ap === 'SentBack') return `<span class="stamp s-wait">${ic('undo')}Sent back</span>`;
+  return '<span class="stamp s-muted">Awaiting check</span>';
+}
+
+/* ----- the "find anyone" bar on Today, Overview, Trends and More ----- */
+
+const Q = {};
+function mountSearch(view) {
+  const host = document.querySelector('[data-search="' + view + '"]');
+  if (!host || host.dataset.on) return;
+  host.dataset.on = '1';
+  host.innerHTML = `<div class="searchbar"><span class="s-ic">${ic('search')}</span>
+      <input id="q_${view}" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+        placeholder="Find any employee — name or ID" oninput="onQ('${view}')">
+      <button class="s-clear hidden" id="qx_${view}" onclick="clearQ('${view}')" aria-label="Clear search">${ic('x')}</button></div>
+    <div id="qc_${view}" class="listcount"></div><div class="results" id="qr_${view}"></div>`;
+}
+function onQ(view) {
+  const raw = $('q_' + view).value || '';
+  $('qx_' + view).classList.toggle('hidden', !raw);
+  debounce('q_' + view, () => { Q[view] = raw.trim().toLowerCase(); paintQ(view); });
+}
+function clearQ(view) { $('q_' + view).value = ''; Q[view] = ''; $('qx_' + view).classList.add('hidden'); paintQ(view); $('q_' + view).focus(); }
+function paintQ(view) {
+  const q = Q[view] || '', box = $('qr_' + view), cnt = $('qc_' + view);
+  if (!box) return;
+  $('v_' + view).classList.toggle('has-q', !!q);
+  if (!q) { box.innerHTML = ''; cnt.textContent = ''; return; }
+  const d = got('today');
+  if (!d) { box.innerHTML = skeleton(2); ensureToday().then(() => paintQ(view)).catch(handleError); return; }
+  const hits = rank(d.rows, q, r => r.n, r => r.id, r => r.sup);
+  cnt.textContent = hits.length ? hits.length + ' found' + (hits.length > 60 ? ' · showing the best 60' : '') : '';
+  box.innerHTML = hits.length ? hits.slice(0, 60).map(r => personRow(r, q, true)).join('')
+    : empty('search', 'Nobody matches', 'No name or ID like “' + esc(q) + '”.');
+}
+/** One person, today: name, ID, site, supervisor, status. Tap → their month. */
+function personRow(r, q, multiSite) {
+  return `<div class="row tap" onclick="openEmployee('${js(r.s)}','${js(r.id)}')">
+    ${av(r.s, r.id, r.n)}
+    <div class="rmain"><b>${hl(r.n, q)}</b>
+      <small>${hl(r.id, q)}${multiSite && SESSION.scope.length > 1 ? ' · ' + esc(r.s) : ''}${r.sup ? ' · ' + hl(r.sup, q) : ''}</small>
+      <div class="rtags">${statusStamp(r.st)}${approvalStamp(r.st, r.ap)}</div></div>
+    <span class="go">›</span></div>`;
+}
+
+/* ----- a list in the sheet (what a tile counts), with its own search ----- */
+
+let LIST = { rows: [], q: '', fmt: null };
+function openList(title, sub, rows, rowFmt, top) {
+  LIST = { rows: rows || [], q: '', fmt: rowFmt || (r => personRow(r, LIST.q, true)) };
+  openSheet(`<h3>${esc(title)}</h3><p class="sheet-sub">${sub || ''}</p>${top || ''}
+    <div class="searchbar"><span class="s-ic">${ic('search')}</span>
+      <input id="listQ" type="search" inputmode="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Search name or employee ID" oninput="onListQ()"></div>
+    <div id="listCount" class="listcount"></div><div id="listBody"></div>`);
+  paintList();
+}
+function onListQ() { debounce('listQ', () => { LIST.q = ($('listQ').value || '').trim().toLowerCase(); paintList(); }); }
+function paintList() {
+  const rows = rank(LIST.rows, LIST.q, r => r.n, r => r.id, r => r.sup);
+  $('listCount').textContent = LIST.q ? 'Showing ' + rows.length + ' of ' + LIST.rows.length : LIST.rows.length + ' in this list';
+  const shown = rows.slice(0, 300);
+  $('listBody').innerHTML = shown.length ? shown.map(LIST.fmt).join('') + (rows.length > 300 ? '<div class="listcount">Search to find the rest.</div>' : '')
+    : empty('list', LIST.rows.length ? 'Nobody matches' : 'Nobody here', LIST.rows.length ? '' : 'This list is empty right now.');
+}
+
+/* ----- one employee: today + their month ----- */
+
+let EMP = null;
+const MONTHS = {};
+function findPerson(site, id) {
+  const d = got('today');
+  const r = d && d.rows.filter(x => x.s === site && x.id === id)[0];
+  if (r) return r;
+  const m = MARK_DATA && MARK_DATA.employees.filter(e => e.id === id)[0];
+  if (m) return { s: site, id: id, n: m.name, st: m.status || '', ap: m.approval, sup: '' };
+  const o = got('overview');
+  const p = o && o.people.filter(x => x.s === site && x.id === id)[0];
+  return p ? { s: site, id: id, n: p.n, st: '', ap: '', sup: '' } : { s: site, id: id, n: id, st: '', ap: '', sup: '' };
+}
+function openEmployee(site, id, y, m) {
+  const now = new Date();
+  EMP = { site: site, id: id, y: y || now.getFullYear(), m: m || now.getMonth() + 1 };
+  if (SESSION.role !== 'Supervisor' && !got('today')) ensureToday().then(() => { if (EMP && EMP.id === id && $('sheet').classList.contains('open')) openEmployee(site, id, EMP.y, EMP.m); }).catch(() => {});
+  const r = findPerson(site, id);
+  openSheet(`
+    <div class="who-card">${av(site, id, r.n)}
+      <div><h3>${esc(r.n)}</h3><p class="sheet-sub" style="margin:0">${esc(id)} · ${esc(site)}${r.sup ? ' · ' + esc(r.sup) : ''}</p></div></div>
+    <div class="today-lbl">Today</div>
+    <div class="rtags" style="display:flex;gap:6px;margin-bottom:12px">${statusStamp(r.st)}${approvalStamp(r.st, r.ap)}</div>
+    ${empActions(site, id, r)}
+    <div class="monthnav"><button onclick="empMonth(-1)" aria-label="Previous month">${ic('left')}</button><b id="empMonthLbl">…</b>
+      <button onclick="empMonth(1)" aria-label="Next month">${ic('right')}</button></div>
+    <div id="empMonthBody">${skeleton(2)}</div>`);
+  loadEmpMonth();
+}
+/** HR / Admin buttons for today's record: only the ones that make sense for its state. */
+function empActions(site, id, r) {
+  if (SESSION.role === 'Supervisor') return '';
+  if (!r.st) return `<button class="btn btn-ghost" onclick="openOverride('${js(site)}','${js(id)}','${js(r.n)}','Full Day',true)">${ic('edit')}Set today's status</button>`;
+  const approve = r.ap === 'Approved'
+    ? `<span class="btn btn-sm done-chip">${ic('check')}Approved</span>`
+    : `<button class="btn btn-ghost btn-sm" onclick="verify('${js(site)}','${js(id)}','Approved')">${ic('check')}Approve</button>`;
+  const back = r.ap === 'SentBack' ? '' : `<button class="btn btn-ghost btn-sm" onclick="verify('${js(site)}','${js(id)}','SentBack')">${ic('undo')}Send back</button>`;
+  return `<div class="btn-row">${approve}${back}<button class="btn btn-ghost btn-sm" onclick="openOverride('${js(site)}','${js(id)}','${js(r.n)}','${js(r.st)}')">${ic('edit')}Change</button></div>`;
+}
+function empMonth(step) {
+  if (!EMP) return;
+  EMP.m += step;
+  if (EMP.m < 1) { EMP.m = 12; EMP.y--; } else if (EMP.m > 12) { EMP.m = 1; EMP.y++; }
+  loadEmpMonth();
+}
+function loadEmpMonth() {
+  const e = EMP, key = [e.site, e.id, e.y, e.m].join('|');
+  if (MONTHS[key]) renderEmpMonth(MONTHS[key]);
+  else { $('empMonthBody').innerHTML = skeleton(2); $('empMonthLbl').textContent = new Date(e.y, e.m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }); }
+  call('getEmployeeMonth', SESSION.token, e.site, e.id, e.y, e.m).then(d => {
+    if (!EMP || [EMP.site, EMP.id, EMP.y, EMP.m].join('|') !== key) return;
+    if (!d.ok) { $('empMonthBody').innerHTML = empty('calendar', 'No record', esc(d.error)); return; }
+    MONTHS[key] = d; renderEmpMonth(d);
+  }).catch(handleError);
+}
+function renderEmpMonth(d) {
+  $('empMonthLbl').textContent = d.label;
+  const c = d.counts, now = new Date();
+  const isThis = d.year === now.getFullYear() && d.month === now.getMonth() + 1;
+  const lead = new Date(d.year, d.month - 1, 1).getDay();
+  const cells = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(x => `<div class="h">${x}</div>`).join('') +
+    new Array(lead).fill('<div></div>').join('') +
+    d.days.map(x => {
+      const cls = x.st === 'Full Day' ? 'full' : x.st === 'Half Day' ? 'half' : x.st === 'Absent' ? 'absent' : (x.future ? 'future' : 'miss');
+      const ap = x.ap === 'Approved' ? ' ok' : x.ap === 'SentBack' ? ' sb' : '';
+      const code = x.st === 'Full Day' ? 'FD' : x.st === 'Half Day' ? 'HD' : x.st === 'Absent' ? 'A' : '';
+      return `<div class="d ${cls}${ap}${isThis && x.d === now.getDate() ? ' today' : ''}" title="${esc(x.st || 'not marked')}">${x.d}<small>${code}</small></div>`;
+    }).join('');
+  $('empMonthBody').innerHTML = `
+    <div class="cal">${cells}</div>
+    <div class="mini">
+      <div><b style="color:var(--ok)">${c.full}</b><small>Full</small></div>
+      <div><b style="color:var(--half)">${c.half}</b><small>Half</small></div>
+      <div><b style="color:var(--bad)">${c.absent}</b><small>Absent</small></div>
+      <div><b>${c.unmarked}</b><small>Not marked</small></div>
+    </div>
+    <p class="sheet-sub" style="margin-top:8px">${fmt(d.manDays)} man-days · ${c.approved} HR-approved${c.sentBack ? ' · ' + c.sentBack + ' sent back' : ''}. Dot = HR approved (green) / sent back (amber).</p>`;
+}
+
+/* =====================================================================
+   SUPERVISOR — mark today
+   ===================================================================== */
+
+const MARK_FILTERS = [
+  { k: 'all', label: 'Everyone' }, { k: 'Full Day', label: 'Full day' }, { k: 'Half Day', label: 'Half day' },
+  { k: 'Absent', label: 'Absent' }, { k: 'unmarked', label: 'Not marked' }
+];
+
+function loadMark(force) {
+  const d = got('mark');
+  if (d) renderMark(d); else if (!$('markList').innerHTML) $('markList').innerHTML = skeleton(4);
+  if (!force && age('mark') < 4000) return Promise.resolve();
+  return fetchStore('mark', 'getSupervisorEmployees', SESSION.token).then(renderMark).catch(handleError);
+}
+
+/** Taps still on their way to the server stay lit, whatever a poll says. */
+function applyPending(d) {
+  Object.keys(PENDING_MARKS).forEach(id => {
+    const e = d.employees.filter(x => x.id === id)[0];
+    if (e) { e.status = PENDING_MARKS[id]; e.approval = 'Pending'; e.sentBack = false; e.locked = true; }
+  });
+  const c = { full: 0, half: 0, absent: 0, unmarked: 0 };
+  d.employees.forEach(e => {
+    if (e.status === 'Full Day') c.full++; else if (e.status === 'Half Day') c.half++;
+    else if (e.status === 'Absent') c.absent++; else c.unmarked++;
+  });
+  d.counts = c; d.done = c.full + c.half + c.absent; d.total = d.employees.length;
+}
+
+let MARK_SIG = '';
+function renderMark(d) {
+  MARK_DATA = d;
+  applyPending(d);
+  $('markSite').textContent = d.site;
+  $('markDate').textContent = d.dateLabel;
+  const clock = $('markClock');
+  if (d.windowOpen) {
+    const h = Math.floor(d.minutesLeft / 60), m = d.minutesLeft % 60;
+    clock.innerHTML = ic('clock') + 'Closes ' + esc(d.closingTime) + ' · ' + (h ? h + 'h ' : '') + m + 'm left';
+  } else clock.innerHTML = ic('lock') + 'Closed at ' + esc(d.closingTime);
+  refreshRing(); renderMarkBanner(); renderMarkKpis(); renderMarkFilters();
+  const sig = JSON.stringify([d.windowOpen, d.employees.map(e => [e.id, e.name, e.status, e.approval, e.locked])]);
+  if (sig !== MARK_SIG || !$('markList').querySelector('.emp, .empty')) { MARK_SIG = sig; renderMarkList(); }
+}
+
+function refreshRing() {
+  const d = MARK_DATA;
+  if (!d) return;
+  const p = pct(d.done, d.total);
+  $('ringPct').textContent = p + '%';
+  $('ringCount').textContent = d.done + ' / ' + d.total;
+  $('ringFill').style.strokeDashoffset = (263.9 * (1 - p / 100)).toFixed(1);
+}
+
+function renderMarkBanner() {
+  const d = MARK_DATA, banner = $('markBanner');
+  if (!d) { banner.innerHTML = ''; return; }
+  const left = d.total - d.done;
+  if (!d.windowOpen) banner.innerHTML = `<div class="banner banner-stop"><span class="bi">${ic('lock')}</span><div>Marking closed for today at ${esc(d.closingTime)}. Anything still unmarked has to be fixed by HR.</div></div>`;
+  else if (left === 0 && d.total > 0) banner.innerHTML = `<div class="banner banner-ok"><span class="bi">${ic('check')}</span><div>All ${d.total} marked. You're done for today.</div></div>`;
+  else if (d.minutesLeft <= 60) banner.innerHTML = `<div class="banner banner-warn go" onclick="pickMarkFilter('unmarked')"><span class="bi">${ic('clock')}</span><div>${left} still to mark and under an hour left. Tap to show them.</div></div>`;
+  else banner.innerHTML = '';
+}
+
+function renderMarkKpis() {
+  const c = (MARK_DATA && MARK_DATA.counts) || { full: 0, half: 0, absent: 0, unmarked: 0 };
+  const tiles = [
+    { k: 'Full Day', cls: 'k-ok', n: c.full, lbl: 'Full day' },
+    { k: 'Half Day', cls: 'k-half', n: c.half, lbl: 'Half day' },
+    { k: 'Absent', cls: 'k-bad', n: c.absent, lbl: 'Absent' },
+    { k: 'unmarked', cls: 'k-faint', n: c.unmarked, lbl: 'Not marked' }
+  ];
+  $('markKpis').innerHTML = tiles.map(t => `<button class="kpi ${t.cls}${MARK_FILTER === t.k ? ' sel' : ''}" onclick="pickMarkFilter('${t.k}')">
+      <div class="k-num num">${t.n}</div><div class="k-lbl">${t.lbl}</div></button>`).join('');
+}
+
+function renderMarkFilters() {
+  $('markFilters').innerHTML = MARK_FILTERS.map(f =>
+    `<button class="chip ${MARK_FILTER === f.k ? 'active' : ''}" onclick="pickMarkFilter('${f.k}')">${esc(f.label)}</button>`).join('');
+}
+
+/** Tapping the tile or chip you are already on takes you back to everyone. */
+function pickMarkFilter(k) {
+  MARK_FILTER = (MARK_FILTER === k && k !== 'all') ? 'all' : k;
+  renderMarkKpis(); renderMarkFilters(); renderMarkList();
+}
+
+function onMarkSearch() {
+  const raw = $('markSearch').value || '';
+  $('markClear').classList.toggle('hidden', !raw);
+  debounce('mark', () => { MARK_QUERY = raw.trim().toLowerCase(); renderMarkList(); });
+}
+function clearMarkSearch() {
+  $('markSearch').value = ''; MARK_QUERY = '';
+  $('markClear').classList.add('hidden');
+  renderMarkList(); $('markSearch').focus();
+}
+
+function markVisible() {
+  if (!MARK_DATA) return [];
+  const rows = MARK_DATA.employees.filter(e => {
+    if (MARK_FILTER === 'all') return true;
+    if (MARK_FILTER === 'unmarked') return !e.status;
+    return e.status === MARK_FILTER;
+  });
+  return rank(rows, MARK_QUERY, e => e.name, e => e.id, e => e.designation);
+}
+
+function unassignedTag(e) { return e.unassigned ? '<span class="stamp s-wait">Shared with the other supervisors</span>' : ''; }
+function approvalTag(e) { return approvalStamp(e.status, e.approval); }
+
+function renderMarkList() {
+  const d = MARK_DATA, list = $('markList');
+  if (!d) return;
+  if (!d.employees.length) {
+    $('markCount').textContent = '';
+    list.innerHTML = empty('users', 'No one on your list yet', 'Add your workers with the button above, or ask HR.');
+    return;
+  }
+  const rows = markVisible();
+  const filtered = MARK_FILTER !== 'all' || !!MARK_QUERY;
+  $('markCount').textContent = filtered ? 'Showing ' + rows.length + ' of ' + d.employees.length : d.employees.length + ' on the roll';
+  if (!rows.length) {
+    list.innerHTML = empty('search', 'Nobody matches', MARK_QUERY ? 'No name or ID like “' + esc(MARK_QUERY) + '”.' : 'No one in this group right now.');
+    return;
+  }
+  list.innerHTML = rows.map(e => {
+    const picks = [{ k: 'Full Day', i: 'sun', s: 'Full' }, { k: 'Half Day', i: 'half', s: 'Half' }, { k: 'Absent', i: 'absent', s: 'Absent' }].map(p => {
+      const on = e.status === p.k ? ' on' : '';
+      const dis = (e.locked || !d.windowOpen) ? ' disabled' : '';
+      return `<button class="pick${on}" data-k="${p.k}"${dis} onclick="mark('${js(e.id)}','${p.k}',this)">${ic(p.i)}${p.s}</button>`;
+    }).join('');
+    const tags = unassignedTag(e) + approvalTag(e);
+    return `<div class="emp ${statusClass(e.status, 'is-')} ${e.sentBack ? 'is-rejected' : ''}" id="emp_${esc(e.id)}">
+      <div class="emp-head tap" onclick="openEmployee('${js(d.site)}','${js(e.id)}')">
+        ${av(d.site, e.id, e.name)}
+        <div class="emp-id-name"><b>${hl(e.name, MARK_QUERY)}</b><small>${hl(e.id, MARK_QUERY)}${e.designation ? ' · ' + hl(e.designation, MARK_QUERY) : ''}</small></div>
+        ${e.status ? `<span class="stamp ${statusClass(e.status, 's-')}">${esc(e.status)}</span>` : ''}
+      </div>
+      <div class="emp-tags">${tags}</div>
+      <div class="picker">${picks}</div>
+      ${e.sentBack ? `<div class="emp-note">${ic('undo')}HR sent this back — mark it again correctly.</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function mark(id, status, btn) {
+  if (MARK_BUSY[id]) return;
+  MARK_BUSY[id] = true;
+  PENDING_MARKS[id] = status;
+  const card = $('emp_' + id);
+  btn.parentElement.querySelectorAll('.pick').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  if (card) {
+    card.classList.remove('is-full', 'is-half', 'is-absent', 'is-rejected');
+    card.classList.add(statusClass(status, 'is-'), 'just-marked');
+    setTimeout(() => card.classList.remove('just-marked'), 600);
+  }
+  if (navigator.vibrate) navigator.vibrate(12);
+  applyLocalMark(id, status);
+
+  call('submitAttendance', SESSION.token, id, status).then(res => {
+    MARK_BUSY[id] = false; delete PENDING_MARKS[id];
+    if (!res.ok) { toast(res.error, 'bad'); loadMark(true); return; }
+    lockCard(id, status);
+    save('mark');
+    toast(status + ' saved', 'ok');
+  }).catch(err => { MARK_BUSY[id] = false; delete PENDING_MARKS[id]; handleError(err); loadMark(true); });
+}
+
+/** Keep the in-memory copy, the tiles and the ring in step without a round trip. */
+function applyLocalMark(id, status) {
+  if (!MARK_DATA) return;
+  applyPending(MARK_DATA);
+  refreshRing(); renderMarkBanner(); renderMarkKpis();
+  const filtered = MARK_FILTER !== 'all' || !!MARK_QUERY;
+  $('markCount').textContent = filtered ? 'Showing ' + markVisible().length + ' of ' + MARK_DATA.employees.length : MARK_DATA.employees.length + ' on the roll';
+  if (MARK_FILTER !== 'all') setTimeout(renderMarkList, 700);   // let the stamp play first
+}
+
+function lockCard(id, status) {
+  const card = $('emp_' + id);
+  if (!card) return;
+  card.classList.remove('is-rejected');
+  const note = card.querySelector('.emp-note'); if (note) note.remove();
+  const head = card.querySelector('.emp-head');
+  let stamp = head.querySelector('.stamp');
+  if (!stamp) { stamp = document.createElement('span'); head.appendChild(stamp); }
+  stamp.className = 'stamp ' + statusClass(status, 's-');
+  stamp.textContent = status;
+  const tags = card.querySelector('.emp-tags');
+  if (tags) tags.innerHTML = '<span class="stamp s-muted">Awaiting check</span>';
+  card.querySelectorAll('.pick').forEach(b => { b.disabled = true; });
+}
+
+/* ---- a supervisor adds a worker ---- */
+
+function openSupervisorAdd() {
+  SHOT = null;
+  const d = MARK_DATA || {};
+  openSheet(`
+    <h3>Add a worker</h3>
+    <p class="sheet-sub">They join ${esc(d.site || SESSION.site)} on your list and can be marked straight away. HR can change their details later.</p>
+    <label class="fld"><span>Employee ID</span><input id="saId" value="${esc(d.nextId || '')}" placeholder="e.g. NEW-101" autocapitalize="characters"></label>
+    <label class="fld"><span>Full name</span><input id="saName" placeholder="e.g. Ramesh Kumar"></label>
+    <label class="fld"><span>Designation <small style="text-transform:none">(optional)</small></span><input id="saDesig" placeholder="e.g. Helper"></label>
+    <div class="fld"><span class="fld-l">Photo <small style="text-transform:none">(optional — camera or gallery)</small></span>
+      <div class="ph-row"><div class="ph-mini" id="npPrev">${ic('camera')}</div>${photoPickers('np')}</div><div id="npSize" class="listcount"></div></div>
+    <button class="btn btn-primary" id="saBtn" onclick="saveSupervisorAdd()">${ic('userplus')}Add worker</button>`);
+  setTimeout(() => $('saName') && $('saName').focus(), 280);
+}
+
+function saveSupervisorAdd() {
+  const id = $('saId').value.trim(), name = $('saName').value.trim(), desig = $('saDesig').value.trim();
+  if (!id || !name) return toast('ID and name are both needed', 'bad');
+  const btn = $('saBtn'); btn.disabled = true;
+  call('supervisorAddEmployee', SESSION.token, id, name, desig).then(res => {
+    btn.disabled = false;
+    if (!res.ok) return toast(res.error, 'bad');
+    const site = (MARK_DATA && MARK_DATA.site) || SESSION.site;
+    if (SHOT) savePhoto(site, id).then(ok => { if (!ok) toast('Worker added, but the photo did not save — tap their picture to try again', 'bad'); }).catch(handleError);
+    closeSheet(); toast(name + ' added to your list', 'ok');
+    if (MARK_DATA) {
+      MARK_DATA.employees.unshift(res.employee);
+      MARK_DATA.nextId = res.nextId || '';
+      MARK_SIG = ''; put('mark', MARK_DATA); renderMark(MARK_DATA);
+    }
+    setTimeout(() => loadMark(true), 1500);
+  }).catch(err => { btn.disabled = false; handleError(err); });
+}
+
+/* =====================================================================
+   TODAY — HR + Admin. One call brings everyone in scope; every number,
+   tile and list below is worked out from it on the phone.
+   ===================================================================== */
+
+function siteRows(d) { return !d ? [] : ACTIVE_SITE === 'ALL' ? d.rows : d.rows.filter(r => r.s === ACTIVE_SITE); }
+function kpisOf(rows) {
+  const k = { total: rows.length, filled: 0, full: 0, half: 0, absent: 0, approved: 0, sentBack: 0, waiting: 0 };
+  rows.forEach(r => {
+    if (!r.st) return;
+    k.filled++;
+    if (r.st === 'Full Day') k.full++; else if (r.st === 'Half Day') k.half++; else k.absent++;
+    if (r.ap === 'Approved') k.approved++; else if (r.ap === 'SentBack') k.sentBack++; else k.waiting++;
+  });
+  k.pending = k.total - k.filled;
+  k.attPct = k.total ? Math.round(((k.full + k.half * 0.5) / k.total) * 1000) / 10 : 0;
+  k.compPct = pct(k.filled, k.total);
+  return k;
+}
+function pickTodaySite(s) { ACTIVE_SITE = s; renderToday(got('today')); }
+
+function loadToday(force) {
+  const d = got('today');
+  if (d) renderToday(d); else if (!$('todayKpis').innerHTML) $('todayKpis').innerHTML = skeleton(2);
+  if (!force && age('today') < 4000) return Promise.resolve();
+  return fetchStore('today', 'getTodayRows', SESSION.token, 'ALL').then(renderToday).catch(handleError);
+}
+
+function renderToday(d) {
+  if (!d) return;
+  renderChips('todayChips', ACTIVE_SITE, 'pickTodaySite', countBySite(d.rows));
+  const k = kpisOf(siteRows(d));
+  $('todayHead').innerHTML = `<div class="pagehead"><div><h1>Today</h1><p>${esc(d.dateLabel)}${ACTIVE_SITE !== 'ALL' ? ' · ' + esc(ACTIVE_SITE) : ''}</p></div>
+    <span class="when">updated ${esc(d.updatedAt)}</span></div>`;
+  $('todayKpis').innerHTML =
+    (k.waiting ? `<div class="banner banner-warn go" onclick="openVerifyFor('pending')"><span class="bi">${ic('shield')}</span><div>${k.waiting} marked record${k.waiting === 1 ? ' is' : 's are'} waiting for your check. Tap to verify.</div></div>` : '') +
+    `<div class="kpi-grid">
+      ${tile({ cls: 'k-ok', n: k.filled, lbl: 'Attendance filled', sub: k.compPct + '% of roll', icon: 'check', go: "openTodayList('filled')" })}
+      ${tile({ cls: 'k-amber', n: k.pending, lbl: 'Still pending', sub: 'not marked yet', icon: 'clock', go: "openTodayList('pending')" })}
+      ${tile({ cls: 'k-ok', n: k.full, lbl: 'Full day', sub: '', icon: 'sun', go: "openTodayList('Full Day')" })}
+      ${tile({ cls: 'k-half', n: k.half, lbl: 'Half day', sub: '', icon: 'half', go: "openTodayList('Half Day')" })}
+      ${tile({ cls: 'k-bad', n: k.absent, lbl: 'Absent', sub: '', icon: 'absent', go: "openTodayList('Absent')" })}
+      ${tile({ cls: 'k-blue', n: k.total, lbl: 'On the roll', sub: k.attPct + '% attendance', icon: 'users', go: "openTodayList('all')" })}
+    </div>`;
+  const bySite = {};
+  d.rows.forEach(r => { (bySite[r.s] = bySite[r.s] || []).push(r); });
+  $('todaySites').innerHTML = d.sites.map(s => {
+    const kk = kpisOf(bySite[s.site] || []);
+    return `<div class="row tap site-row" style="--sc:${siteColor(s.site)}" onclick="openSiteToday('${js(s.site)}')">
+      <div class="rmain"><b>${esc(s.site)}</b>
+        <small>${kk.filled}/${kk.total} marked · ${s.windowOpen ? 'closes ' : 'closed at '}${esc(s.closingTime)}</small>
+        <div class="rtags"><span class="stamp s-full">${kk.full} full</span><span class="stamp s-half">${kk.half} half</span><span class="stamp s-absent">${kk.absent} absent</span>
+          ${kk.waiting ? `<span class="stamp s-wait">${kk.waiting} to check</span>` : ''}</div></div>
+      <div class="rnum"><b class="num">${kk.compPct}%</b><small>filled</small></div><span class="go">›</span></div>`;
+  }).join('');
+  paintQ('today');
+}
+
+function openSiteToday(site) { ACTIVE_SITE = site; renderToday(got('today')); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+const LIST_TITLES = {
+  filled: 'Attendance filled', pending: 'Still pending — not marked', 'Full Day': 'Present — full day',
+  'Half Day': 'Half day', Absent: 'Absent today', all: 'Everyone on the roll', present: 'Present today'
+};
+function openTodayList(kind) {
+  const d = got('today');
+  const rows = siteRows(d).filter(r => kind === 'all' ? true : kind === 'filled' ? !!r.st : kind === 'pending' ? !r.st
+    : kind === 'present' ? (r.st === 'Full Day' || r.st === 'Half Day') : r.st === kind);
+  openList(LIST_TITLES[kind] || kind, esc((ACTIVE_SITE === 'ALL' ? 'All sites' : ACTIVE_SITE) + ' · ' + (d ? d.dateLabel : '')) + ' · tap anyone for their month', rows);
+}
+function openVerifyFor(filter) { VERIFY_FILTER = filter; go('verify'); }
+
+/* =====================================================================
+   VERIFY — HR approves, or sends a record back for correction
+   ===================================================================== */
+
+function pickVerifySite(s) { ACTIVE_SITE = s; paintVerify(); }
+function pickVerifyFilter(f) { VERIFY_FILTER = f; paintVerify(); }
+
+function loadVerify(force) {
+  const d = got('today');
+  if (d) paintVerify(); else if (!$('verifyList').innerHTML) $('verifyList').innerHTML = skeleton(3);
+  if (!force && age('today') < 4000) return Promise.resolve();
+  return fetchStore('today', 'getTodayRows', SESSION.token, 'ALL').then(paintVerify).catch(handleError);
+}
+
+function onVerifySearch() {
+  const raw = $('verifySearch').value || '';
+  $('verifyClear').classList.toggle('hidden', !raw);
+  debounce('verify', () => { VERIFY_QUERY = raw.trim().toLowerCase(); paintVerify(); });
+}
+function clearVerifySearch() {
+  $('verifySearch').value = ''; VERIFY_QUERY = '';
+  $('verifyClear').classList.add('hidden'); paintVerify(); $('verifySearch').focus();
+}
+
+/** The list after the search box. */
+function verifyVisible() { return rank(verifyRows(), VERIFY_QUERY, r => r.n, r => r.id, r => r.sup); }
+function renderVerify() { paintVerify(); }
+function renderUnmarked() { VERIFY_FILTER = 'unmarked'; paintVerify(); }
+
+function verifyRows() {
+  const rows = siteRows(got('today'));
+  return rows.filter(r => VERIFY_FILTER === 'unmarked' ? !r.st : VERIFY_FILTER === 'pending' ? (r.st && r.ap === 'Pending')
+    : VERIFY_FILTER === 'sentback' ? (r.st && r.ap === 'SentBack') : !!r.st);
+}
+
+function paintVerify() {
+  const d = got('today');
+  if (!d) return;
+  renderChips('verifyChips', ACTIVE_SITE, 'pickVerifySite', countBySite(d.rows));
+  const all = siteRows(d);
+  const n = { pending: all.filter(r => r.st && r.ap === 'Pending').length, unmarked: all.filter(r => !r.st).length,
+              all: all.filter(r => r.st).length, sentback: all.filter(r => r.st && r.ap === 'SentBack').length };
+  $('verifyFilters').innerHTML = [['pending', 'Awaiting check'], ['unmarked', 'Not marked'], ['all', 'Everything'], ['sentback', 'Sent back']]
+    .map(f => `<button class="chip ${VERIFY_FILTER === f[0] ? 'active' : ''}" onclick="pickVerifyFilter('${f[0]}')">${f[1]}<span class="n">${n[f[0]]}</span></button>`).join('');
+  $('verifyActions').innerHTML = VERIFY_FILTER === 'pending' && n.pending
+    ? `<button class="btn btn-ghost" style="margin-bottom:12px" onclick="approveAll()">${ic('check')}Approve all ${n.pending} waiting${ACTIVE_SITE === 'ALL' ? '' : ' at ' + esc(ACTIVE_SITE)}</button>` : '';
+
+  const base = verifyRows();
+  const rows = verifyVisible();
+  const el = $('verifyList');
+  $('verifyCount').textContent = base.length ? (VERIFY_QUERY ? 'Showing ' + rows.length + ' of ' + base.length : base.length + ' in this list') : '';
+  if (!base.length) {
+    el.innerHTML = VERIFY_FILTER === 'unmarked' ? empty('check', 'Everyone is marked', "No one is missing from today's attendance.")
+      : empty('shield', 'Nothing here', VERIFY_FILTER === 'pending' ? 'Every submission has been checked.' : 'No records match this filter.');
+    return;
+  }
+  if (!rows.length) { el.innerHTML = empty('search', 'Nobody matches', 'No name, ID or supervisor like “' + esc(VERIFY_QUERY) + '”.'); return; }
+  const multi = SESSION.scope.length > 1 && ACTIVE_SITE === 'ALL';
+  const shown = rows.slice(0, 400);
+  el.innerHTML = shown.map(r => {
+    const who = `<div class="rmain" onclick="openEmployee('${js(r.s)}','${js(r.id)}')" style="cursor:pointer"><b>${hl(r.n, VERIFY_QUERY)}</b>
+        <small>${hl(r.id, VERIFY_QUERY)}${multi ? ' · ' + esc(r.s) : ''}${r.sup ? ' · ' + hl(r.sup, VERIFY_QUERY) : ''}</small>
+        <div class="rtags">${statusStamp(r.st)}${approvalStamp(r.st, r.ap)}</div></div>`;
+    const acts = r.st
+      ? `<button class="act act-ok" title="Approve" onclick="verify('${js(r.s)}','${js(r.id)}','Approved')">${ic('check')}</button>
+         <button class="act act-no" title="Send back for correction" onclick="verify('${js(r.s)}','${js(r.id)}','SentBack')">${ic('undo')}</button>
+         <button class="act act-edit" title="Change status" onclick="openOverride('${js(r.s)}','${js(r.id)}','${js(r.n)}','${js(r.st)}')">${ic('edit')}</button>`
+      : `<button class="act act-edit" title="Set status" onclick="openOverride('${js(r.s)}','${js(r.id)}','${js(r.n)}','Full Day',true)">${ic('edit')}</button>`;
+    return `<div class="row">${av(r.s, r.id, r.n)}${who}<div class="racts">${acts}</div></div>`;
+  }).join('') + (rows.length > 400 ? '<div class="listcount">Search to find the rest.</div>' : '');
+}
+
+/** Change today's copy on the phone, then tell the server; a refusal puts the server's state back. */
+function patchToday(site, id, st, ap) {
+  const d = got('today');
+  if (d) {
+    d.rows.forEach(r => { if (r.s === site && r.id === id) { r.st = st; r.ap = ap; } });
+    save('today');
+  }
+  repaintHr();
+}
+function repaintHr() {
+  if (VIEW === 'verify') paintVerify();
+  else if (VIEW === 'today') renderToday(got('today'));
+  else if (VIEW === 'overview') renderOverview();
+  else if (VIEW === 'record') paintRecord();
+}
+/** Today's status changed: move one day in this month's Record rows on the phone too. */
+function patchRecordLocal(site, id, oldSt, newSt) {
+  const k = { 'Full Day': 'f', 'Half Day': 'h', 'Absent': 'a' }, ym = ymNow();
+  Object.keys(STORE).forEach(key => {
+    const p = key.split(':');
+    if (p[0] !== 'rec' || p[2] !== ym || (p[1] !== 'ALL' && p[1] !== site) || !STORE[key].d || !STORE[key].d.rows) return;
+    const d = STORE[key].d;
+    d.rows.forEach(r => {
+      if (r.s !== site || r.id !== id) return;
+      if (k[oldSt]) r[k[oldSt]] = Math.max(0, r[k[oldSt]] - 1);
+      if (k[newSt]) r[k[newSt]]++;
+      r.u = r.off ? 0 : Math.max(0, d.daysCounted - r.f - r.h - r.a);
+    });
+    save(key);
+  });
+  Object.keys(MONTHS).forEach(key => { if (key.indexOf(site + '|' + id + '|') === 0) delete MONTHS[key]; });
+}
+/** After a change made from someone's sheet, show that sheet again with the new state. */
+function afterChange(site, id) {
+  if (EMP && EMP.site === site && EMP.id === id) openEmployee(site, id, EMP.y, EMP.m);
+  else closeSheet();
+}
+
+function verify(site, id, decision) {
+  if (navigator.vibrate) navigator.vibrate(10);
+  const r = findPerson(site, id);
+  patchToday(site, id, r.st, decision);
+  if ($('sheet').classList.contains('open')) afterChange(site, id);
+  call('verifyRecord', SESSION.token, site, id, decision).then(res => {
+    if (!res.ok) { toast(res.error, 'bad'); loadView(VIEW, true); return; }
+    toast(decision === 'Approved' ? 'Approved' : 'Sent back for correction', 'ok');
+  }).catch(err => { handleError(err); loadView(VIEW, true); });
+}
+
+function approveAll() {
+  const sites = ACTIVE_SITE === 'ALL' ? SESSION.scope : [ACTIVE_SITE];
+  if (!confirm('Approve every unchecked record at ' + (ACTIVE_SITE === 'ALL' ? 'all sites' : ACTIVE_SITE) + '?')) return;
+  const d = got('today');
+  d.rows.forEach(r => { if (sites.indexOf(r.s) > -1 && r.st && r.ap === 'Pending') r.ap = 'Approved'; });
+  save('today'); repaintHr();
+  Promise.all(sites.map(s => call('verifyAllPending', SESSION.token, s))).then(results => {
+    const n = results.reduce((a, r) => a + ((r && r.count) || 0), 0);
+    toast(n + ' record' + (n === 1 ? '' : 's') + ' approved', 'ok');
+    loadView(VIEW, true);
+  }).catch(err => { handleError(err); loadView(VIEW, true); });
+}
+
+function openOverride(site, id, name, current, unmarked) {
+  openSheet(`
+    <h3>${unmarked ? "Set today's status" : 'Change status'}</h3>
+    <p class="sheet-sub">${esc(name)} · ${esc(id)} · ${esc(site)}. What you set here counts as approved.</p>
+    <label class="fld"><span>Today's status</span>
+      <select id="ovStatus">${['Full Day', 'Half Day', 'Absent'].map(s => `<option ${current === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+    <button class="btn btn-primary" onclick="saveOverride('${js(site)}','${js(id)}')">Save and approve</button>
+    ${unmarked ? '' : `<button class="btn btn-danger" onclick="clearRecord('${js(site)}','${js(id)}')">Clear it — let the supervisor redo</button>`}
+  `);
+}
+function saveOverride(site, id) {
+  const status = $('ovStatus').value, before = findPerson(site, id).st;
+  patchToday(site, id, status, 'Approved');
+  patchRecordLocal(site, id, before, status);
+  repaintHr();
+  afterChange(site, id);
+  call('hrSetAttendance', SESSION.token, site, id, status).then(res => {
+    if (!res.ok) { toast(res.error, 'bad'); loadView(VIEW, true); return; }
+    toast('Set to ' + status, 'ok');
+  }).catch(err => { handleError(err); loadView(VIEW, true); });
+}
+function clearRecord(site, id) {
+  const before = findPerson(site, id).st;
+  patchToday(site, id, '', 'Pending');
+  patchRecordLocal(site, id, before, '');
+  repaintHr();
+  afterChange(site, id);
+  call('hrSetAttendance', SESSION.token, site, id, '').then(res => {
+    if (!res.ok) { toast(res.error, 'bad'); loadView(VIEW, true); return; }
+    toast('Cleared — the supervisor can mark it again', 'ok');
+  }).catch(err => { handleError(err); loadView(VIEW, true); });
+}
+
+/* =====================================================================
+   RECORD — everyone's month, one row each (HR + Admin), printable
+   ===================================================================== */
+
+let REC_SORT = { k: 'n', dir: 1 }, REC_QUERY = '';
+const REC_COLS = [
+  { k: 'n', label: 'Employee' }, { k: 's', label: 'Site' }, { k: 'f', label: 'Present', sm: 'P' }, { k: 'h', label: 'Half day', sm: 'H' },
+  { k: 'a', label: 'Absent', sm: 'A' }, { k: 'u', label: 'Not marked', sm: 'NM' }, { k: 'md', label: 'Man-days', sm: 'MD' }
+];
+function ymNow() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function recKey() { return 'rec:' + $('recSite').value + ':' + $('recMonth').value; }
+
+function loadRecord(force) {
+  const siteSel = $('recSite');
+  if (!siteSel.options.length) {
+    siteSel.innerHTML = (SESSION.scope.length > 1 ? '<option value="ALL">All sites</option>' : '') +
+      SESSION.scope.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    $('recMonth').value = ymNow();
+    $('recMonth').max = ymNow();
+  }
+  const k = recKey(), d = got(k);
+  if (d) paintRecord(); else $('recTable').innerHTML = skeleton(4);
+  if (!force && d && age(k) < 120000) return Promise.resolve();
+  const [y, m] = $('recMonth').value.split('-').map(Number);
+  return fetchStore(k, 'getMonthRecord', SESSION.token, $('recSite').value, y, m).then(r => {
+    if (!r.ok) { $('recTable').innerHTML = empty('calendar', 'No record', esc(r.error)); return; }
+    if (recKey() === k) paintRecord();
+  }).catch(handleError);
+}
+function pickRecordFilter() { if (!$('recMonth').value) $('recMonth').value = ymNow(); loadRecord(false); }
+function onRecSearch() {
+  const raw = $('recSearch').value || '';
+  $('recClear').classList.toggle('hidden', !raw);
+  debounce('rec', () => { REC_QUERY = raw.trim().toLowerCase(); paintRecord(); });
+}
+function clearRecSearch() { $('recSearch').value = ''; REC_QUERY = ''; $('recClear').classList.add('hidden'); paintRecord(); $('recSearch').focus(); }
+function sortRecord(k) { REC_SORT = REC_SORT.k === k ? { k: k, dir: -REC_SORT.dir } : { k: k, dir: (k === 'n' || k === 's') ? 1 : -1 }; paintRecord(); }
+
+/** The rows on screen = the rows printed: filters, search and sort all applied. */
+function recordRows() {
+  const d = got(recKey());
+  if (!d || !d.rows) return [];
+  let rows = d.rows.map(r => Object.assign({}, r, { md: r.f + r.h * 0.5 }));
+  if ($('recHideZero').checked) rows = rows.filter(r => r.f + r.h > 0);
+  if (REC_QUERY) rows = rank(rows, REC_QUERY, r => r.n, r => r.id);
+  const k = REC_SORT.k, dir = REC_SORT.dir;
+  if (!REC_QUERY || k !== 'n') rows.sort((a, b) => {
+    const x = a[k], y = b[k];
+    return (typeof x === 'number' ? (x - y) : String(x).localeCompare(String(y))) * dir || a.n.localeCompare(b.n);
+  });
+  return rows;
+}
+function recordTotals(rows) {
+  const t = { f: 0, h: 0, a: 0, u: 0, md: 0 };
+  rows.forEach(r => { t.f += r.f; t.h += r.h; t.a += r.a; t.u += r.u; t.md += r.md; });
+  return t;
+}
+
+function paintRecord() {
+  const d = got(recKey());
+  if (!d || !d.rows) return;
+  const multi = $('recSite').value === 'ALL';
+  const all = d.rows.length, rows = recordRows(), t = recordTotals(rows);
+  $('recSub').textContent = d.label + ' · ' + (multi ? 'all sites' : $('recSite').value) + ' · ' + d.daysCounted + ' day' + (d.daysCounted === 1 ? '' : 's') + (d.current ? ' so far' : '');
+  $('recKpis').innerHTML = `<div class="kpi-grid four">
+    ${tile({ cls: 'k-blue', n: rows.length, lbl: 'People', sub: rows.length !== all ? 'of ' + all : 'on the record', icon: 'users', sel: REC_SORT.k === 'n', go: "sortRecord('n')" })}
+    ${tile({ cls: 'k-ok', n: t.f, lbl: 'Present days', sub: 'most first', icon: 'sun', sel: REC_SORT.k === 'f', go: "sortRecord('f')" })}
+    ${tile({ cls: 'k-half', n: t.h, lbl: 'Half days', sub: 'most first', icon: 'half', sel: REC_SORT.k === 'h', go: "sortRecord('h')" })}
+    ${tile({ cls: 'k-bad', n: t.a, lbl: 'Absent days', sub: 'most first', icon: 'absent', sel: REC_SORT.k === 'a', go: "sortRecord('a')" })}
+  </div>`;
+  $('recCount').textContent = (rows.length === all ? all + ' people' : 'Showing ' + rows.length + ' of ' + all) + ' · as of ' + d.updatedAt + ' · tap a column to sort';
+  if (!rows.length) { $('recTable').innerHTML = empty('search', 'Nobody matches', REC_QUERY ? 'No name or ID like “' + esc(REC_QUERY) + '”.' : 'Nobody with present days this month.'); return; }
+  const cols = REC_COLS.filter(c => multi || c.k !== 's');
+  const arrow = k => REC_SORT.k === k ? (REC_SORT.dir > 0 ? ' ▲' : ' ▼') : '';
+  const shown = rows.slice(0, 1000);
+  $('recTable').innerHTML = `<div class="tbl-wrap"><table class="tbl rec">
+    <thead><tr><th>#</th>${cols.map(c => `<th class="sort ${c.k}" onclick="sortRecord('${c.k}')">${c.sm ? `<span class="lg">${c.label}</span><span class="sm">${c.sm}</span>` : c.label}${arrow(c.k)}</th>`).join('')}</tr></thead>
+    <tbody>${shown.map((r, i) => `<tr class="tap${r.off ? ' off' : ''}" onclick="openEmployee('${js(r.s)}','${js(r.id)}',${d.year},${d.month})">
+      <td class="i">${i + 1}</td>
+      <td class="who"><div class="who-in">${av(r.s, r.id, r.n, 'av-sm')}<div><b>${hl(r.n, REC_QUERY)}</b><small>${hl(r.id, REC_QUERY)}${multi ? `<span class="site-sm"> · <span class="sdot" style="--sc:${siteColor(r.s)}"></span>${esc(r.s)}</span>` : ''}${r.off ? ' · switched off' : ''}</small></div></div></td>
+      ${multi ? `<td class="site"><span class="sdot" style="--sc:${siteColor(r.s)}"></span>${esc(r.s)}</td>` : ''}
+      <td class="n f">${r.f}</td><td class="n h">${r.h}</td><td class="n a">${r.a}</td><td class="n u">${r.u}</td><td class="n md">${fmt(r.md)}</td></tr>`).join('')}
+    </tbody>
+    <tfoot><tr><td class="i"></td><td><b>Total</b></td>${multi ? '<td class="site"></td>' : ''}<td class="n f">${t.f}</td><td class="n h">${t.h}</td><td class="n a">${t.a}</td><td class="n u">${t.u}</td><td class="n md">${fmt(t.md)}</td></tr></tfoot>
+  </table></div><div class="listcount legend">P present · H half day · A absent · NM not marked · MD man-days</div>` + (rows.length > 1000 ? '<div class="listcount">Search or filter to see the rest (the PDF has everyone).</div>' : '');
+}
+
+/* ---- Print list: a PDF of exactly what is on screen (the PDF tools load only now) ---- */
+function loadScriptOnce(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector('script[src="' + src + '"]')) return res();
+    const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+function printRecord() {
+  const d = got(recKey());
+  if (!d || !d.rows) return toast('The list is still loading', 'bad');
+  const rows = recordRows(), t = recordTotals(rows), multi = $('recSite').value === 'ALL';
+  if (!rows.length) return toast('Nothing to print with these filters', 'bad');
+  const btn = $('recPrint'); btn.disabled = true;
+  loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    .then(() => loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'))
+    .then(() => {
+      const site = multi ? 'All sites' : $('recSite').value;
+      const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const W = doc.internal.pageSize.getWidth();
+      doc.setFillColor(35, 34, 32); doc.rect(0, 0, W, 64, 'F');
+      doc.setFillColor(242, 193, 78); doc.roundedRect(36, 20, 24, 24, 5, 5, 'F');
+      doc.setTextColor(246, 242, 231); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+      doc.text('Attendance record — ' + site + ' — ' + d.label, 70, 37);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(180, 174, 159);
+      const notes = [d.daysCounted + ' day' + (d.daysCounted === 1 ? '' : 's') + (d.current ? ' so far' : ''), rows.length + ' people',
+        $('recHideZero').checked ? 'people with 0 present days left out' : '', REC_QUERY ? 'search: "' + REC_QUERY + '"' : '', 'as of ' + d.updatedAt].filter(Boolean);
+      doc.text(notes.join('  ·  '), 70, 51);
+      const head = ['#', 'Employee', 'ID'].concat(multi ? ['Site'] : [], ['Present', 'Half day', 'Absent', 'Not marked', 'Man-days']);
+      const body = rows.map((r, i) => [i + 1, r.n, r.id].concat(multi ? [r.s] : [], [r.f, r.h, r.a, r.u, r.md]));
+      const foot = [['', 'Total', ''].concat(multi ? [''] : [], [t.f, t.h, t.a, t.u, t.md])];
+      const numFrom = multi ? 4 : 3, colStyles = {};
+      for (let c = numFrom; c < head.length; c++) colStyles[c] = { halign: 'right' };
+      colStyles[0] = { halign: 'right', cellWidth: 24, textColor: [154, 150, 139] };
+      doc.autoTable({
+        head: [head], body: body, foot: foot, startY: 80, margin: { left: 36, right: 36 },
+        styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 4, textColor: [27, 26, 23], lineColor: [232, 227, 214], lineWidth: 0.4 },
+        headStyles: { fillColor: [35, 34, 32], textColor: [242, 193, 78], fontStyle: 'bold' },
+        footStyles: { fillColor: [251, 239, 203], textColor: [27, 26, 23], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [250, 248, 242] }, columnStyles: colStyles, showFoot: 'lastPage',
+        didParseCell: c => {
+          if (c.section !== 'body') return;
+          const k = c.column.index - numFrom;
+          if (k === 0 && c.cell.raw > 0) c.cell.styles.textColor = [56, 125, 80];
+          if (k === 2 && c.cell.raw > 0) c.cell.styles.textColor = [190, 64, 38];
+        },
+        didDrawPage: () => {
+          const p = doc.internal.getNumberOfPages(), H = doc.internal.pageSize.getHeight();
+          doc.setFontSize(8); doc.setTextColor(154, 150, 139);
+          doc.text('GGM Portal · Attendance · page ' + p, 36, H - 18);
+        }
+      });
+      doc.save(('Attendance ' + site + ' ' + d.label).replace(/[^\w\- ]+/g, '').replace(/\s+/g, '-') + '.pdf');
+      toast('PDF downloaded', 'ok');
+    })
+    .catch(() => { toast('Could not load the PDF tools — printing the page instead', 'bad'); window.print(); })
+    .finally(() => { btn.disabled = false; });
+}
+
+/* =====================================================================
+   PUNCH REPORT — the punching machine's report against the marks
+   The file is read here on the phone (any size); only first / last punch
+   and the count per person per day go to the server, which turns every
+   mark that does not fit bright red in the site sheets.
+   ===================================================================== */
+
+let PUNCH = null, PUNCH_RESULT = null;
+function openPunchUpload() {
+  PUNCH = null;
+  openSheet(`<h3>Punch report</h3>
+    <p class="sheet-sub">Upload the <b>Daily Punch Report</b> (.xlsx) from the punching machine. Each marked day is checked against the punches;
+      a mark that does not fit turns <b style="color:#e00">bright red</b> in the site sheet, one that fits goes back to black.</p>
+    <label class="btn btn-amber pick-file">${ic('folder')}Choose the report file<input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onchange="readPunchFile(this)"></label>
+    <div id="punchInfo"></div>
+    ${PUNCH_RESULT ? `<button class="btn btn-ghost" onclick="showPunchResult()">${ic('list')}See the last check (${PUNCH_RESULT.different} different)</button>` : ''}`);
+}
+
+function readPunchFile(input) {
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  $('punchInfo').innerHTML = skeleton(1);
+  Promise.all([loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'), f.arrayBuffer()]).then(([, buf]) => {
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    PUNCH = parsePunchRows(XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }), f.name);
+    const withPunch = PUNCH.rows.reduce((a, r) => a + r.d.filter(Boolean).length, 0);
+    $('punchInfo').innerHTML = `<div class="banner banner-ok"><span class="bi">${ic('check')}</span><div><b>${esc(f.name)}</b><br>
+        ${PUNCH.rows.length} people · ${PUNCH.dates.length} days (${esc(PUNCH.dates[0])} to ${esc(PUNCH.dates[PUNCH.dates.length - 1])}) · ${withPunch} punched days</div></div>
+      <button class="btn btn-primary" id="punchGo" onclick="sendPunch()">${ic('shield')}Check and mark differences red</button>`;
+  }).catch(err => { $('punchInfo').innerHTML = ''; toast(String((err && err.message) || err || 'Could not read that file'), 'bad'); });
+}
+
+/** Header row: "Employee ID", "Employee Name", …, then one column per date ("01-09-2026 Tuesday"). */
+function parsePunchRows(grid, fileName) {
+  const h = grid.findIndex(r => r.some(c => /employee\s*id/i.test(String(c))));
+  if (h < 0) throw new Error('No "Employee ID" column found. Is this the Daily Punch Report?');
+  const head = grid[h], idCol = head.findIndex(c => /employee\s*id/i.test(String(c)));
+  const dateCols = [];
+  head.forEach((c, i) => {
+    const m = String(c).match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+    if (m) dateCols.push({ i: i, iso: m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') });
+  });
+  if (!dateCols.length) throw new Error('No date columns (like 01-09-2026) in the header row.');
+  const rows = [];
+  grid.slice(h + 1).forEach(r => {
+    const id = String(r[idCol] == null ? '' : r[idCol]).trim().replace(/\.0+$/, '');
+    if (!id) return;
+    rows.push({ id: id, d: dateCols.map(dc => punchOf(r[dc.i])) });
+  });
+  return { file: fileName, dates: dateCols.map(d => d.iso), rows: rows };
+}
+
+/** "09:20 AM\n06:00 PM" → "560,1080,2" (first punch, last punch in minutes, how many). */
+function punchOf(cell) {
+  const mins = [];
+  String(cell == null ? '' : cell).replace(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/g, (all, h, m, ap) => {
+    let hh = Number(h) % 24;
+    if (ap) { hh = Number(h) % 12; if (/p/i.test(ap)) hh += 12; }
+    mins.push(hh * 60 + Number(m));
+    return all;
+  });
+  if (!mins.length) return '';
+  mins.sort((a, b) => a - b);
+  return mins[0] + ',' + mins[mins.length - 1] + ',' + mins.length;
+}
+
+function sendPunch() {
+  if (!PUNCH) return;
+  const b = $('punchGo'); b.disabled = true; b.innerHTML = ic('refresh') + 'Checking…';
+  call('uploadPunchReport', SESSION.token, PUNCH).then(res => {
+    b.disabled = false; b.innerHTML = ic('shield') + 'Check and mark differences red';
+    if (!res.ok) return toast(res.error, 'bad');
+    PUNCH_RESULT = res;
+    toast(res.different ? res.different + ' marks differ — now red in the sheet' : 'Every mark fits the punches', res.different ? 'bad' : 'ok');
+    showPunchResult();
+  }).catch(err => { b.disabled = false; b.innerHTML = ic('shield') + 'Check and mark differences red'; handleError(err); });
+}
+
+function showPunchResult() {
+  const r = PUNCH_RESULT;
+  if (!r) return;
+  const top = `<div class="kpi-grid four" style="margin-bottom:10px">
+      ${tile({ cls: 'k-blue', n: r.compared, lbl: 'Marks checked', icon: 'list', go: '' })}
+      ${tile({ cls: 'k-bad', n: r.different, lbl: 'Different (red)', icon: 'alert', go: '' })}
+      ${tile({ cls: 'k-amber', n: r.notMarked, lbl: 'Punched, not marked', icon: 'clock', go: '' })}
+      ${tile({ cls: 'k-faint', n: r.notOnAttendance, lbl: 'Not on attendance', icon: 'users', go: '' })}
+    </div>`;
+  const rows = r.list.slice().sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
+  openList('Punch check', esc(r.file) + ' · ' + esc(r.dateFrom) + ' to ' + esc(r.dateTo) + ' · these marks are now red in the sheet', rows,
+    x => `<div class="row tap" onclick="openEmployee('${js(x.s)}','${js(x.id)}',${Number(x.date.slice(0, 4))},${Number(x.date.slice(5, 7))})">${av(x.s, x.id, x.n)}
+      <div class="rmain"><b>${hl(x.n, LIST.q)}</b><small>${hl(x.id, LIST.q)} · ${esc(x.s)} · ${esc(new Date(x.date + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' }))}</small>
+        <div class="rtags"><span class="stamp ${statusClass(x.marked, 's-')}">Marked ${esc(x.marked)}</span><span class="stamp s-muted">${ic('clock')}${esc(x.punch)}</span></div></div></div>`, top);
+}
+
+/* =====================================================================
+   STAFF — employees
+   ===================================================================== */
+
+function pickStaffSite(s) { STAFF_SITE = s; renderStaff(); }
+function pickStaffFilter(f) { STAFF_FILTER = STAFF_FILTER === f && f !== 'all' ? 'all' : f; renderStaff(); }
+
+function loadStaff(force) {
+  const d = got('staff');
+  if (d) renderStaff(); else if (!$('staffList').innerHTML) $('staffList').innerHTML = skeleton(4);
+  if (!force && age('staff') < 60000) return Promise.resolve();
+  return fetchStore('staff', 'getStaffData', SESSION.token).then(renderStaff).catch(handleError);
+}
+
+function onStaffSearch() {
+  const raw = $('staffSearch').value || '';
+  $('staffClear').classList.toggle('hidden', !raw);
+  debounce('staff', () => { STAFF_QUERY = raw.trim().toLowerCase(); renderStaff(); });
+}
+function clearStaffSearch() { $('staffSearch').value = ''; STAFF_QUERY = ''; $('staffClear').classList.add('hidden'); renderStaff(); $('staffSearch').focus(); }
+
+function renderStaff() {
+  const d = got('staff');
+  if (!d) return;
+  const inSite = d.employees.filter(e => STAFF_SITE === 'ALL' || e.site === STAFF_SITE);
+  const cnt = { ALL: d.employees.length };
+  d.employees.forEach(e => { cnt[e.site] = (cnt[e.site] || 0) + 1; });
+  renderChips('staffChips', STAFF_SITE, 'pickStaffSite', cnt);
+  const k = { all: inSite.length, active: inSite.filter(e => e.active).length, off: inSite.filter(e => !e.active).length, nosup: inSite.filter(e => e.active && !e.supervisor).length };
+  $('staffKpis').innerHTML = `<div class="kpi-grid four">
+    ${tile({ cls: 'k-blue', n: k.all, lbl: 'On file', icon: 'folder', sel: STAFF_FILTER === 'all', go: "pickStaffFilter('all')" })}
+    ${tile({ cls: 'k-ok', n: k.active, lbl: 'Active', icon: 'check', sel: STAFF_FILTER === 'active', go: "pickStaffFilter('active')" })}
+    ${tile({ cls: 'k-faint', n: k.off, lbl: 'Switched off', icon: 'lock', sel: STAFF_FILTER === 'off', go: "pickStaffFilter('off')" })}
+    ${tile({ cls: 'k-amber', n: k.nosup, lbl: 'No supervisor', sub: 'every supervisor at the site sees them', icon: 'alert', sel: STAFF_FILTER === 'nosup', go: "pickStaffFilter('nosup')" })}
+  </div>`;
+  const base = inSite.filter(e => STAFF_FILTER === 'all' || (STAFF_FILTER === 'active' && e.active) || (STAFF_FILTER === 'off' && !e.active) || (STAFF_FILTER === 'nosup' && e.active && !e.supervisor));
+  const rows = rank(base, STAFF_QUERY, e => e.name, e => e.id, e => e.designation + ' ' + e.supervisor);
+  $('staffCount').textContent = STAFF_QUERY || STAFF_FILTER !== 'all' ? 'Showing ' + rows.length + ' of ' + inSite.length : inSite.length + ' on file';
+  const el = $('staffList');
+  if (!d.employees.length) { el.innerHTML = empty('users', 'No employees yet', 'Add your first one with the button above.'); return; }
+  if (!rows.length) { el.innerHTML = empty('search', 'Nobody matches', ''); return; }
+  el.innerHTML = rows.slice(0, 400).map((e, i) => `<div class="row tap ${e.active ? '' : 'is-off'}" onclick="openEditEmployee(${d.employees.indexOf(e)})">
+      ${av(e.site, e.id, e.name)}
+      <div class="rmain"><b>${hl(e.name, STAFF_QUERY)}</b>
+        <small>${hl(e.id, STAFF_QUERY)} · ${esc(e.site)}${e.designation ? ' · ' + hl(e.designation, STAFF_QUERY) : ''}</small>
+        <div class="rtags"><span class="stamp ${e.active ? 's-full' : 's-muted'}">${e.active ? 'Active' : 'Switched off'}</span>
+          <span class="stamp ${e.supervisor ? 's-muted' : 's-wait'}">${e.supervisor ? hl(e.supervisor, STAFF_QUERY) : 'No supervisor'}</span></div></div>
+      <span class="go">›</span></div>`).join('') + (rows.length > 400 ? '<div class="listcount">Search to find the rest.</div>' : '');
+}
+
+function supervisorOptions(site, selected) {
+  const sups = (got('staff') || { supervisors: [] }).supervisors.filter(s => !site || s.site === site);
+  const sel = String(selected || '').toLowerCase();
+  const known = sups.some(s => s.username.toLowerCase() === sel);
+  return `<option value="" ${!selected ? 'selected' : ''}>Unassigned — every supervisor at the site sees them</option>` +
+    sups.map(s => `<option value="${esc(s.username)}" ${s.username.toLowerCase() === sel ? 'selected' : ''}>${esc(s.name)} (${esc(s.username)})</option>`).join('') +
+    (selected && !known ? `<option value="${esc(selected)}" selected>${esc(selected)} — no longer a supervisor here</option>` : '');
+}
+function siteOptions(selected, list) {
+  return (list || SESSION.scope).map(s => `<option ${s === selected ? 'selected' : ''}>${esc(s)}</option>`).join('');
+}
+function onEmpSiteChange(isNew) {
+  const site = $('eSite').value;
+  $('eSup').innerHTML = supervisorOptions(site, $('eSup').value);
+  const next = ((got('staff') || {}).nextIds || {})[site];
+  if (isNew && $('eId').dataset.auto === '1' && next) $('eId').value = next;
+}
+
+function openAddEmployee() {
+  SHOT = null;
+  const site = STAFF_SITE === 'ALL' ? SESSION.scope[0] : STAFF_SITE;
+  const next = ((got('staff') || {}).nextIds || {})[site] || '';
+  openSheet(`
+    <h3>Add employee</h3>
+    <p class="sheet-sub">They appear on this year's site sheet straight away.</p>
+    <label class="fld"><span>Site</span><select id="eSite" onchange="onEmpSiteChange(true)">${siteOptions(site)}</select></label>
+    <label class="fld"><span>Employee ID</span><input id="eId" value="${esc(next)}" data-auto="1" oninput="this.dataset.auto='0'" placeholder="e.g. TNK-014"></label>
+    <label class="fld"><span>Full name</span><input id="eName" placeholder="e.g. Ramesh Kumar"></label>
+    <label class="fld"><span>Supervisor</span><select id="eSup">${supervisorOptions(site, '')}</select></label>
+    <label class="fld"><span>Designation <small style="text-transform:none">(optional)</small></span><input id="eDesig" placeholder="e.g. Loader operator"></label>
+    <div class="fld"><span class="fld-l">Photo <small style="text-transform:none">(optional — camera or gallery)</small></span>
+      <div class="ph-row"><div class="ph-mini" id="npPrev">${ic('camera')}</div>${photoPickers('np')}</div><div id="npSize" class="listcount"></div></div>
+    <button class="btn btn-primary" id="eBtn" onclick="saveNewEmployee()">Add employee</button>`);
+}
+
+function saveNewEmployee() {
+  const id = $('eId').value.trim(), name = $('eName').value.trim();
+  if (!id || !name) return toast('ID and name are both needed', 'bad');
+  $('eBtn').disabled = true;
+  call('addEmployee', SESSION.token, id, name, $('eSite').value, $('eSup').value, $('eDesig').value.trim()).then(res => {
+    if (!res.ok) { $('eBtn').disabled = false; return toast(res.error, 'bad'); }
+    const site = $('eSite').value;
+    if (SHOT) savePhoto(site, id).then(ok => { if (!ok) toast('Added, but the photo did not save — tap their picture to try again', 'bad'); }).catch(handleError);
+    closeSheet(); toast(name + ' added', 'ok'); loadStaff(true); STORE.today && (STORE.today.at = 0);
+  }).catch(err => { $('eBtn').disabled = false; handleError(err); });
+}
+
+function openEditEmployee(i) {
+  const e = got('staff').employees[i];
+  if (!e) return;
+  openSheet(`
+    <h3>${esc(e.name)}</h3>
+    <p class="sheet-sub">${esc(e.id)} · ${esc(e.site)}</p>
+    <button class="btn btn-ghost" onclick="openEmployee('${js(e.site)}','${js(e.id)}')">${ic('calendar')}See their attendance</button>
+    <label class="fld"><span>Employee ID</span><input id="eId" value="${esc(e.id)}"></label>
+    <label class="fld"><span>Full name</span><input id="eName" value="${esc(e.name)}"></label>
+    <label class="fld"><span>Site</span><select id="eSite" onchange="onEmpSiteChange(false)">${siteOptions(e.site)}</select></label>
+    <label class="fld"><span>Supervisor</span><select id="eSup">${supervisorOptions(e.site, e.supervisor)}</select></label>
+    <label class="fld"><span>Designation</span><input id="eDesig" value="${esc(e.designation || '')}"></label>
+    <label class="fld"><span>Status</span><select id="eActive">
+      <option value="1" ${e.active ? 'selected' : ''}>Active</option><option value="0" ${!e.active ? 'selected' : ''}>Switched off</option></select></label>
+    <button class="btn btn-primary" onclick="saveEditEmployee(${e.row})">Save changes</button>
+    ${e.active ? `<button class="btn btn-ghost" onclick="deactivateEmployee(${e.row}, '${js(e.name)}')">Switch off — keep the history</button>` : ''}
+    ${SESSION.role === 'Admin' ? `<button class="btn btn-danger" onclick="deleteEmployeeForGood(${e.row}, '${js(e.name)}')">Delete for good — wipes their attendance</button>` : ''}`);
+}
+
+function saveEditEmployee(row) {
+  call('editEmployee', SESSION.token, row, $('eId').value.trim(), $('eName').value.trim(),
+       $('eSite').value, $('eSup').value, $('eDesig').value.trim(), $('eActive').value === '1').then(res => {
+    if (!res.ok) return toast(res.error, 'bad');
+    closeSheet(); toast('Saved', 'ok'); loadStaff(true); STORE.today && (STORE.today.at = 0);
+  }).catch(handleError);
+}
+function deactivateEmployee(row, name) {
+  if (!confirm('Switch ' + name + ' off? Their row goes grey on the site sheet and all past attendance is kept.')) return;
+  call('removeEmployee', SESSION.token, row).then(res => {
+    if (!res.ok) return toast(res.error, 'bad');
+    closeSheet(); toast(name + ' switched off', 'ok'); loadStaff(true);
+  }).catch(handleError);
+}
+/** The only thing that takes a row off the site sheets. Admin only. */
+function deleteEmployeeForGood(row, name) {
+  if (!confirm('Delete ' + name + ' completely?\n\nTheir row and every day they were ever marked will be removed from the site sheets. This cannot be undone.')) return;
+  call('deleteEmployeePermanently', SESSION.token, row).then(res => {
+    if (!res.ok) return toast(res.error, 'bad');
+    closeSheet(); toast(name + ' deleted', 'ok'); loadStaff(true);
+  }).catch(handleError);
+}
+
+/* =====================================================================
+   USERS — app accounts, and who comes in through GGM Portal
+   ===================================================================== */
+
+function pickUsersFilter(f) { USERS_FILTER = USERS_FILTER === f && f !== 'all' ? 'all' : f; renderUsers(); }
+
+function loadUsers(force) {
+  const d = got('users');
+  if (d) renderUsers(); else if (!$('usersList').innerHTML) $('usersList').innerHTML = skeleton(3);
+  if (!force && age('users') < 60000) return Promise.resolve();
+  return fetchStore('users', 'getUsersData', SESSION.token).then(renderUsers).catch(handleError);
+}
+function onUsersSearch() {
+  const raw = $('usersSearch').value || '';
+  $('usersClear').classList.toggle('hidden', !raw);
+  debounce('users', () => { USERS_QUERY = raw.trim().toLowerCase(); renderUsers(); });
+}
+function clearUsersSearch() { $('usersSearch').value = ''; USERS_QUERY = ''; $('usersClear').classList.add('hidden'); renderUsers(); $('usersSearch').focus(); }
+
+function renderUsers() {
+  const d = got('users');
+  if (!d) return;
+  const n = r => d.portal.filter(p => p.role === r).length;
+  $('usersKpis').innerHTML = `<div class="kpi-grid three">
+    ${tile({ cls: 'k-ok', n: n('Supervisor'), lbl: 'Supervisors', icon: 'users', sel: USERS_FILTER === 'Supervisor', go: "pickUsersFilter('Supervisor')" })}
+    ${tile({ cls: 'k-half', n: n('HR'), lbl: 'HR', icon: 'shield', sel: USERS_FILTER === 'HR', go: "pickUsersFilter('HR')" })}
+    ${tile({ cls: 'k-violet', n: n('Admin'), lbl: 'Admins', icon: 'key', sel: USERS_FILTER === 'Admin', go: "pickUsersFilter('Admin')" })}
+  </div>`;
+  const q = USERS_QUERY;
+  const rows = rank(d.portal.filter(p => USERS_FILTER === 'all' || p.role === USERS_FILTER), q, p => p.name, p => p.username, p => p.site + ' ' + p.role);
+  $('usersCount').textContent = rows.length + ' shown · added and changed in GGM Portal → Access';
+  $('usersList').innerHTML = rows.map(p => `<div class="row">
+      <div class="emp-av" data-ggm-photo="${esc(p.username + '|' + p.name)}">${esc(initials(p.name))}</div>
+      <div class="rmain"><b>${hl(p.name, q)}</b><small>${hl(p.username, q)} · ${esc(p.site === 'ALL' ? 'all sites' : p.site)}</small>
+        <div class="rtags"><span class="stamp ${p.role === 'Supervisor' ? 's-full' : p.role === 'HR' ? 's-half' : 's-ink'}">${esc(p.role || 'no role')}</span></div></div></div>`).join('') ||
+    empty('key', 'Nobody matches', '');
+}
+
+/* =====================================================================
+   MORE — links + site rules
+   ===================================================================== */
+
+function loadMore(force) {
+  $('moreLinks').innerHTML = [
+    ['__punch', 'clock', 'Punch report', 'Upload the punching machine report — wrong marks turn red in the sheet'],
+    ['users', 'key', 'App users', 'Everyone with Attendance in GGM Portal'],
+    ['staff', 'users', 'Employees', 'The roll for every site']
+  ].map(l => `<div class="row tap" onclick="${l[0] === '__punch' ? 'openPunchUpload()' : "go('" + l[0] + "')"}">
+      <div class="emp-av">${ic(l[1])}</div><div class="rmain"><b>${l[2]}</b><small>${l[3]}</small></div><span class="go">›</span></div>`).join('');
+  const d = got('settings');
+  if (d) renderSettings(d);
+  paintQ('more');
+  if (!force && age('settings') < 120000) return Promise.resolve();
+  return fetchStore('settings', 'getSettings', SESSION.token).then(renderSettings).catch(handleError);
+}
+
+function renderSettings(list) {
+  $('settingsList').innerHTML = list.map((s, i) => `<div class="row tap" onclick="openSiteSettings(${i})">
+    <div class="rmain"><b>${esc(s.site)}</b><small>Closes ${esc(s.closingTime)} · refresh every ${s.refreshSeconds}s</small>
+      <div class="rtags"><span class="stamp ${s.lockLogin ? 's-absent' : 's-muted'}">${s.lockLogin ? 'Sign-in locks at close' : 'Sign-in stays open'}</span>
+        <span class="stamp ${s.allowResubmit ? 's-full' : 's-muted'}">${s.allowResubmit ? 'Redo allowed if sent back' : 'No redo'}</span></div></div>
+    <span class="go">›</span></div>`).join('');
+}
+
+function openSiteSettings(i) {
+  const s = got('settings')[i];
+  openSheet(`
+    <h3>${esc(s.site)} rules</h3>
+    <p class="sheet-sub">Applies to this site only.</p>
+    <label class="fld"><span>Attendance closes at</span><input id="stTime" type="time" value="${esc(s.closingTime)}"></label>
+    <label class="fld"><span>Live refresh (seconds)</span><input id="stRef" type="number" min="10" max="600" step="5" value="${s.refreshSeconds}"></label>
+    <label class="fld"><span>After closing time</span><select id="stLock">
+      <option value="1" ${s.lockLogin ? 'selected' : ''}>Supervisors cannot sign in</option>
+      <option value="0" ${!s.lockLogin ? 'selected' : ''}>They can sign in, but not mark</option></select></label>
+    <label class="fld"><span>If HR sends a record back</span><select id="stRedo">
+      <option value="1" ${s.allowResubmit ? 'selected' : ''}>Supervisor may mark it again</option>
+      <option value="0" ${!s.allowResubmit ? 'selected' : ''}>Stays locked — HR fixes it</option></select></label>
+    <div class="filters">
+      <label class="fld"><span>Full day = punched at least (hours)</span><input id="stFd" type="number" min="1" max="24" step="0.5" value="${s.fdHours || 7}"></label>
+      <label class="fld"><span>Half day = at least (hours)</span><input id="stHd" type="number" min="0.5" max="23" step="0.5" value="${s.hdHours || 4}"></label>
+    </div>
+    <p class="sheet-sub" style="margin-top:-4px">Used when the punch report is checked: first to last punch of the day.</p>
+    <button class="btn btn-primary" onclick="saveSiteSettings(${s.row})">Save rules</button>`);
+}
+function saveSiteSettings(row) {
+  call('updateSettings', SESSION.token, row, $('stTime').value, Number($('stRef').value), $('stLock').value === '1', $('stRedo').value === '1',
+       Number($('stFd').value), Number($('stHd').value)).then(res => {
+    if (!res.ok) return toast(res.error, 'bad');
+    closeSheet(); toast('Rules saved', 'ok');
+    call('getClientConfig', SESSION.token).then(cfg => { CFG = cfg; startPolling(); });
+    loadMore(true);
+  }).catch(handleError);
+}
+
+/* =====================================================================
+   ADMIN — overview + trends
+   ===================================================================== */
+
+function loadOverview(force) {
+  const t = got('today'), o = got('overview');
+  if (t && o) renderOverview(); else if (!$('ovKpis').innerHTML) $('ovKpis').innerHTML = skeleton(2);
+  if (!force && age('today') < 4000 && age('overview') < 60000) return Promise.resolve();
+  return Promise.all([fetchStore('today', 'getTodayRows', SESSION.token, 'ALL'),
+    age('overview') < 60000 && got('overview') ? Promise.resolve(got('overview')) : fetchStore('overview', 'getAdminOverview', SESSION.token)])
+    .then(renderOverview).catch(handleError);
+}
+
+function siteRates(d) {
+  const by = {};
+  d.rows.forEach(r => { (by[r.s] = by[r.s] || []).push(r); });
+  return d.sites.map(s => Object.assign({ site: s.site }, kpisOf(by[s.site] || [])));
+}
+
+function renderOverview() {
+  const d = got('today'), o = got('overview');
+  if (!d || !o) return;
+  const t = kpisOf(d.rows);
+  $('ovHead').innerHTML = `<div class="dome">
+    <div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="track" cx="50" cy="50" r="42" fill="none" stroke-width="10"/>
+        <circle class="fill" cx="50" cy="50" r="42" fill="none" stroke-width="10" stroke-dasharray="263.9" stroke-dashoffset="${(263.9 * (1 - t.compPct / 100)).toFixed(1)}"/></svg>
+      <div class="lbl"><b class="num">${t.compPct}%</b><i>marked</i></div></div>
+    <div class="dome-txt"><h2>Group today</h2><p>${esc(d.dateLabel)}</p><span class="clock">${ic('refresh')}${esc(d.updatedAt)}</span></div></div>`;
+  const ranked = siteRates(d).filter(s => s.total).sort((a, b) => b.attPct - a.attPct);
+  const best = ranked[0], weak = ranked[ranked.length - 1];
+  $('ovKpis').innerHTML = `<div class="kpi-grid">
+      ${tile({ cls: 'k-blue', n: t.total, lbl: 'Total workforce', sub: 'across ' + d.sites.length + ' sites', icon: 'users', go: "openTodayAll('all')" })}
+      ${tile({ cls: 'k-ok', n: t.attPct + '%', lbl: 'Attendance today', sub: t.full + ' full · ' + t.half + ' half', icon: 'pct', go: "openTodayAll('present')" })}
+      ${tile({ cls: 'k-bad', n: t.absent, lbl: 'Absent today', sub: t.total ? pct(t.absent, t.total) + '% of roll' : '', icon: 'absent', go: "openTodayAll('Absent')" })}
+      ${tile({ cls: 'k-amber', n: t.pending, lbl: 'Unmarked today', sub: 'supervisors pending', icon: 'clock', go: "openTodayAll('pending')" })}
+      ${tile({ cls: 'k-violet', n: o.mtd.manDays, lbl: 'Man-days this month', sub: o.monthLabel + ' · ' + o.mtd.attendancePct + '% rate', icon: 'calendar', go: 'openSiteMonths()' })}
+      ${tile({ cls: 'k-bad', n: o.mtd.lostDays, lbl: 'Man-days lost', sub: 'absent + half days', icon: 'down', go: "openPeopleMonth('ALL')" })}
+    </div>
+    ${!t.filled ? `<div class="banner banner-warn" style="margin-top:10px"><span class="bi">${ic('clock')}</span><div>Nothing is marked yet today. Best and weakest site show once supervisors start marking.</div></div>` : `<div class="two-col" style="margin-top:10px">
+      <div class="banner banner-ok go" onclick="${best ? "goTodaySite('" + js(best.site) + "')" : ''}"><span class="bi">${ic('trend')}</span>
+        <div><b>Best today:</b> ${best ? esc(best.site) + ' at ' + best.attPct + '%' : '—'}</div></div>
+      <div class="banner banner-warn go" onclick="${weak ? "goTodaySite('" + js(weak.site) + "')" : ''}"><span class="bi">${ic('alert')}</span>
+        <div><b>Needs a look:</b> ${weak ? esc(weak.site) + ' at ' + weak.attPct + '%' : '—'}</div></div>
+    </div>`}`;
+  $('ovMonthTitle').textContent = o.monthLabel + ' by site';
+  const today = {};
+  siteRates(d).forEach(s => { today[s.site] = s; });
+  $('ovSites').innerHTML = CFG.allSites.map(s => {
+    const m = o.siteMtd[s] || { manDays: 0, attendancePct: 0, full: 0, half: 0, absent: 0 };
+    const tt = today[s];
+    return `<div class="row tap site-row" style="--sc:${siteColor(s)}" onclick="openPeopleMonth('${js(s)}')"><div class="rmain"><b>${esc(s)}</b>
+        <small>${fmt(m.manDays)} man-days this month · ${m.attendancePct}% rate</small>
+        <div class="rtags"><span class="stamp s-full">${m.full} full</span><span class="stamp s-half">${m.half} half</span><span class="stamp s-absent">${m.absent} absent</span>
+          ${tt && tt.pending ? `<span class="stamp s-wait">${tt.pending} unmarked today</span>` : ''}</div></div>
+      <div class="rnum"><b class="num">${m.attendancePct}%</b><small>rate</small></div><span class="go">›</span></div>`;
+  }).join('');
+  paintQ('overview');
+}
+
+function openTodayAll(kind) { const keep = ACTIVE_SITE; ACTIVE_SITE = 'ALL'; openTodayList(kind); ACTIVE_SITE = keep; }
+function goTodaySite(site) { ACTIVE_SITE = site; go('today'); }
+
+function openSiteMonths() {
+  const o = got('overview');
+  openSheet(`<h3>Man-days this month</h3><p class="sheet-sub">${esc(o.monthLabel)} · tap a site for its people</p>
+    <table class="tbl"><thead><tr><th>Site</th><th>Man-days</th><th>Rate</th><th>Full</th><th>Half</th><th>Absent</th></tr></thead><tbody>
+    ${CFG.allSites.map(s => { const m = o.siteMtd[s] || {}; return `<tr class="tap" onclick="openPeopleMonth('${js(s)}')"><td><b>${esc(s)}</b></td><td>${fmt(m.manDays || 0)}</td><td>${m.attendancePct || 0}%</td><td>${m.full || 0}</td><td>${m.half || 0}</td><td>${m.absent || 0}</td></tr>`; }).join('')}
+    <tr><td><b>All sites</b></td><td><b>${fmt(o.mtd.manDays)}</b></td><td><b>${o.mtd.attendancePct}%</b></td><td>${o.mtd.full}</td><td>${o.mtd.half}</td><td>${o.mtd.absent}</td></tr>
+    </tbody></table>`);
+}
+
+/** Everyone's month so far, most days lost first. */
+function openPeopleMonth(site) {
+  const o = got('overview');
+  const rows = o.people.filter(p => site === 'ALL' || p.s === site)
+    .map(p => ({ s: p.s, id: p.id, n: p.n, f: p.f, h: p.h, a: p.a, lost: p.a + p.h * 0.5 }))
+    .sort((a, b) => (b.lost - a.lost) || a.n.localeCompare(b.n));
+  openList(site === 'ALL' ? 'Man-days lost this month' : site + ' — this month', esc(o.monthLabel) + ' · most days lost first · tap anyone for their calendar', rows,
+    r => `<div class="row tap" onclick="openEmployee('${js(r.s)}','${js(r.id)}')">${av(r.s, r.id, r.n)}
+      <div class="rmain"><b>${hl(r.n, LIST.q)}</b><small>${hl(r.id, LIST.q)}${site === 'ALL' ? ' · ' + esc(r.s) : ''}</small>
+        <div class="rtags"><span class="stamp s-full">${r.f} full</span>${r.h ? `<span class="stamp s-half">${r.h} half</span>` : ''}${r.a ? `<span class="stamp s-absent">${r.a} absent</span>` : ''}</div></div>
+      <div class="rnum"><b class="num">${fmt(r.lost)}</b><small>lost</small></div></div>`);
+}
+
+function loadTrends(force) {
+  const d = got('stats');
+  if (d) renderTrends(d); else if (!$('trendKpis').innerHTML) $('trendKpis').innerHTML = skeleton(2);
+  paintQ('trends');
+  if (!force && age('stats') < 300000) return Promise.resolve();
+  return fetchStore('stats', 'getAllTimeStats', SESSION.token).then(renderTrends).catch(handleError);
+}
+
+function renderTrends(d) {
+  const g = d.grand;
+  $('trendKpis').innerHTML = `<div class="kpi-grid three">
+    ${tile({ cls: 'k-blue', n: g.records, lbl: 'Records all-time', sub: 'by site →', icon: 'folder', go: "openStatsSites('records')" })}
+    ${tile({ cls: 'k-violet', n: g.manDays, lbl: 'Man-days all-time', sub: g.attendancePct + '% rate · by month →', icon: 'calendar', go: 'openStatsMonths()' })}
+    ${tile({ cls: 'k-half', n: g.verifiedPct + '%', lbl: 'HR-verified', sub: g.sentBack + ' sent back', icon: 'shield', go: "openStatsSites('verified')" })}
+  </div>`;
+  loadChartJs().then(() => drawTrendCharts(d)).catch(() => {
+    document.querySelectorAll('#v_trends .chart-wrap').forEach(w => { w.classList.add('failed'); w.innerHTML = 'Charts need a connection. The numbers above are still live.'; });
+  });
+}
+
+function openStatsSites(kind) {
+  const d = got('stats');
+  openSheet(`<h3>${kind === 'verified' ? 'HR checks by site' : 'Records by site'}</h3><p class="sheet-sub">All time</p>
+    <table class="tbl"><thead><tr><th>Site</th>${kind === 'verified' ? '<th>Records</th><th>Approved</th><th>Sent back</th><th>Checked</th>' : '<th>Full</th><th>Half</th><th>Absent</th><th>Rate</th>'}</tr></thead><tbody>
+    ${d.sites.map(s => { const b = d.bySite[s], rec = b.full + b.half + b.absent;
+      return kind === 'verified'
+        ? `<tr><td><b>${esc(s)}</b></td><td>${fmt(rec)}</td><td>${fmt(b.verified)}</td><td>${fmt(b.sentBack)}</td><td>${pct(b.verified, rec)}%</td></tr>`
+        : `<tr><td><b>${esc(s)}</b></td><td>${fmt(b.full)}</td><td>${fmt(b.half)}</td><td>${fmt(b.absent)}</td><td>${rec ? Math.round(((b.full + b.half * 0.5) / rec) * 1000) / 10 : 0}%</td></tr>`; }).join('')}
+    </tbody></table>`);
+}
+function openStatsMonths() {
+  const d = got('stats');
+  openSheet(`<h3>Man-days by month</h3><p class="sheet-sub">Every site together</p>
+    <table class="tbl"><thead><tr><th>Month</th><th>Man-days</th><th>Full</th><th>Half</th><th>Absent</th></tr></thead><tbody>
+    ${d.months.slice().reverse().map(m => { const x = d.byMonth[m]; return `<tr><td><b>${esc(m)}</b></td><td>${fmt(x.full + x.half * 0.5)}</td><td>${fmt(x.full)}</td><td>${fmt(x.half)}</td><td>${fmt(x.absent)}</td></tr>`; }).join('')}
+    </tbody></table>`);
+}
+
+/* Chart.js loads only when Trends is opened — every other screen opens without it. */
+let chartJs = null;
+function loadChartJs() {
+  if (window.Chart) return Promise.resolve();
+  if (chartJs) return chartJs;
+  chartJs = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+    s.onload = res; s.onerror = () => { chartJs = null; rej(); };
+    document.head.appendChild(s);
+  });
+  return chartJs;
+}
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+function drawTrendCharts(d) {
+  const ok = cssVar('--ok'), half = cssVar('--amber'), bad = cssVar('--bad'), ink = cssVar('--ink-soft'), line = cssVar('--line');
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  Chart.defaults.font.weight = '600';
+  Chart.defaults.color = ink;
+  const sites = d.sites;
+  drawChart('chartSite', { type: 'bar', data: { labels: sites, datasets: [
+    { label: 'Full day', backgroundColor: ok, data: sites.map(s => d.bySite[s].full), borderRadius: 6 },
+    { label: 'Half day', backgroundColor: half, data: sites.map(s => d.bySite[s].half), borderRadius: 6 },
+    { label: 'Absent', backgroundColor: bad, data: sites.map(s => d.bySite[s].absent), borderRadius: 6 }] }, options: barOpts(true, line) });
+  drawChart('chartMonth', { type: 'line', data: { labels: d.months, datasets: [
+    { label: 'Full day', borderColor: ok, backgroundColor: ok + '22', fill: true, tension: .35, data: d.months.map(m => d.byMonth[m].full) },
+    { label: 'Half day', borderColor: half, backgroundColor: half + '22', fill: true, tension: .35, data: d.months.map(m => d.byMonth[m].half) },
+    { label: 'Absent', borderColor: bad, backgroundColor: bad + '22', fill: true, tension: .35, data: d.months.map(m => d.byMonth[m].absent) }] }, options: barOpts(false, line) });
+  const rates = sites.map(s => { const b = d.bySite[s], rec = b.full + b.half + b.absent; return rec ? Math.round(((b.full + b.half * 0.5) / rec) * 1000) / 10 : 0; });
+  drawChart('chartRate', { type: 'bar', data: { labels: sites, datasets: [{ label: 'Attendance rate %', data: rates, borderRadius: 8, backgroundColor: cssVar('--amber') }] },
+    options: Object.assign(barOpts(false, line), { indexAxis: window.innerWidth < 600 ? 'y' : 'x', plugins: { legend: { display: false } } }) });
+}
+function barOpts(stacked, grid) {
+  return { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, boxHeight: 12, padding: 14, usePointStyle: true } } },
+    scales: { x: { stacked: !!stacked, grid: { display: false } }, y: { stacked: !!stacked, beginAtZero: true, grid: { color: grid }, ticks: { precision: 0 } } } };
+}
+function drawChart(id, cfg) {
+  if (CHARTS[id]) CHARTS[id].destroy();
+  CHARTS[id] = new Chart(document.getElementById(id), cfg);
+}
+</script>

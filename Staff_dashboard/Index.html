@@ -117,6 +117,8 @@
         .nav-indicator { position:absolute; top:7px; bottom:7px; left:7px; width:calc((100% - 14px) / 6); border-radius:19px; background:linear-gradient(180deg,#3d4d69,#26314a); box-shadow:0 8px 18px -8px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14); transform:translateX(calc(var(--nav-i, 0) * 100%)); transition:transform .42s cubic-bezier(.2,1.1,.3,1); }
         .nav-indicator::after { content:''; position:absolute; left:50%; transform:translateX(-50%); top:-8px; width:26px; height:3px; border-radius:3px; background:var(--blue); box-shadow:0 0 12px 1px rgba(0,168,255,.85); }
         .dark-nav-btn { position:relative; z-index:2; flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:10px 2px; border:0; background:transparent; color:#7b8aa1; font-size:8px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; cursor:pointer; transition:color .28s; }
+        .dark-nav-btn { font-size:9.5px; }   /* phones: labels readable (was 8px) */
+        .text-\[9px\] { font-size:10px !important; } .text-\[9\.5px\] { font-size:10.5px !important; }
         .dark-nav-btn i { font-size:17px; line-height:1; transition:transform .32s cubic-bezier(.2,1.4,.4,1); }
         .dark-nav-btn.active { color:#fff; }
         .dark-nav-btn.active i { transform:translateY(-2px) scale(1.14); }
@@ -588,7 +590,7 @@
             <div class="mb-6 relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-magnifying-glass text-slate-400"></i></div>
                 <input type="text" id="transferSearch" onkeyup="filterTransferStaff()" onfocus="filterTransferStaff()" placeholder="Search staff name" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl pl-9 pr-4 py-3 outline-none focus:border-[#00a8ff] text-sm mb-2">
-                <div id="transferList" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 max-h-44 overflow-y-auto hidden shadow-lg text-sm font-bold text-slate-700"></div>
+                <div id="transferList" class="relative w-full bg-white border border-slate-200 rounded-xl mt-1 max-h-[38vh] overflow-y-auto hidden shadow-lg text-sm font-bold text-slate-700"></div>
                 <input type="hidden" id="activeTransferTarget">
                 <input type="hidden" id="activeTransferTaskId">
             </div>
@@ -738,6 +740,33 @@
         const d = new Date(parseInt(p[2],10), parseInt(p[1],10)-1, parseInt(p[0],10));
         if(isNaN(d.getTime())) return null;
         return Math.round((d.setHours(0,0,0,0) - midnight()) / 86400000);
+    }
+
+    // Newai checklist: a W/M/Q/Y task can be ticked from NW_EARLY_DAYS before its date, and only
+    // the oldest open one of the same task — the server checks the same (NewaiRoutine.js).
+    const NW_EARLY_DAYS = 6;
+    function cleanTaskName(s) { return String(s || "").toUpperCase().replace(/[\s\.\,\-\_\(\)\[\]\:\;]/g, ''); }
+    function routineLock(t) {
+        if (t.location !== 'newai') return '';
+        const freq = String(t.freq || "").toUpperCase().trim();
+        if (t.isDaily || freq === 'D' || freq === 'DAILY') return '';
+        const diff = dueDiff(t.dueDate);
+        if (diff === null) return '';
+        if (diff > NW_EARLY_DAYS) {
+            const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + diff - NW_EARLY_DAYS);
+            return 'Can be marked from ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+        }
+        const title = cleanTaskName(t.title);
+        const older = rawRoutineTasks.filter(o => o !== t && o.location === 'newai' && o.status === 'pending' && cleanTaskName(o.title) === title && dueDiff(o.dueDate) !== null && dueDiff(o.dueDate) < diff).sort(dateSorter);
+        return older.length ? 'Finish the one due ' + older[0].dueDate + ' first' : '';
+    }
+
+    /** A save the server refused: the task is put back as it was and the reason is shown. */
+    function undoPending(taskIds, msg) {
+        (taskIds || []).forEach(id => { delete pendingActions[String(id).trim().toUpperCase()]; });
+        showToast(msg || "Not saved. Please try again.", "error");
+        pendingUpdatesCount = Math.max(0, pendingUpdatesCount);
+        forceRefresh();
     }
 
     function routineBucket(t) {
@@ -1339,7 +1368,7 @@
                         pendingUpdatesCount--;
                         checkHideSyncBanner();
                         if(res && res.success) { showToast("Task updated!"); } 
-                        else { showToast("Update failed.", "error"); forceRefresh(); }
+                        else undoPending([strictIdStr], res && res.message);
                         resolve();
                     }).withFailureHandler((err) => {
                         hidePremiumLoader();
@@ -1378,8 +1407,8 @@
                         hideToast(); showToast(`${batchToProcess.length} Tasks marked Done!`); 
                         try { confetti({ particleCount: 50, spread: 60, origin: { y: .6 }, colors: ['#00a8ff','#22c55e'] }); } catch(e){} 
                     } else { 
-                        pendingUpdatesCount -= batchToProcess.length; 
-                        showToast("Batch update failed.", "error"); forceRefresh(); 
+                        // only the tasks the server names were not saved; without a list, none were
+                        undoPending(res && res.missed ? res.missed.map(m => m.taskId) : batchToProcess, res && res.message);
                     }
                     resolve();
                 }).withFailureHandler((err) => {
@@ -1479,7 +1508,8 @@
                         if(res && res.success) {
                             if(pendingUpdatesCount === 0) { checkHideSyncBanner(); hideToast(); showToast("Tasks updated successfully!"); try { confetti({ particleCount: 80, spread: 70, origin: { y: .6 }, colors: ['#00a8ff','#22c55e'] }); } catch(e){} } 
                         } else {
-                            if(pendingUpdatesCount === 0) { checkHideSyncBanner(); showToast((res && res.message) ? res.message : "Failed to update.", "error"); forceRefresh(); }
+                            if(pendingUpdatesCount === 0) checkHideSyncBanner();
+                            undoPending([strictIdStr], res && res.message);
                         }
                     } else if (type === 'renewal') {
                         checkHideSyncBanner();
@@ -1610,6 +1640,7 @@
                     const sid = idSafe(t.taskId), jid = jsq(t.taskId);
                     const letter = t.freq ? String(t.freq).charAt(0).toUpperCase() : 'N';
                     const diff = dueDiff(t.dueDate);
+                    const lock = routineLock(t);
 
                     let badge = ''; let cardClass = 'card-blue';
                     if(diff === 0) badge = `<span class="bg-[#00a8ff] text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle">Today</span>`;
@@ -1628,7 +1659,8 @@
                         </div>
                         <div class="flex gap-3 border-t border-slate-100 pt-4">
                             <button onclick="haptic(); toggleRemark('${jid}')" class="btn-outline flex-1 btn-interactive"><i class="fa-regular fa-comment-dots mr-1.5"></i> Note</button>
-                            <button onclick="haptic(); submitRoutineDone('${jid}')" class="btn-done flex-1 btn-interactive"><i class="fa-solid fa-check text-[#00a8ff] mr-1.5"></i> Done</button>
+                            ${lock ? `<span class="flex-1 flex items-center justify-center text-center text-[10px] font-black uppercase text-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-2"><i class="fa-solid fa-lock mr-1.5"></i> ${esc(lock)}</span>`
+                                   : `<button onclick="haptic(); submitRoutineDone('${jid}')" class="btn-done flex-1 btn-interactive"><i class="fa-solid fa-check text-[#00a8ff] mr-1.5"></i> Done</button>`}
                         </div>
 
                         <div id="remark-box-${sid}" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
@@ -1637,7 +1669,7 @@
                                 <button onclick="haptic(); toggleRemark('${jid}')" class="w-1/3 bg-slate-200 text-slate-600 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-slate-300 btn-interactive">Cancel</button>
                                 <button onclick="haptic(); submitNote('${jid}', 'routine', true)" class="w-2/3 bg-blue-100 text-blue-600 border border-blue-200 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-blue-200 btn-interactive"><i class="fa-solid fa-save mr-1.5"></i> Save Note Only</button>
                             </div>
-                            <button onclick="haptic(); submitNote('${jid}', 'routine', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md btn-interactive"><i class="fa-solid fa-check-double mr-1.5"></i> Mark Done with Note</button>
+                            ${lock ? '' : `<button onclick="haptic(); submitNote('${jid}', 'routine', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md btn-interactive"><i class="fa-solid fa-check-double mr-1.5"></i> Mark Done with Note</button>`}
                         </div>
                     </div>`;
                 });

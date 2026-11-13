@@ -86,6 +86,8 @@
         .nav-indicator { position:absolute; top:7px; bottom:7px; left:7px; width:calc((100% - 14px) / 5); border-radius:19px; background:linear-gradient(180deg,#3d4d69,#26314a); box-shadow:0 8px 18px -8px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14); transform:translateX(calc(var(--nav-i, 0) * 100%)); transition:transform .42s cubic-bezier(.2,1.1,.3,1); }
         .nav-indicator::after { content:''; position:absolute; left:50%; transform:translateX(-50%); top:-8px; width:26px; height:3px; border-radius:3px; background:var(--blue); box-shadow:0 0 12px 1px rgba(0,168,255,.85); }
         .dark-nav-btn { position:relative; z-index:2; flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:10px 2px; border:0; background:transparent; color:#7b8aa1; font-size:8.5px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; cursor:pointer; transition:.28s; }
+        .dark-nav-btn { font-size:9.5px; }   /* phones: labels readable (was 8.5px) */
+        .text-\[9px\] { font-size:10px !important; } .text-\[9\.5px\] { font-size:10.5px !important; }
         .dark-nav-btn i { font-size:17px; line-height:1; transition:transform .32s cubic-bezier(.2,1.4,.4,1); }
         .dark-nav-btn span { line-height:1; opacity:.85; }
         .dark-nav-btn.active { color:#fff; }
@@ -387,7 +389,7 @@
             <div class="mb-6 relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-magnifying-glass text-slate-400"></i></div>
                 <input type="text" id="transferSearch" onkeyup="filterTransferStaff()" onfocus="filterTransferStaff()" placeholder="Search staff name" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl pl-9 pr-4 py-3 outline-none focus:border-[#00a8ff] text-sm mb-2 notranslate">
-                <div id="transferList" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 max-h-44 overflow-y-auto hidden shadow-lg text-sm font-bold text-slate-700 notranslate"></div>
+                <div id="transferList" class="relative w-full bg-white border border-slate-200 rounded-xl mt-1 max-h-[38vh] overflow-y-auto hidden shadow-lg text-sm font-bold text-slate-700 notranslate"></div>
                 <input type="hidden" id="activeTransferTarget">
                 <input type="hidden" id="activeTransferTaskId">
             </div>
@@ -438,6 +440,9 @@
     }
 
     function applyTranslations() { document.querySelectorAll('[data-lang-key]').forEach(el => { el.innerHTML = t(el.getAttribute('data-lang-key')); }); }
+
+    /* GGM Portal language (Portal.js): open in the language chosen in the portal. */
+    window.ggmApplyLang = function (l) { if ((localStorage.getItem('newaiTasksLang') || 'en') !== l) toggleLanguage(); };
 
     function toggleLanguage() {
         let currentLang = localStorage.getItem('newaiTasksLang') || 'en';
@@ -493,6 +498,27 @@
         if(isNaN(d.getTime())) return null;
         const now = new Date(); now.setHours(0,0,0,0);
         return Math.round((d.getTime() - now.getTime()) / 86400000);
+    }
+
+    // A W/M/Q/Y task can be ticked from RT_EARLY_DAYS before its date, and only the oldest
+    // open one of the same task — the server checks the same (Routine.js).
+    const RT_EARLY_DAYS = 6;
+    function cleanTaskName(s) { return String(s || "").toUpperCase().replace(/[\s\.\,\-\_\(\)\[\]\:\;]/g, ''); }
+    function routineLock(t_obj) {
+        const freq = String(t_obj.freq || "").toUpperCase().trim();
+        if (t_obj.isDaily || freq === 'D' || freq === 'DAILY') return '';
+        const isHi = localStorage.getItem('newaiTasksLang') === 'hi';
+        const diff = dueDiff(t_obj.dueDate);
+        if (diff !== null && diff > RT_EARLY_DAYS) {
+            const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + diff - RT_EARLY_DAYS);
+            const s = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+            return isHi ? s + ' से टिक कर सकते हैं' : 'Can be marked from ' + s;
+        }
+        if (diff === null) return '';
+        const title = cleanTaskName(t_obj.title);
+        const older = rawRoutineTasks.filter(o => o !== t_obj && o.status === 'pending' && cleanTaskName(o.title) === title && dueDiff(o.dueDate) !== null && dueDiff(o.dueDate) < diff).sort(dateSorter);
+        if (older.length) return isHi ? 'पहले ' + older[0].dueDate + ' वाला पूरा करें' : 'Finish the one due ' + older[0].dueDate + ' first';
+        return '';
     }
 
     function routineBucket(t_obj) {
@@ -846,7 +872,9 @@
                 loadAllTasks(currentEmployee, true, true);
             } else {
                 showToast((res && res.message) ? res.message : "Error updating sheet.", "error");
-                tasksToSend.forEach(t => delete pendingActions[t.taskId]);
+                // only the tasks that were not saved go back to pending
+                const notSaved = (res && res.missed) ? res.missed.map(m => String(m.taskId).trim().toUpperCase()) : tasksToSend.map(t => t.taskId);
+                notSaved.forEach(id => delete pendingActions[id]);
                 loadAllTasks(currentEmployee, true, true);
             }
             if (batchQueue.length > 0) triggerBatchProcess(); // Process leftovers immediately
@@ -891,7 +919,7 @@
             html = emptyState(msg, icon, col);
         } else {
             filtered.forEach((t_obj) => {
-                const sid = idSafe(t_obj.taskId), jid = jsq(t_obj.taskId); const letter = t_obj.freq ? String(t_obj.freq).charAt(0).toUpperCase() : 'N'; const diff = dueDiff(t_obj.dueDate);
+                const sid = idSafe(t_obj.taskId), jid = jsq(t_obj.taskId); const letter = t_obj.freq ? String(t_obj.freq).charAt(0).toUpperCase() : 'N'; const diff = dueDiff(t_obj.dueDate); const lock = routineLock(t_obj);
                 let badge = ''; let cardClass = 'card-blue';
 
                 if(diff === 0) badge = `<span class="bg-[#00a8ff] text-white text-[9px] px-2 py-0.5 rounded-md ml-2 align-middle notranslate">${isHi ? 'आज (Today)' : 'Today'}</span>`;
@@ -910,7 +938,8 @@
                     </div>
                     <div class="flex gap-3 border-t border-slate-100 pt-4">
                         <button onclick="toggleRemark('${jid}')" class="btn-outline flex-1 notranslate"><i class="fa-regular fa-comment-dots mr-1.5"></i> ${t("Note")}</button>
-                        <button onclick="submitTask('${jid}', 'routine', false)" class="btn-done flex-1 notranslate"><i class="fa-solid fa-check text-[#00a8ff] mr-1.5"></i> ${t("Done")}</button>
+                        ${lock ? `<span class="btn-outline flex-1 notranslate opacity-70 cursor-not-allowed text-center"><i class="fa-solid fa-lock mr-1.5"></i> ${esc(lock)}</span>`
+                               : `<button onclick="submitTask('${jid}', 'routine', false)" class="btn-done flex-1 notranslate"><i class="fa-solid fa-check text-[#00a8ff] mr-1.5"></i> ${t("Done")}</button>`}
                     </div>
                     <div id="remark-box-${sid}" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
                         <textarea id="remark-input-${sid}" rows="2" placeholder="What happened with this task?" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-3 text-xs font-bold text-slate-700 outline-none focus:border-blue-400 resize-none mb-3 notranslate"></textarea>
@@ -918,7 +947,7 @@
                             <button onclick="toggleRemark('${jid}')" class="w-1/3 bg-slate-200 text-slate-600 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-slate-300 notranslate">${t("Cancel")}</button>
                             <button onclick="submitTask('${jid}', 'routine', true)" class="w-2/3 bg-blue-100 text-blue-600 border border-blue-200 py-3 rounded-lg text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-blue-200 notranslate"><i class="fa-solid fa-save mr-1.5"></i> ${t("Save Note Only")}</button>
                         </div>
-                        <button onclick="submitTask('${jid}', 'routine', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md notranslate"><i class="fa-solid fa-check-double mr-1.5"></i> ${t("Mark Done with Note")}</button>
+                        ${lock ? '' : `<button onclick="submitTask('${jid}', 'routine', false)" class="w-full bg-[#1E293B] text-white py-3 rounded-lg text-[11px] font-black uppercase tracking-wider shadow-md notranslate"><i class="fa-solid fa-check-double mr-1.5"></i> ${t("Mark Done with Note")}</button>`}
                     </div>
                 </div>`;
             });

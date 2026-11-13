@@ -198,6 +198,11 @@ function accentFor(row){
 /* ==================================================================
    Boot & authentication
    ================================================================== */
+/* GGM Portal language (Portal.js): the portal's English / Hindi choice wins at sign-in;
+   this app has its own Hindi, so the page translator is not used here. */
+function ggmPortalLang_(){ var g = window.GGMLang; return g && g.chosen ? String(g.chosen).toUpperCase() : ''; }
+window.ggmApplyLang = function(){};
+
 window.addEventListener('DOMContentLoaded', function(){
   var P = window.PORTAL || {};
   portalLoginLabels(P.info || {});
@@ -207,11 +212,11 @@ window.addEventListener('DOMContentLoaded', function(){
     // Opened from GGM Portal: already signed in, no login screen.
     S.token = P.boot.token; S.user = P.boot.user;
     try { sessionStorage.setItem('if_token', P.boot.token); } catch(e){}
-    setLang(S.user && S.user.lang);
+    setLang(ggmPortalLang_() || (S.user && S.user.lang));
     Promise.resolve().then(start);
   } else if (saved){
     S.token = saved;
-    api('me').then(function(d){ S.user = d.user; setLang(d.user && d.user.lang); return start(); })
+    api('me').then(function(d){ S.user = d.user; setLang(ggmPortalLang_() || (d.user && d.user.lang)); return start(); })
              .catch(function(){ S.token = null; showLogin(); });
   } else {
     setTimeout(showLogin, 700);

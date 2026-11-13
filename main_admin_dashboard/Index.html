@@ -852,6 +852,28 @@
   </div>
 </div>
 
+<!-- TRANSFER TASK MODAL: hand an open task to someone else (e.g. the doer is on leave) -->
+<div class="modal fade" id="transferTaskModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background: var(--card-bg);">
+      <div class="modal-header border-bottom-0"><h6 class="modal-title fw-bold"><i class="bi bi-arrow-left-right text-primary me-2"></i>Transfer Task</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="transferTaskId">
+        <div class="mb-3 p-2 rounded border small" style="background:var(--app-bg);">
+          <div class="text-muted fw-bold text-uppercase" style="font-size:0.7rem;">Task</div>
+          <div class="fw-bold font-monospace text-primary" id="transferTaskIdDisplay"></div>
+          <div class="text-truncate" id="transferTaskDesc"></div>
+          <div class="mt-1"><span class="text-muted">Now with:</span> <strong class="notranslate" id="transferFrom"></strong></div>
+        </div>
+        <div class="mb-3"><label class="form-label small fw-bold text-muted">Transfer to<span class="text-danger">*</span></label><select class="form-select bg-light" id="transferTaskDoer"><option value="" disabled selected>Select new assignee...</option></select></div>
+        <div class="mb-3"><label class="form-label small fw-bold text-muted">New due date <span class="fw-normal">(leave as it is to keep the same date)</span></label><input type="date" class="form-control bg-light" id="transferTaskDate"></div>
+        <div class="mb-4"><label class="form-label small fw-bold text-muted">Reason<span class="text-danger">*</span></label><textarea class="form-control bg-light" id="transferTaskReason" rows="2" placeholder="e.g. on leave till 5 Nov"></textarea></div>
+        <button class="btn btn-primary w-100 py-2 fw-bold shadow-sm rounded-3" id="btnSaveTransfer" onclick="submitTransferTask()"><i class="bi bi-arrow-left-right me-2"></i>Transfer Task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- STAFF MODAL -->
 <div class="modal fade" id="staffModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-md-down modal-dialog-scrollable"><div class="modal-content" style="background: var(--app-bg);"><div class="modal-header border-bottom-0 pb-0" style="background: var(--card-bg);"><div class="d-flex align-items-center gap-3 w-100 pb-3 border-bottom"><div id="staffModalAvatar"></div><div style="min-width: 0;"><h5 class="modal-title fw-bold mb-0 text-truncate" id="staffModalName">Name</h5><span class="text-muted small text-truncate d-block" id="staffModalSub">Profile</span></div><button type="button" class="btn-close ms-auto mb-auto" data-bs-dismiss="modal"></button></div></div><div class="modal-body pt-3" style="padding-bottom: 90px;"><div class="row g-2 text-center mb-4" id="staffModalKPIs"></div><h6 class="fw-bold mb-3"><i class="bi bi-list-task me-2"></i>Assigned Task List</h6><div id="staffModalTaskList" class="row row-cols-1 g-3"></div></div></div></div></div>
 
@@ -866,6 +888,15 @@
 
 <script>
 let isHindi = false;
+/* GGM Portal language (Portal.js): flip this page's own translate switch once Google's engine is ready. */
+window.ggmApplyLang = function (l) {
+    let tries = 0;
+    (function wait() {
+        if (!document.querySelector('.goog-te-combo')) { if (++tries < 60) setTimeout(wait, 300); return; }
+        if ((l === 'hi') !== isHindi) toggleAppLanguage();
+    })();
+};
+
 function toggleAppLanguage() {
     let combo = document.querySelector('.goog-te-combo');
     if (!combo) { alert("Translation engine is loading... please wait a second."); return; }
@@ -1498,6 +1529,16 @@ function generateCardHTML(t, type) {
       staffFilesChip += `</div>`;
   }
 
+  // In Review: show what the task came with and what was attached when it was marked Done, right on the card.
+  if (type === 'review') {
+      const chip = (url, cls, icon, label) => `<button onclick="viewDocument('${url}')" class="btn btn-sm badge ${cls} text-decoration-none border"><i class="bi ${icon}"></i> ${label}</button>`;
+      const given = (t.attachments || []).map((u, i) => chip(u, 'bg-primary-subtle text-primary border-primary-subtle', 'bi-file-earmark-text', 'Task File ' + (i + 1)));
+      const done = (t.staffFiles || []).map((u, i) => chip(u, 'bg-success-subtle text-success border-success-subtle', 'bi-file-earmark-check-fill', 'Done File ' + (i + 1)));
+      staffFilesChip = (given.length || done.length)
+        ? `<div class="mt-2 d-flex flex-wrap gap-1">${given.concat(done).join('')}</div>`
+        : `<div class="mt-2 small text-muted"><i class="bi bi-paperclip"></i> No file attached when marked Done</div>`;
+  }
+
   if (type === 'recent' && t.status === 'today') badgeHtml = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">High Priority</span>`;
 
   return `
@@ -1902,20 +1943,53 @@ window.actionLeave = function(rowNum, status) {
     });
 };
 
+// "30-Oct-2026" / "30/10/2026" (sheet display) → "2026-10-30" for a date picker
+function renDayIso_(s) {
+    s = String(s || '').trim();
+    const mon = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+    let m = s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3})[A-Za-z]*[-\/ ](\d{4})$/);
+    if (m && mon[m[2].toLowerCase()]) return m[3] + '-' + String(mon[m[2].toLowerCase()]).padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+
+// Approving finishes the renewal: the new expiry goes on the entry tab, a Renewal Log line is
+// written and the task leaves the Task Feed. The dates staff sent are shown and can be corrected.
 window.approveRenewal = function(taskId) {
+    const r = renewalData.find(x => x.id === taskId) || {};
+    const today = new Date(); const todayIso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     Swal.fire({
-        title: 'Approve Renewal?',
-        text: "This will set status to Completed and tick the DONE checkbox in the sheet.",
-        icon: 'success',
+        title: 'Approve Renewal',
+        html: `<div class="text-start small">
+                 <div class="fw-bold mb-2">${r.title || taskId}</div>
+                 <div class="text-muted mb-3">Current expiry: <b>${r.dueDate || '-'}</b></div>
+                 <label class="form-label mb-1">Renewed on</label>
+                 <input id="apRenewed" type="date" class="form-control mb-2" max="${todayIso}" value="${renDayIso_(r.renewedOn) || todayIso}">
+                 <label class="form-label mb-1">New valid until</label>
+                 <input id="apValid" type="date" class="form-control mb-2" value="${renDayIso_(r.newValid)}">
+                 <label class="form-label mb-1">Total cost (INR)</label>
+                 <input id="apCost" type="number" min="0" class="form-control" value="${String(r.cost || '').replace(/[^\d.]/g, '')}">
+               </div>`,
+        icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Yes, Approve & Tick',
+        confirmButtonText: 'Approve & Renew',
+        preConfirm: () => {
+            const d = { renewedOn: document.getElementById('apRenewed').value, newValidUntil: document.getElementById('apValid').value, cost: document.getElementById('apCost').value };
+            if (!d.renewedOn || !d.newValidUntil) { Swal.showValidationMessage('Renewed on and New valid until are required.'); return false; }
+            if (d.renewedOn > todayIso) { Swal.showValidationMessage('Renewed on cannot be in the future.'); return false; }
+            const cur = renDayIso_(r.dueDate);
+            if (cur && d.newValidUntil <= cur) { Swal.showValidationMessage('New valid until must be later than the current expiry (' + r.dueDate + ').'); return false; }
+            return d;
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             Swal.fire({ title: 'Approving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             google.script.run.withSuccessHandler(res => {
-                if(res.success) { Swal.fire('Approved!', 'Renewal completed successfully.', 'success'); fetchData(true); }
+                if(res.success) { Swal.fire('Approved!', res.message || 'Renewal completed successfully.', 'success'); fetchData(true); }
                 else { Swal.fire('Error', res.error, 'error'); }
-            }).actionRenewalTask(adminToken(), taskId, 'Approve', '');
+            }).withFailureHandler(err => Swal.fire('Error', String((err && err.message) || err), 'error'))
+              .actionRenewalTask(adminToken(), taskId, 'Approve', '', result.value);
         }
     });
 };
@@ -2254,6 +2328,60 @@ window.submitEditTask = function() {
     }).editTask(adminToken(), taskId, doer, desc, dueFmt);
 };
 
+/* Transfer: an open task goes to someone else (the doer is on leave, etc.). The server
+   (transferTask) resets it to Pending, keeps a "Transferred from A to B" line in the task's
+   history and clears any transfer the staff member had asked for in Staff Dashboard. */
+window.openTransferModal = function(taskId) {
+    const t = allData.find(x => x.id === taskId); if(!t) return;
+    bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+    document.getElementById('transferTaskId').value = t.id;
+    document.getElementById('transferTaskIdDisplay').textContent = '#' + t.id;
+    document.getElementById('transferTaskDesc').textContent = t.task;
+    document.getElementById('transferFrom').textContent = t.staff.cleanName;
+    document.getElementById('transferTaskReason').value = '';
+    let opts = '<option value="" disabled selected>Select new assignee...</option>';
+    (allGlobalDoers || []).filter(d => d !== t.staff.rawString).forEach(d => {
+        const safe = String(d).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        opts += `<option value="${safe}">${safe}</option>`;
+    });
+    document.getElementById('transferTaskDoer').innerHTML = opts;
+    const dateEl = document.getElementById('transferTaskDate');
+    if (t.dueObj) {
+        const y = t.dueObj.getFullYear(), m = String(t.dueObj.getMonth() + 1).padStart(2, '0'), d = String(t.dueObj.getDate()).padStart(2, '0');
+        dateEl.value = `${y}-${m}-${d}`;
+    } else dateEl.value = '';
+    dateEl.dataset.was = dateEl.value;
+    if (typeof jQuery !== 'undefined' && $.fn.select2) {
+        if ($('#transferTaskDoer').data('select2')) $('#transferTaskDoer').select2('destroy');
+        $('#transferTaskDoer').select2({ theme: 'bootstrap-5', dropdownParent: $('#transferTaskModal'), width: '100%', placeholder: 'Select new assignee...' });
+    }
+    new bootstrap.Modal(document.getElementById('transferTaskModal')).show();
+};
+
+window.submitTransferTask = function() {
+    const taskId = document.getElementById('transferTaskId').value;
+    const doer = document.getElementById('transferTaskDoer').value;
+    const reason = document.getElementById('transferTaskReason').value.trim();
+    const dateEl = document.getElementById('transferTaskDate');
+    if (!doer) { Swal.fire('Choose a person', 'Select who the task goes to.', 'warning'); return; }
+    if (!reason) { Swal.fire('Reason needed', 'Write why the task is being transferred.', 'warning'); return; }
+    const dueFmt = (dateEl.value && dateEl.value !== dateEl.dataset.was) ? dateEl.value.split('-').reverse().join('/') : '';
+    const btn = document.getElementById('btnSaveTransfer');
+    const orig = btn.innerHTML; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Transferring...'; btn.disabled = true;
+    google.script.run.withSuccessHandler(res => {
+        btn.innerHTML = orig; btn.disabled = false;
+        if (res && res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('transferTaskModal')).hide();
+            Swal.fire('Transferred', res.message, 'success');
+            fetchData(true);
+        } else if (res && res.error === 'SESSION_EXPIRED') { Swal.fire('Signed out', 'Your sign-in has ended. Please open the app again.', 'warning'); }
+        else Swal.fire('Not transferred', (res && res.error) || 'Something went wrong.', 'error');
+    }).withFailureHandler(err => {
+        btn.innerHTML = orig; btn.disabled = false;
+        Swal.fire('Error', String((err && err.message) || err), 'error');
+    }).transferTask(adminToken(), taskId, doer, dueFmt, reason);
+};
+
 window.openStaffModal = function(staffName, tab) {
     const data = allData.filter(t => t.staff.cleanName === staffName);
     if(data.length === 0) return;
@@ -2281,7 +2409,7 @@ function openTaskModal(taskId) {
   if (t.status === 'review') {
     actionButtons = `<div class="mt-4 pt-3 border-top d-flex flex-column gap-2"><div class="d-flex justify-content-end gap-2"><button class="btn btn-success d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="markTaskDone('${t.id}')" id="btnDone-${t.id}"><i class="bi bi-check-circle-fill"></i> Approve (Finish)</button><button class="btn btn-danger d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="toggleRejectBox('${t.id}')"><i class="bi bi-x-circle-fill"></i> Reject</button></div><div id="rejectBox-${t.id}" class="d-none mt-3 p-3 bg-danger-subtle border border-danger-subtle rounded"><label class="form-label small fw-bold text-danger">Remark (Will be sent to staff):</label><textarea class="form-control form-control-sm mb-2" id="rejectRemark-${t.id}" rows="2" placeholder="Explain why this task is being rejected..."></textarea><div class="text-end"><button class="btn btn-sm btn-danger fw-bold" onclick="submitReject('${t.id}')">Confirm Rejection</button></div></div></div>`;
   } else if (t.status !== 'done') {
-    actionButtons = `<div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2"><button class="btn btn-outline-warning d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="openEditModal('${t.id}')"><i class="bi bi-pencil-square"></i> Edit</button><button class="btn btn-success d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="markTaskDone('${t.id}')" id="btnDone-${t.id}"><i class="bi bi-check-circle-fill"></i> Direct Mark Done</button></div>`;
+    actionButtons = `<div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2"><button class="btn btn-outline-warning d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="openEditModal('${t.id}')"><i class="bi bi-pencil-square"></i> Edit</button><button class="btn btn-outline-primary d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="openTransferModal('${t.id}')"><i class="bi bi-arrow-left-right"></i> Transfer</button><button class="btn btn-success d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="markTaskDone('${t.id}')" id="btnDone-${t.id}"><i class="bi bi-check-circle-fill"></i> Direct Mark Done</button></div>`;
   }
   
   let remarkHtml = t.status === 'rejected' ? `<div class="alert alert-danger mt-3 mb-0 p-2 small"><i class="bi bi-x-circle-fill me-1"></i> <strong>Boss Remark:</strong> ${t.remark}</div>` : '';
@@ -2296,7 +2424,7 @@ function openTaskModal(taskId) {
 
   let attachmentsHtml = '';
   if (t.attachments && t.attachments.length > 0) {
-      attachmentsHtml = `<div class="mt-3 pt-3 border-top"><small class="text-muted fw-bold d-block text-uppercase mb-2" style="font-size:0.7rem;">Attached Files</small><div class="d-flex flex-wrap gap-2">`;
+      attachmentsHtml = `<div class="mt-3 pt-3 border-top"><small class="text-muted fw-bold d-block text-uppercase mb-2" style="font-size:0.7rem;">Files given with the task</small><div class="d-flex flex-wrap gap-2">`;
       t.attachments.forEach((url, i) => {
           if (url && url.trim() !== '') {
               attachmentsHtml += `<button onclick="viewDocument('${url.trim()}')" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm fw-bold"><i class="bi bi-file-earmark-text"></i> File ${i+1}</button>`;
@@ -2307,7 +2435,7 @@ function openTaskModal(taskId) {
 
   let staffFilesHtml = '';
   if (t.staffFiles && t.staffFiles.length > 0) {
-      staffFilesHtml = `<div class="mt-3 pt-3 border-top"><small class="text-muted fw-bold d-block text-uppercase mb-2" style="font-size:0.7rem;">Staff Attachments (Review Files)</small><div class="d-flex flex-wrap gap-2">`;
+      staffFilesHtml = `<div class="mt-3 pt-3 border-top"><small class="text-muted fw-bold d-block text-uppercase mb-2" style="font-size:0.7rem;">Files attached when marked Done</small><div class="d-flex flex-wrap gap-2">`;
       t.staffFiles.forEach((url, i) => {
           if (url && url.trim() !== '') {
               staffFilesHtml += `<button onclick="viewDocument('${url.trim()}')" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1 shadow-sm fw-bold"><i class="bi bi-file-earmark-check-fill"></i> Staff File ${i+1}</button>`;
@@ -2315,6 +2443,11 @@ function openTaskModal(taskId) {
       });
       staffFilesHtml += `</div></div>`;
   }
+
+  if (t.status === 'review' && !(t.staffFiles && t.staffFiles.length)) {
+      staffFilesHtml = `<div class="mt-3 pt-3 border-top small text-muted"><i class="bi bi-paperclip me-1"></i>No file was attached when this was marked Done.</div>`;
+  }
+  const historyHtml = t.extraRemark ? `<div class="mt-3 pt-3 border-top"><small class="text-muted fw-bold d-block text-uppercase mb-1" style="font-size:0.7rem;">History / Notes</small><div class="small" style="white-space: pre-wrap; word-break: break-word;">${String(t.extraRemark).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div></div>` : '';
 
   document.getElementById('taskModalBody').innerHTML = `
     <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
@@ -2338,6 +2471,7 @@ function openTaskModal(taskId) {
         ${staffRemarkHtml}
         ${attachmentsHtml}
         ${staffFilesHtml}
+        ${historyHtml}
     </div>
     <div class="row g-3">
         <div class="col-6">

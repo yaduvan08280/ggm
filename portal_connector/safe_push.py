@@ -3,6 +3,7 @@ safe_push.py - the only way an Apps Script app in this folder gets deployed.
 
     python portal_connector/safe_push.py <app folder> "main app N" <deploymentId> [<deploymentId> ...]
     python portal_connector/safe_push.py <app folder> "main app N" <ids...> --ack <code>
+    python portal_connector/safe_push.py <app folder> "main app N" <ids...> --retire name,name   (functions removed on purpose)
 
 Why: in Oct 2026 two pushes were built from local copies older than what was live,
 and silently dropped working features (Assets transfer logic, Indent IMS push).
@@ -16,7 +17,8 @@ A push replaces the WHOLE project, so before anything is sent this script:
      so an old acknowledgement can never wave through a new loss)
   4. runs every automated check (portal_connector/checks/all.js)
   5. pushes, creates the version "<description>", points each deployment at it
-     (same URLs), and shows the deployments.
+     (same URLs) - the ones named AND every other deployment of the app, so no old
+     link keeps running old code - and shows the deployments.
 """
 import hashlib, json, os, re, shutil, subprocess, sys, tempfile
 
@@ -86,6 +88,9 @@ def main():
     ack = None
     if '--ack' in args:
         i = args.index('--ack'); ack = args[i + 1]; del args[i:i + 2]
+    retire = set()   # functions removed on purpose, named one by one on the command line
+    if '--retire' in args:
+        i = args.index('--retire'); retire = {n.strip().rstrip('_') for n in args[i + 1].split(',')}; del args[i:i + 2]
     if len(args) < 3:
         sys.exit(__doc__)
     app, desc, deployments = args[0], args[1], args[2:]
@@ -107,7 +112,7 @@ def main():
         for f in code_files(d):
             if not os.path.exists(os.path.join(app_dir, f)):
                 problems.append('%s has file %s, which is missing locally' % (label, f))
-        gone = sorted(functions(d) - local_fns)
+        gone = sorted(functions(d) - local_fns - retire)
         if gone:
             problems.append('%s has functions missing locally: %s' % (label, ', '.join(gone)))
         for f in code_files(d):
@@ -159,8 +164,14 @@ def main():
     if not v:
         sys.exit('Could not create the version:\n' + vout)
     v = v.group(1)
-    for dep in deployments:
+    # Every older link of the app moves too. Phones kept old bookmarks / home-screen icons
+    # (Staff alone had 27 deployments) that still ran months-old code with 3-10 MB upload caps.
+    listed = re.findall(r'^- (\S+) @(?!HEAD)', run(['clasp', 'deployments'], cwd=app_dir), re.M)
+    others = [d for d in listed if d not in deployments]
+    for dep in deployments + others:
         print(run(['clasp', 'redeploy', dep, '-V', v, '-d', desc], cwd=app_dir).strip().splitlines()[-1])
+    if others:
+        print('(%d older link(s) of this app moved to the same version)' % len(others))
     print('\nDeployed version %s as "%s".' % (v, desc))
     shutil.rmtree(scratch, ignore_errors=True)
 

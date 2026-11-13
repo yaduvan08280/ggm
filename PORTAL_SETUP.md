@@ -71,7 +71,7 @@ Never use "New deployment" for an existing app: it creates a new `/exec` link an
 3. Back in the sheet: **Portal Admin → Test connection to selected app** → "Connected".
 
 From this moment that app: opens already signed in from a portal tile; its own login screen asks for the **portal** username/phone + password; its old passwords and site logins stop working.
-(Main Admin only: optional property `PORTAL_STAFF_APP_ID` if the staff app's ID is not `STAFF`.)
+(Main Admin only: optional property `PORTAL_STAFF_APP_ID`. Without it Main Admin asks the hub for `STAFF DASHBOARD`, then `STAFF`. Asking only for `STAFF` used to fail quietly, so "Assign to" fell back to the old Delegated Doer List and was missing names.)
 
 ## 5. Fill the dropdowns and bring people in
 
@@ -424,3 +424,207 @@ Separate, unrelated: Jaipur has leftover time triggers for `updateMonthlyMasterB
   - The page then sends `{ filename, mimeType, fileId }`; the app's save code calls `bigUploadTake_(f, folder)`, which accepts only ids its own upload just created (so nobody can attach — and make public — an existing private Drive file), moves the file to the same folder as before (e.g. Staff renewals) and shares it like other attachments.
   - Kept out of Portal.js on purpose: Drive code there would add the Drive permission to apps that do not use Drive (e.g. Jaipur) and stop them until re-approved.
 - Deployed: Main Admin "main app 6", Staff "main app 6", Newai "main app 6", Tonk "main app 6", Indent "main app 10". Check: `bigupload.js` (23).
+
+## Main Admin: transfer a task + files at review (28 Oct 2026, Nakul's tasks)
+
+- **Transfer** (task detail → Transfer, only on open tasks: pending / overdue / rejected): pick the new person, optional new due date (left unchanged = same date), reason (required). Server `transferTask`: refuses finished, in-review, week-shifted/cancelled tasks and a transfer to the same person; sets the doer, status back to Pending, appends "Transferred from A to B on <date> | Reason: …" to column Q, clears column R (a transfer the staff member asked for in Staff Dashboard), stamps Last Action. Staff Dashboard shows it within 60 s (its cache).
+- Task detail now shows column Q as **History / Notes**.
+- **In Review** cards show the task's own files (**Task File n**, blue) and the files attached when it was marked Done (**Done File n**, green, column P — written there by Staff, Newai and Tonk alike), or "No file attached when marked Done". Detail labels: "Files given with the task" / "Files attached when marked Done".
+- Check: `transfer.js` (15). Deploy as Main Admin "main app 7".
+
+## English / Hindi switch (28 Oct 2026)
+
+- **Hub**: "हिं / EN" button in the top bar and on the sign-in screen, plus Account menu → Language. The choice is saved in the new Users column **O "Language"** (Hindi / English; `setLanguage`), so it follows the person to every phone. A choice made on the sign-in screen is saved right after sign-in. The hub's own screens use a curated phrase list (Index.html `HI` / `HI_RX`); a translator swaps exact phrases on screen and restores English exactly. Apps kept open in the background are dropped on a switch so the next open uses the new language.
+- **Apps**: the language rides in every launch pass (claim `lg`) → `PORTAL.boot.lang` (Portal.js; `PORTAL_CFG.boot.lang` in GgmLogin.js). The injected `portalLangKit_` remembers it per app (`localStorage ggm_lang`) and applies it:
+  - app with its own Hindi defines `window.ggmApplyLang(lang)`: **Fuel** (toggleLanguage), **Indent** (setLang at sign-in, portal choice wins over its own saved one), **Newai** (newaiTasksLang), **Main Admin** (its Google translate switch);
+  - every other app (**Staff, Assets, Jaipur, Tonk, Task Delegation**) is translated to Hindi by Google's page translator (banner hidden). Machine translation: mostly right, a few odd words (e.g. "Leaves" → "पत्तियों").
+- Jaipur's editor copy had a new spreadsheet menu tool **"🗑️ Delete Deleted Tasks"** (`purgeDeletedTasksFast`) — kept and shipped as-is.
+- Deployed: hub "main app 23"; Staff 7, Assets 11, Tonk 7, Jaipur 7, Fuel 9, Indent 11, Main Admin 8, Newai 7, Task Delegation 4. Check: `lang.js` (22).
+
+## Assets: every site in its own columns (30 Oct 2026)
+"Present Assets List" stacked the sites as row blocks (TONK 4-21, SANWARIYA 25-39 ...), so a site
+with more vehicles than its rows broke: "No empty slot", the sync skipped that site, and the FOR FORMS
+formulas spilled into the next site. It is replaced by three tabs, each site a band of columns
+(row 2 site, row 3 category, vehicles from row 4 down, no row limit):
+- **Owned By Us** - own vehicles (7 categories) + Asset In Transfer / Transferred Location
+- **Contractor Vehicles** - contractor vehicles (6 categories)
+- **For Forms** - `=IFERROR(UNIQUE(FILTER({own;contractor})))` per category; MISC. (orange) is typed by hand
+The Assets app finds columns by these headings (`readSiteTab_` in assets/Code.js), so adding a
+site = a new band in all three tabs + the name in `LOCATION_BLOCKS`. Moved by `migrateToSiteColumns`
+(assets/Migrate.js): 99 names, 0 mismatches; old tab deleted after nothing read it.
+Also changed: the TONK / SANWARIYA / KHAKHUNDA report tabs now read their own site's For Forms columns
+(before, all three read TONK's rows V4:AB30). The 8 TONK Google Forms refresh their dropdowns from
+TONK's For Forms columns by heading - copies of their bound scripts are in `asset_forms/` (push with
+`clasp push` inside each folder). This also removed the junk choices "SANWARIYA", "EXCAVATOR", ...
+that the old V4:AB24 ranges had put into the forms. Asset Receiving Form: no longer errors when
+nothing is in transit.
+Category spellings from the forms ("TRACTOR", "DUMPER", "VAN & TANKER", "MISCELLANEUOS") now map to
+the sheet headings (`normCat_` in assets/Code.js); before, "TRACTOR" filed a received tractor under
+MISC. `fixMiscCategories()` (Migrate.js, run once 30 Oct) moved RJ14GD8869 and RJ14GD8873 at NEWAI
+from MISC. to TRACTORS.
+`fixFormHistory()` (run once 30 Oct) cleaned the form records: "TRACTOR" -> "TRACTORS" (Transfer rows
+17, 20; Receiving rows 17, 20) and the 19 Aug short name "RJ26GA4678" -> "RJ26GA4678 (MAHINDRA BLAZO
+25 6X4 6C)" (Transfer row 2, Receiving row 3). Audit afterwards: 26/26 vehicles at the site of their
+last receipt, nothing in transit, no duplicates.
+
+## Assets: health check + live self-test (30 Oct 2026)
+- **Health Check tab** - rewritten after every sync (`healthCheck_` in assets/Code.js; also the
+  sheet menu "LIVE SYNC SYSTEM > Health Check"). It replays the whole Transfer / Receiving history and
+  lists: vehicle shown somewhere other than its latest form entry, form entry naming a vehicle the sheet
+  does not know (spelling), received at a different site than it was sent to, on the way > 3 days,
+  listed twice, unknown site or category. "All good" = nothing to fix.
+- **liveSelfTest()** (assets/SelfTest.js, run from the editor): a throw-away vehicle goes add ->
+  dispatch -> in transit (sheet, both dashboards, updater list) -> wrong site refused -> receive ->
+  new site, then every trace is deleted. 30 Oct: all 26 steps passed, nothing left behind.
+- Asset Receiving Form: when nothing is in transit its list shows "— Nothing in transit right now —"
+  instead of keeping already-received vehicles (which could be "received" again elsewhere).
+- **Google Asset Transfer Form and Asset Receiving Form retired (30 Oct 2026).** All transfers and
+  receipts now come from the Assets app only. Both forms were unlinked from the sheet (their tabs and
+  all 34 + 34 past rows stay; the app keeps appending to them) and moved to the Drive bin; the Receiving
+  form's timed dropdown trigger was deleted. Self-test re-run afterwards: all passed.
+
+## Old app links still had 3-10 MB upload caps (31 Oct 2026)
+Phones kept old bookmarks / home-screen icons pointing at old deployments, which still ran the
+code of the day they were made (3 MB / 8 MB / 10 MB caps, and no GGM Portal sign-in). There were
+137 such links: Staff 27, Jaipur 30, Assets 28, Task Delegation 23, Main Admin 20, Newai 7, Tonk 3,
+Fuel 2 (Indent and the hub had none). All were moved to the current version, same URLs:
+Staff main app 9 (v92), Newai main app 9 (v54), Tonk main app 9 (v26), Main Admin main app 9 (v76),
+Jaipur main app 8 (v43), Fuel main app 11 (v52), Task Delegation main app 5 (v63), Assets main app 18
+(v80). Spot-checked old links open today's app / portal sign-in. `safe_push.py` now moves EVERY
+deployment of an app on every deploy, so an old link can never fall behind again.
+
+## Staff Dashboard users also go on their site's checklist (31 Oct 2026)
+When someone is given the Staff Dashboard, the start of their doer name decides where else they go:
+`JPR - …` → JAIPUR CHECKLIST Doer List, `NEWAI - …` → NEWAI CHECKLIST, `TONK - …` → TONK CHECKLIST,
+anything else → Staff Dashboard only (`staffAddToSiteChecklist_` in Staff_dashboard/PortalApp.js).
+The row is Name, Department (from the brackets), Email, Mobile as Username, and a random Password
+(the checklists' old login reads column E, so it must never be blank; people sign in via the portal).
+Nobody is added twice (same mobile, or same name ignoring "JI"). Each checklist spreadsheet is opened
+once per run - they are slow to open. Backfill run the same day (`addSitePeopleToChecklists`, editor):
+Jaipur - Saniya, Akhil, Shoji Ram Ji, Hemraj Ji, Raman; Newai - Prashant Pareek, Bhopal Gurjar,
+Abdul Khan; Tonk - Rajesh Ji, Lalit Meena. Staff main app 11 (v94).
+
+## Attendance joins GGM Portal (1 Nov 2026, hub "main app 24")
+Folder `employee_attendance` (script "Attendance App", sheet **Employee Attendance** `1Msf0vgk…`). v2 login, App ID
+**ATTENDANCE** · Fields `role,site` · Sheet ID = the Employee Attendance sheet (row added by Set up / repair tabs).
+- **Sign-in:** a portal tile opens it signed in, with the first screen already inside the page. Its own sign-in box takes
+  the GGM Portal username / phone + password (portal only since 5 Nov 2026, see below).
+- **Who is who:** Role + Site from the Access grid (Supervisor needs a site; HR / Admin blank = all sites). Unticked in
+  the portal → out within a minute.
+- **Badge:** Supervisor = own workers still to mark (while marking is open); HR / Admin = records waiting for a check.
+- **Speed:** Employees / Users / Settings tabs and each site's day column are cached on the server (Fast.js; a write
+  through the app updates the copy at once, hand edits show within 45 s–5 min). The phone keeps the last copy of every
+  screen and draws it instantly; one call (`bootstrap`) brings it up to date. Chart.js only loads on Trends.
+- **Look:** ink & honey (the hub's colours and Inter), dark mode follows the phone or Account → Auto / Light / Dark.
+- **New:** supervisors add workers to their own list (next free ID suggested); a search bar on every tab (name or ID);
+  every KPI tile opens what it counts; tap anyone for their month calendar (FD / HD / A, HR-approved dots).
+- Checks: `portal_connector/checks/attendance.js` (40).
+
+**To finish (owner only):** approve the new permission in the Attendance script (Run anything → Review permissions),
+then Apps → ATTENDANCE row → Portal Admin → Connect selected app → paste the key as Script property `PORTAL_KEY`
+in the Attendance script. After deploying, Portal Admin → Refresh dropdowns, then tick ATTENDANCE (Role, Site) in Access.
+
+## Renewal Record: typed details follow their document (1 Nov 2026)
+Task Feed rows are "the Nth most urgent document", so values typed on a row used to slide onto another document
+when the order changed (wrong "Completed" / "Pending", a renewal applied to the wrong row). Now:
+- Renewed On / New Valid Until / Cost / Done / Link / Status / Remark / Action By / Action At live in the hidden
+  **Feed Inputs** tab, one row per Doc ID; the Task Feed columns are formulas showing them. Typing / ticking in the
+  feed still works (the sheet's onEdit moves it to Feed Inputs). Shared logic: `RenewalCore.js` (same file in
+  renewal_system, Staff_dashboard, main_admin_dashboard).
+- **Complete ticked renewals** checks every date first (new expiry must be later than the current one, Renewed On not
+  in the future) and reads each new expiry back after saving; anything that did not stick is listed as NOT completed.
+- **Main Admin Approve** finishes the renewal itself (new expiry + Renewal Log line, task leaves the feed); its dialog
+  shows the dates staff sent and lets the admin correct them. **Staff Dashboard** submissions are saved as real dates.
+- Sheet time zone India (was Pacific); Renewal Log formulas reach row 2000 (were 302).
+- Clean-up: 45 misplaced values (19 wrong statuses, 26 empty) were removed from Feed Inputs.
+- Live: Staff "main app 12" (v95), Main Admin "main app 10" (v77). Checks: `renewals.js` (17).
+- **1 Nov 2026, "main app 2–3":** more colour (tinted tiles, a colour per site); **Record** tab for HR / Admin
+  (site + month filters, one row per person: present / half / absent / not marked / man-days, live search,
+  hide 0-present, sort, **Print list** = PDF of exactly what is shown); **employee photos** (hidden tab
+  *Employee Photos*: camera or gallery from Add employee / Add a worker or by tapping any avatar; the phone
+  shrinks any picture to ~30 KB, a 120 px thumb for lists); a new year's site tab keeps last year's
+  hand-arranged row order (blank separator rows and column-B labels too); person sheet shows only the actions
+  that fit (no Approve once approved) and every list, Record included, updates the moment a status changes.
+  Checks: `attendance.js` (58).
+- **1 Nov 2026, "main app 4–5":** phone layout for Attendance and the hub (hub "main app 25"); **punch report check**:
+  HR / Admin upload the punching machine's *Daily Punch Report* (.xlsx) from Verify or More → the phone reads it
+  (only first / last punch + count per person per day are sent) → every marked day cell on the site tabs whose mark
+  does not fit the punches gets a bright red font (a fitting one goes back to black, so re-uploading clears old red).
+  Rules: no punch = Absent; one punch = present; first→last ≥ Full-day hours = Full; ≥ Half-day hours = Half; less =
+  Half or Absent. Hours per site in More → Site rules (Settings F / G, default 7 h / 4 h). Blank cells and days after
+  today are never touched. Matched by Employee ID. `Punch.js`; checks in `attendance.js` (63).
+
+## Newai Checklist: Done was not saved after 31 Oct 2026 (3 Nov 2026, "main app 10" / "11")
+
+**What broke:** the app saved checklist (routine) ticks into a tab called **MM**. That tab was removed from the Newai sheet on the morning of 31 Oct; the last tick that reached the sheet was 31 Oct 08:34:57. From then on the server found no MM tab, wrote nothing, and still answered "success", so people saw "updated!" and the task came back. Photos were uploaded to Drive but their links were never written. Loads also became slow (6–13 s, once 122 s), because with MM gone the app read the whole Master tab (25,553 rows) on each load. Delegated tasks were not affected.
+
+**Now** (`newai_checklist/Routine.js`):
+- A Done or note goes straight into **Master**, on the row with that Task ID (column D; all 25,553 IDs are unique). Actual goes to H, "Done" to I, and notes/file links are added to L. The same change is copied to that Task ID in **Monthly Master** (the 2 AM trigger still rebuilds it from Master).
+- The row must belong to the signed-in person (name, or a Doer List name with the same mobile).
+- Anything that is not saved is reported with the reason ("no longer in the sheet", "too early", "finish the one due … first"). Those tasks go back to pending in the app; nothing is reported as "updated".
+- **Speed:** one read of Master builds a per-person copy in the script cache (live size about 380 KB for 13 people). Each save patches that copy. A hand edit in Master or Monthly Master (onEdit), new tasks (createChecklist), and the 2 AM rebuild all drop the copy, as does a new day. The copy holds this month, anything in Review, and open W/M/Q/Y tasks that are overdue or due within 40 days.
+- **Early ticks:** a W/M/Q/Y task can be marked from 6 days before its date (`RT_EARLY_DAYS`), and only the oldest open occurrence of the same task. Otherwise the card shows a lock ("Can be marked from dd/mm" / "Finish the one due … first"), and the server refuses it too. Notes can still be saved. Daily tasks are unchanged.
+- `syncMMtoMaster` / `monthlyRolloverMM` are left in the code unused (no triggers).
+- Check: `portal_connector/checks/newai_save.js` (26).
+- Live check: run `newaiSelfTest` in the editor (read-only). On 3 Nov 2026 ("main app 11", v56): the first load built the copy in 5.1 s, each person then loaded in 50–106 ms, and 13 of 13 Task ID lookups found the right row. GOVIND SINGH, PRASHANT PAREEK, BHOPAL GURJAR and ABDUL KHAN are in the Doer List but have no rows in Master.
+- **Lost ticks:** taps between 31 Oct 08:35 and this deploy are not stored anywhere. Today's daily tasks and any open W/M/Q/Y tasks can be ticked again in the app. Past days' daily tasks are not shown in the app (only today's), so those can only be fixed in the sheet.
+
+## Newai people work their checklist in the Staff Dashboard (4 Nov 2026, Staff "main app 13"–"15")
+**Why people could not get in:** since 31 Oct nobody has **NEWAI CHECKLIST** ticked in Access (the Newai people
+were moved to STAFF DASHBOARD, the "Checklist App" tile). People still opening the old Newai link were refused
+("DENIED … direct login, not assigned" in Log). And the Staff Dashboard showed Newai tasks to peons only, read
+from Newai **Monthly Master** and saved only there, which the 2 AM job rebuilds from Master (ticks lost).
+
+**Accounts (hub):** 7 Newai Doer List people had no portal account. They were added on Users rows 75–81, Active,
+STAFF DASHBOARD ticked with a doer name `NEWAI - NAME (DEPT) - MOBILE`: AKBAR ALI, DINESH, KHUSHIRAM GURJAR,
+`PRASHANT SORTER` (Prashant 8104111191; `PRASHANT` is Prashant Pareek), SUNIL KUMAR, GOVIND SINGH, CHANDAN SHRIVASTAV.
+Sync: all 17 Newai people OK for STAFF DASHBOARD. **Their passwords are set by the admin** (Users → Set Password);
+they have no email, so "First time here?" cannot send them a code.
+
+**Staff Dashboard** (`Staff_dashboard/NewaiRoutine.js`, the same rules as `newai_checklist/Routine.js`):
+- Doer name starting `NEWAI -` (and peons): tasks come from the Newai **Master**, matched by the Newai Doer List
+  name on the same mobile as the doer name ("SUNIL JAT" → "SUNIL CHOUDHARY"). They no longer get Jaipur rows that
+  only share a first name. Shown: this month, Review, open W/M/Q/Y overdue or due within 40 days.
+- Done / notes go to that Task ID's Master row (H Actual, I "Done", notes + file links added to L) and to the same
+  Task ID in Monthly Master. W/M/Q/Y: from 6 days before the date, oldest open one first (the card shows a lock).
+- Anything not saved is reported with the reason, and the page puts that task back (it used to say "done" and
+  keep it hidden, also for a missing Jaipur task).
+- Speed: one read of the Newai Master (6.5 s live) is cached for everyone for 30 minutes or until the next day, and
+  patched on every save here. So edits made in the sheet itself, or in the Newai app, show within 30 minutes.
+- Live self-test (`staffNewaiSelfTest`, editor, read-only, writes to the execution log only) on 4 Nov 2026:
+  13 NEWAI people loaded in 46–108 ms each, 13/13 Task ID lookups found the right row. Bhopal Gurjar, Abdul Khan,
+  Govind Singh (and Prashant Pareek) have no rows in the Newai Master, so their checklist is empty.
+- Check: `portal_connector/checks/staff_newai.js` (31).
+- "main app 14" (v97) is the same code as 13; "main app 15" (v98) only makes the self-test log-only.
+  The editor copy logs with console.log (pushed to HEAD only).
+
+## Attendance: Portal Users is the only user list (5 Nov 2026, Attendance "main app 6", v13)
+The old **Users** tab of the Employee Attendance sheet is deleted (it can be brought back from File → Version history).
+Its shared logins (Admin, HR, Jaipur, Tonk, Sanwariya, Khakhunda, Newai, Newai01–03) no longer work, and any session
+opened with one has ended.
+- **People:** `Portal Users ATTENDANCE` only. Add someone in the hub's Access tab: tick ATTENDANCE, pick Role, pick Site
+  (a Supervisor needs a Site). The app's user forms, its passwords and the "link to GGM Portal" field are gone.
+  More → App users is now a read-only list.
+- **Employees → Supervisor dropdown:** the portal usernames with the Supervisor role. `warmCaches` compares the list every
+  5 minutes (`syncSupervisorDropdown_`) and rewrites the dropdown only when it changed. Seen live: it moved from the old
+  9 names to JAGDISH by itself. An empty list is ignored (it means the tab could not be read).
+- A Supervisor cell holding a name that is not a portal supervisor counts as unassigned: everyone at that site's
+  supervisor list sees that worker, so nobody disappears.
+- **State on 5 Nov:** the only portal Supervisor is JAGDISH (Newai). 802 Supervisor cells are blank and 3 Newai rows
+  still hold Newai / Newai01 / Newai02 (they were all filled at 14:24 that day; the app writes that column one row at
+  a time only, so a bulk blank did not come from it). Jaipur, Tonk, Khakhunda and Sanwariya have no supervisor yet; HR
+  and Admin can still see them.
+- `safe_push.py --retire name,name`: named, on-purpose removal of functions (all other functions are still protected).
+- Check: `portal_connector/checks/attendance.js` (73).
+
+## Assets: receiving date, or Pending (12 Nov 2026, Assets "main app 19", v81)
+Only the transfer date was visible; the receipt half of each History row was never shown.
+- Dashboard (recent movements): under each sent date, "Received: <date>" or an amber **Pending · N days**.
+- History Logs: one row per movement - Sent On · Asset · From · To · **Received On** (date or Pending). Filter:
+  All / Received / Not Received Yet (Pending).
+- Asset details: **Last Sent** (date and route) and **Received On**.
+- History tab: each transfer is paired with the first receipt of that asset at or after it (was: 1st transfer with
+  1st receipt by count, which slides every later receipt once one receipt has no transfer). The live rows paired
+  the same either way on 12 Nov.
+- Check: `portal_connector/checks/assets_received.js` (13).
+

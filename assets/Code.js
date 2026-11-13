@@ -6,22 +6,30 @@ var SHEET_ID = '1ZkXxIEP4mqUu4zF1WwVAMYHLzBG8gaGCLPxIB_kkXC8';
 var VEHICLE_SHEET_ID = '194PebQBGqTmdrLgrPnpmne_kLCCyQdlKP1a1IzdG2Pw'; 
 var DRIVE_FOLDER_ID = '1aG-yoGaFJDhK4AhBTfdTM_x6wWTYSFC3';
 
-// ROW NUMBERS FIXED ACCORDING TO SCREENSHOTS
+// The sites. Each one is its own band of columns in the three present-asset tabs below.
 var LOCATION_BLOCKS = [
-  { name: 'TONK',            dataStart: 4,   dataEnd: 21 }, 
-  { name: 'SANWARIYA',       dataStart: 25,  dataEnd: 39 }, 
-  { name: 'KHAKHUNDA',       dataStart: 43,  dataEnd: 58 }, 
-  { name: 'NEWAI',           dataStart: 63,  dataEnd: 78 },
-  { name: 'AMARGARH',        dataStart: 83,  dataEnd: 98 },  
-  { name: 'KACHOLA FACTORY', dataStart: 103, dataEnd: 118 }  
+  { name: 'TONK' }, { name: 'SANWARIYA' }, { name: 'KHAKHUNDA' },
+  { name: 'NEWAI' }, { name: 'AMARGARH' }, { name: 'KACHOLA FACTORY' }
 ];
+
+// PRESENT ASSETS: three tabs, every site side by side in its own band of columns.
+// Row 2 = site name (first column of its band), row 3 = category / heading,
+// vehicles from row 4 down with no row limit (nothing sits under a site any more).
+//   Owned By Us          own vehicles (7 categories) + Asset In Transfer / Transferred Location
+//   Contractor Vehicles  contractor vehicles (6 categories)
+//   For Forms            formulas: own + contractor per category (MISC. is typed by hand).
+//                        The Google Forms' dropdowns read this tab.
+var OWN_TAB = 'Owned By Us';
+var CON_TAB = 'Contractor Vehicles';
+var FORMS_TAB = 'For Forms';
+var DATA_ROW = 4;
+var IN_TRANSFER = 'ASSET IN TRANSFER';
+var TRANSFER_DEST = 'TRANSFERRED LOCATION';
 
 var ALL_CATS = ['EXCAVATOR', 'TRACTORS', 'VAN & TANKERS', 'JCB', 'DUMPERS', 'CRAWLER/ COMP.', 'MISC.'];
 
-// Contractor vehicles sit in the "Contractors" section of Present Assets List: columns O-T,
-// same rows as each site's block, six categories (no MISC). Own vehicles stay in C-I.
+// Contractor vehicles have six categories (no MISC).
 var CON_CATS = ['EXCAVATOR', 'TRACTORS', 'VAN & TANKERS', 'JCB', 'DUMPERS', 'CRAWLER/ COMP.'];
-var CON_COL = 15;   // column O
 // Which vehicles are contractor-owned, so one that is in transit (in the shared
 // "Asset In Transfer" box) still lands back in the Contractors section.
 var OWNERS_TAB = 'Asset Owners';
@@ -31,6 +39,19 @@ var REMOVED_TAB = 'Removed Assets';
 
 var TRANSFER_CAT_COLS = { 'EXCAVATOR': 4, 'VAN & TANKER': 5, 'VAN & TANKERS': 5, 'TRACTORS': 6, 'JCB': 7, 'DUMPERS': 8, 'CRAWLER/ COMP.': 9, 'MISCELLANEUOS': 10, 'MISC.': 10 };
 
+/** A category as the forms spell it -> the sheet's heading (TRACTOR -> TRACTORS, DUMPER -> DUMPERS ...). */
+function normCat_(cat) {
+  var c = String(cat || '').trim().toUpperCase();
+  if (!c) return '';
+  if (c === 'MISCELLANEUOS' || c === 'MISCELLANEOUS' || c === 'MISC') return 'MISC.';
+  if (c.indexOf('CRAWLER') > -1) return 'CRAWLER/ COMP.';
+  if (c === 'TRACTOR') return 'TRACTORS';
+  if (c === 'DUMPER') return 'DUMPERS';
+  if (c === 'VAN & TANKER') return 'VAN & TANKERS';
+  if (c === 'EXCAVATORS') return 'EXCAVATOR';
+  return c;
+}
+
 var IGNORE_WORDS = ['TONK', 'SANWARIYA', 'KHAKHUNDA', 'NEWAI', 'AMARGARH', 'KACHOLA FACTORY', 'EXCAVATOR', 'TRACTORS', 'VAN & TANKER', 'VAN & TANKERS', 'JCB', 'DUMPERS', 'CRAWLER/ COMP.', 'CRAWLER', 'MISC.', 'MISCELLANEUOS', 'NAN', 'NA', 'N/A'];
 
 function onOpen() {
@@ -39,6 +60,7 @@ function onOpen() {
     .addItem('🟢 Activate Live Updates & Triggers', 'activateLiveSystem')
     .addItem('🔒 Apply Strict Sheet Lock', 'secureSystemSheets')
     .addItem('🔄 Run Manual Sync Now', 'runMasterSync')
+    .addItem('🩺 Health Check (forms vs sheet)', 'runHealthCheck')
     .addToUi();
 }
 
@@ -91,14 +113,112 @@ function runMasterSync() {
   var lock = LockService.getScriptLock();
   if (lock.tryLock(15000)) {
     try { 
-      updateHistorySafe(); 
-      updatePresentAssetsSafe(); 
-    } catch(e) { 
+      updateHistorySafe();
+      updatePresentAssetsSafe();
+      try { healthCheck_(); } catch (h) { console.error('Health check: ' + h); }
+    } catch(e) {
       console.error("Sync Error: " + e); 
     } finally {
       lock.releaseLock();
     }
   }
+}
+
+// ------------------------------------------------------------
+//  HEALTH CHECK: after every sync the sheet is compared with the whole form history and
+//  anything that does not add up is listed on the "Health Check" tab (empty = all good).
+// ------------------------------------------------------------
+var HEALTH_TAB = 'Health Check';
+var NOTHING_IN_TRANSIT = '— Nothing in transit right now —';   // the Receiving form's placeholder choice
+var STUCK_DAYS = 3;
+
+function healthCheck_() {
+  var ss = SpreadsheetApp.openById(SHEET_ID), problems = [];
+  var sites = LOCATION_BLOCKS.map(function (b) { return b.name; });
+  var okCat = function (c) { var n = normCat_(c); return !n || ALL_CATS.indexOf(n) > -1 || n === 'OTHER ASSET'; };
+  var okSite = function (s) { return sites.indexOf(String(s || '').trim().toUpperCase()) > -1; };
+
+  // where the sheet has each name now
+  var where = {};
+  [OWN_TAB, CON_TAB].forEach(function (n) {
+    var t = readSiteTab_(ss, n);
+    Object.keys(t.cols).forEach(function (site) {
+      Object.keys(t.cols[site]).forEach(function (h) {
+        if (h === TRANSFER_DEST) return;
+        var c = t.cols[site][h];
+        t.rows.forEach(function (r) {
+          var v = String(r[c]).trim();
+          if (v && !IGNORE_WORDS.includes(v.toUpperCase())) (where[v] = where[v] || []).push({ site: site, moving: h === IN_TRANSFER });
+        });
+      });
+    });
+  });
+  var placeText = function (w) { return w ? w.map(function (x) { return x.moving ? 'in transfer from ' + x.site : x.site; }).join(' and ') : 'nowhere in the sheet'; };
+  Object.keys(where).forEach(function (n) { if (where[n].length > 1) problems.push(['Listed more than once', n + ': ' + placeText(where[n])]); });
+
+  // every form entry, oldest first (a receipt stamped the same moment as its transfer comes after it)
+  var removed = readRemoved_(), events = [];
+  var tSh = ss.getSheetByName('Asset Transfer Form'), rSh = ss.getSheetByName('Asset Receiving Form');
+  var tData = tSh ? tSh.getDataRange().getValues() : [], rData = rSh ? rSh.getDataRange().getValues() : [];
+  for (var i = 1; i < tData.length; i++) {
+    var row = tData[i], name = '';
+    for (var c = 4; c <= 11; c++) if (row[c]) { name = String(row[c]).trim(); break; }
+    if (!name || !row[0]) continue;
+    events.push({ kind: 'T', name: name, t: new Date(row[0]).getTime(), from: String(row[2]).trim().toUpperCase(), to: String(row[12]).trim().toUpperCase(), cat: row[3], where: 'Transfer row ' + (i + 1) });
+  }
+  for (var j = 1; j < rData.length; j++) {
+    var rr = rData[j], rn = String(rr[3] || '').trim();
+    if (!rn || !rr[0] || rn === NOTHING_IN_TRANSIT) continue;
+    events.push({ kind: 'R', name: rn, t: new Date(rr[0]).getTime(), at: String(rr[2]).trim().toUpperCase(), cat: rr[7], where: 'Receiving row ' + (j + 1) });
+  }
+  events.sort(function (a, b) { return a.t - b.t || (a.kind === 'T' ? -1 : 1); });
+
+  var last = {}, sentTo = {};
+  events.forEach(function (e) {
+    var gone = removed[e.name.toUpperCase()];
+    if (gone && e.t <= gone) return;                                   // before the vehicle was removed
+    if (!where[e.name]) { problems.push(['Form names a vehicle that is not in the sheet', e.where + ': "' + e.name + '" (spelling different from the sheet?)']); return; }
+    if (!okCat(e.cat)) problems.push(['Unknown category', e.where + ': "' + e.cat + '" for ' + e.name]);
+    if (e.kind === 'T') {
+      if (!okSite(e.from) || !okSite(e.to)) problems.push(['Unknown site', e.where + ': ' + e.from + ' -> ' + e.to + ' for ' + e.name]);
+      sentTo[e.name] = e.to;
+    } else {
+      if (!okSite(e.at)) problems.push(['Unknown site', e.where + ': received at "' + e.at + '" for ' + e.name]);
+      if (sentTo[e.name] && sentTo[e.name] !== e.at) problems.push(['Received at a different site than it was sent to', e.where + ': ' + e.name + ' was sent to ' + sentTo[e.name] + ' but received at ' + e.at]);
+      delete sentTo[e.name];
+    }
+    last[e.name] = e;
+  });
+
+  // the sheet must show each vehicle where its latest form entry puts it
+  var now = Date.now();
+  Object.keys(last).forEach(function (n) {
+    var e = last[n], w = where[n] || [];
+    if (e.kind === 'T') {
+      var ok = w.length === 1 && w[0].moving && w[0].site === e.from;
+      if (!ok) problems.push(['Sheet does not match the forms', n + ': sent ' + e.from + ' -> ' + e.to + ' (' + e.where + ') but the sheet shows it ' + placeText(w)]);
+      var days = Math.floor((now - e.t) / 86400000);
+      if (days > STUCK_DAYS) problems.push(['On the way for ' + days + ' days', n + ': sent ' + e.from + ' -> ' + e.to + ', not received yet']);
+    } else {
+      var ok2 = w.length === 1 && !w[0].moving && w[0].site === e.at;
+      if (!ok2) problems.push(['Sheet does not match the forms', n + ': received at ' + e.at + ' (' + e.where + ') but the sheet shows it ' + placeText(w)]);
+    }
+  });
+
+  var sh = ss.getSheetByName(HEALTH_TAB) || ss.insertSheet(HEALTH_TAB);
+  sh.clearContents();
+  var out = [['Last checked', new Date()],
+             ['Result', problems.length ? problems.length + ' problem(s) - see below' : 'All good: every vehicle in the sheet matches the transfer / receiving history'],
+             ['', ''], ['Problem', 'Details']].concat(problems);
+  sh.getRange(1, 1, out.length, 2).setValues(out);
+  return problems;
+}
+
+/** Menu / editor: run the check on its own and show the result. */
+function runHealthCheck() {
+  var p = healthCheck_();
+  try { SpreadsheetApp.getUi().alert(p.length ? p.length + ' problem(s) found - see the "' + HEALTH_TAB + '" tab.' : 'All good - every vehicle matches its form history.'); } catch (e) {}
+  return p;
 }
 
 function forceBackendSync(token) {
@@ -107,37 +227,103 @@ function forceBackendSync(token) {
   return true;
 }
 
+/** One present-asset tab: where each site's columns are (from the headers in rows 2-3)
+ *  and its vehicle rows from DATA_ROW down. { sheet, cols: {SITE: {HEADING: index}}, rows, width } */
+function readSiteTab_(ss, tabName) {
+  var sh = ss.getSheetByName(tabName);
+  if (!sh) throw new Error('The "' + tabName + '" tab is missing.');
+  var width = sh.getLastColumn(), last = sh.getLastRow();
+  var head = sh.getRange(2, 1, 2, width).getDisplayValues();
+  var cols = {}, site = '';
+  for (var c = 0; c < width; c++) {
+    var s = String(head[0][c]).trim().toUpperCase(), h = String(head[1][c]).trim().toUpperCase();
+    if (s) site = s;
+    if (!h) { if (!s) site = ''; continue; }        // a blank spacer column ends a band
+    if (site) (cols[site] = cols[site] || {})[h] = c;
+  }
+  var rows = last >= DATA_ROW ? sh.getRange(DATA_ROW, 1, last - DATA_ROW + 1, width).getValues() : [];
+  return { sheet: sh, cols: cols, rows: rows, width: width };
+}
+
+/** Column index of a site's heading in a tab; throws when the tab has no such column. */
+function siteCol_(tab, site, heading) {
+  var c = (tab.cols[String(site).toUpperCase()] || {})[String(heading).toUpperCase()];
+  if (c == null) throw new Error('"' + tab.sheet.getName() + '" has no ' + heading + ' column for ' + site + '.');
+  return c;
+}
+
+/** The names in a site's column (trimmed, blanks kept so positions match the rows). */
+function siteList_(tab, site, heading) {
+  var c = siteCol_(tab, site, heading);
+  return tab.rows.map(function (r) { return String(r[c]).trim(); });
+}
+
+/** Put a list into a site's column (in memory; saveSiteTab_ writes it). Longer lists add rows. */
+function setSiteList_(tab, site, heading, list) {
+  var c = siteCol_(tab, site, heading);
+  while (tab.rows.length < list.length) tab.rows.push(new Array(tab.width).fill(''));
+  for (var r = 0; r < tab.rows.length; r++) tab.rows[r][c] = list[r] || '';
+}
+
+/** Write a tab's vehicle rows back in one go, adding sheet rows when a list grew. */
+function saveSiteTab_(tab) {
+  if (!tab.rows.length) return;
+  var sh = tab.sheet, needLast = DATA_ROW + tab.rows.length - 1;
+  if (sh.getMaxRows() < needLast) sh.insertRowsAfter(sh.getMaxRows(), needLast - sh.getMaxRows() + 50);
+  sh.getRange(DATA_ROW, 1, tab.rows.length, tab.width).setValues(tab.rows);
+}
+
+/** Put one name in the first free cell of a site's column (one cell written). */
+function putSiteName_(tab, site, heading, name) {
+  var c = siteCol_(tab, site, heading), list = siteList_(tab, site, heading), r = 0;
+  while (r < list.length && !(list[r] === '' || IGNORE_WORDS.includes(list[r].toUpperCase()))) r++;
+  var row = DATA_ROW + r, sh = tab.sheet;
+  if (sh.getMaxRows() < row) sh.insertRowsAfter(sh.getMaxRows(), row - sh.getMaxRows() + 50);
+  sh.getRange(row, c + 1).setValue(name);
+  while (tab.rows.length <= r) tab.rows.push(new Array(tab.width).fill(''));
+  tab.rows[r][c] = name;
+}
+
+/** Clear every cell holding this exact name in the given headings of a site. True when found. */
+function clearSiteName_(tab, site, headings, name) {
+  var found = false;
+  headings.forEach(function (h) {
+    var c = siteCol_(tab, site, h);
+    tab.rows.forEach(function (r, i) {
+      if (String(r[c]).trim() === name) { r[c] = ''; tab.sheet.getRange(DATA_ROW + i, c + 1).setValue(''); found = true; }
+    });
+  });
+  return found;
+}
+
 function getGlobalAssetStatus_() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var presentSheet  = ss.getSheetByName('Present Assets List');
+  var ownTab = readSiteTab_(ss, OWN_TAB);
+  var conTab = readSiteTab_(ss, CON_TAB);
   var transferSheet = ss.getSheetByName('Asset Transfer Form');
   var receiveSheet  = ss.getSheetByName('Asset Receiving Form');
 
-  var allAssets = {}; var catDictionary = {}; 
+  var allAssets = {}; var catDictionary = {};
 
   LOCATION_BLOCKS.forEach(function(block) {
-    var numRows = block.dataEnd - block.dataStart + 1;
-    var ciData = presentSheet.getRange(block.dataStart, 3, numRows, 7).getValues();
-    for (var r = 0; r < ciData.length; r++) {
-      for (var c = 0; c < ALL_CATS.length; c++) {
-        var name = String(ciData[r][c]).trim();
+    ALL_CATS.forEach(function (cat) {
+      siteList_(ownTab, block.name, cat).forEach(function (name) {
         if (name && !IGNORE_WORDS.includes(name.toUpperCase())) {
-          allAssets[name] = { cat: ALL_CATS[c], location: block.name, status: 'AT_BASE', dest: '', owner: 'OWN' };
-          catDictionary[name.toUpperCase()] = ALL_CATS[c];
+          allAssets[name] = { cat: cat, location: block.name, status: 'AT_BASE', dest: '', owner: 'OWN' };
+          catDictionary[name.toUpperCase()] = cat;
         }
-      }
-    }
-    // the Contractors section of the same block
-    var coData = presentSheet.getRange(block.dataStart, CON_COL, numRows, CON_CATS.length).getValues();
-    for (var r2 = 0; r2 < coData.length; r2++) {
-      for (var c2 = 0; c2 < CON_CATS.length; c2++) {
-        var cname = String(coData[r2][c2]).trim();
+      });
+    });
+  });
+  LOCATION_BLOCKS.forEach(function(block) {
+    CON_CATS.forEach(function (cat) {
+      siteList_(conTab, block.name, cat).forEach(function (cname) {
         if (cname && !IGNORE_WORDS.includes(cname.toUpperCase()) && !allAssets[cname]) {
-          allAssets[cname] = { cat: CON_CATS[c2], location: block.name, status: 'AT_BASE', dest: '', owner: 'CONTRACTOR' };
-          catDictionary[cname.toUpperCase()] = CON_CATS[c2];
+          allAssets[cname] = { cat: cat, location: block.name, status: 'AT_BASE', dest: '', owner: 'CONTRACTOR' };
+          catDictionary[cname.toUpperCase()] = cat;
         }
-      }
-    }
+      });
+    });
   });
   var owners = readOwners_();
 
@@ -153,7 +339,7 @@ function getGlobalAssetStatus_() {
       for (var c = 4; c <= 11; c++) { if (row[c]) { assetName = String(row[c]).trim(); break; } }
       if (!assetName || IGNORE_WORDS.includes(assetName.toUpperCase())) continue;
       
-      var dbCat = (type === 'MISCELLANEUOS') ? 'MISC.' : type; if (!dbCat) dbCat = 'MISC.';
+      var dbCat = normCat_(type) || 'MISC.';
       catDictionary[assetName.toUpperCase()] = dbCat;
       if (!ts || !src || !dst) continue;
       if (removedAt[assetName.toUpperCase()] && ts <= removedAt[assetName.toUpperCase()]) continue;   // from before it was removed
@@ -167,7 +353,7 @@ function getGlobalAssetStatus_() {
       var row = rData[j]; var ts = row[0] ? new Date(row[0]).getTime() : 0;
       var dest = row[2] ? String(row[2]).trim().toUpperCase() : ''; var name = row[3] ? String(row[3]).trim() : ''; var cat = row[7] ? String(row[7]).trim().toUpperCase() : ''; 
       if (!name || IGNORE_WORDS.includes(name.toUpperCase())) continue;
-      var dbCat = 'MISC.'; if (cat) { dbCat = (cat === 'MISCELLANEUOS') ? 'MISC.' : (cat.includes('CRAWLER') ? 'CRAWLER/ COMP.' : cat); }
+      var dbCat = normCat_(cat) || 'MISC.';
       catDictionary[name.toUpperCase()] = dbCat;
       if (!ts) continue;
       if (removedAt[name.toUpperCase()] && ts <= removedAt[name.toUpperCase()]) continue;   // from before it was removed
@@ -177,10 +363,9 @@ function getGlobalAssetStatus_() {
   }
 
   LOCATION_BLOCKS.forEach(function(block) {
-    var numRows = block.dataEnd - block.dataStart + 1;
-    var klData = presentSheet.getRange(block.dataStart, 11, numRows, 2).getValues();
-    for (var r = 0; r < klData.length; r++) {
-      var name = String(klData[r][0]).trim(); var dest = String(klData[r][1]).trim();
+    var moving = siteList_(ownTab, block.name, IN_TRANSFER), going = siteList_(ownTab, block.name, TRANSFER_DEST);
+    for (var r = 0; r < moving.length; r++) {
+      var name = moving[r]; var dest = going[r];
       if (name && !IGNORE_WORDS.includes(name.toUpperCase())) {
         if (!allAssets[name]) { 
           var foundCat = catDictionary[name.toUpperCase()] || 'MISC.';
@@ -217,10 +402,9 @@ function getGlobalAssetStatus_() {
 
 function updatePresentAssetsSafe() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var presentSheet = ss.getSheetByName('Present Assets List');
-  if (!presentSheet) return;
-
   var allAssets = getGlobalAssetStatus_();
+  var ownTab = readSiteTab_(ss, OWN_TAB);
+  var conTab = readSiteTab_(ss, CON_TAB);
   var blockData = {};
   LOCATION_BLOCKS.forEach(function(block) {
     blockData[block.name] = { ci: { 'EXCAVATOR': [], 'TRACTORS': [], 'VAN & TANKERS': [], 'JCB': [], 'DUMPERS': [], 'CRAWLER/ COMP.': [], 'MISC.': [] },
@@ -238,9 +422,8 @@ function updatePresentAssetsSafe() {
   }
 
   LOCATION_BLOCKS.forEach(function(block) {
-    var numRows = block.dataEnd - block.dataStart + 1;
     var bd = blockData[block.name];
-    
+
     // ASSETS SORTING LOGIC ADDED HERE TO PREVENT JUMPING ISSUE
     ALL_CATS.forEach(function(cat) {
         if (bd.ci[cat]) bd.ci[cat].sort(function(a, b) { return a.localeCompare(b); });
@@ -248,24 +431,14 @@ function updatePresentAssetsSafe() {
     });
     bd.kl.sort(function(a, b) { return a.asset.localeCompare(b.asset); });
 
-    // A block with more vehicles in a column than it has rows is NOT rewritten: writing
-    // it would silently drop the extra names from the sheet. Add rows to that block.
-    var lists = [bd.kl].concat(ALL_CATS.map(function (c) { return bd.ci[c]; }), CON_CATS.map(function (c) { return bd.co[c]; }));
-    if (lists.some(function (l) { return l.length > numRows; })) {
-      console.error('Sync skipped ' + block.name + ': a column has more vehicles than the ' + numRows + ' rows of its block.');
-      return;
-    }
-
-    var ciValues = []; var coValues = []; var klValues = [];
-    for (var i = 0; i < numRows; i++) {
-      ciValues.push([ bd.ci['EXCAVATOR'][i]||'', bd.ci['TRACTORS'][i]||'', bd.ci['VAN & TANKERS'][i]||'', bd.ci['JCB'][i]||'', bd.ci['DUMPERS'][i]||'', bd.ci['CRAWLER/ COMP.'][i]||'', bd.ci['MISC.'][i]||'' ]);
-      coValues.push(CON_CATS.map(function (c) { return bd.co[c][i] || ''; }));
-      klValues.push([ bd.kl[i] ? bd.kl[i].asset : '', bd.kl[i] ? bd.kl[i].dest  : '' ]);
-    }
-    presentSheet.getRange(block.dataStart, 3, numRows, 7).setValues(ciValues);
-    presentSheet.getRange(block.dataStart, CON_COL, numRows, CON_CATS.length).setValues(coValues);
-    presentSheet.getRange(block.dataStart, 11, numRows, 2).setValues(klValues);
+    // every site has its own columns, so a list simply runs further down
+    ALL_CATS.forEach(function (cat) { setSiteList_(ownTab, block.name, cat, bd.ci[cat]); });
+    setSiteList_(ownTab, block.name, IN_TRANSFER, bd.kl.map(function (k) { return k.asset; }));
+    setSiteList_(ownTab, block.name, TRANSFER_DEST, bd.kl.map(function (k) { return k.dest; }));
+    CON_CATS.forEach(function (cat) { setSiteList_(conTab, block.name, cat, bd.co[cat]); });
   });
+  saveSiteTab_(ownTab);
+  saveSiteTab_(conTab);
   try { saveOwners_(allAssets); } catch (e) { console.error('Owners list: ' + e); }
 }
 
@@ -304,18 +477,9 @@ function removeAsset(token, assetName, reason) {
       if (!block) return { success: false, message: 'Unknown site ' + a.location + '.' };
 
       var ss = SpreadsheetApp.openById(SHEET_ID);
-      var present = ss.getSheetByName('Present Assets List');
-      var numRows = block.dataEnd - block.dataStart + 1;
-      var found = false;
-      [[3, ALL_CATS.length], [CON_COL, CON_CATS.length]].forEach(function (part) {
-        var rng = present.getRange(block.dataStart, part[0], numRows, part[1]);
-        var vals = rng.getValues(), changed = false;
-        for (var r = 0; r < vals.length; r++) for (var c = 0; c < vals[r].length; c++) {
-          if (String(vals[r][c]).trim() === name) { vals[r][c] = ''; changed = true; }
-        }
-        if (changed) { rng.setValues(vals); found = true; }
-      });
-      if (!found) return { success: false, message: name + ' was not found in the ' + block.name + ' block of the sheet.' };
+      var foundOwn = clearSiteName_(readSiteTab_(ss, OWN_TAB), block.name, ALL_CATS, name);
+      var foundCon = clearSiteName_(readSiteTab_(ss, CON_TAB), block.name, CON_CATS, name);
+      if (!foundOwn && !foundCon) return { success: false, message: name + ' was not found in the ' + block.name + ' columns of the sheet.' };
 
       var log = ss.getSheetByName(REMOVED_TAB);
       if (!log) {
@@ -387,23 +551,25 @@ function updateHistorySafe() {
     }
   }
 
+  // Each transfer is matched with the first receipt of that asset at or after it, before its
+  // next transfer; a transfer with none is still on the way (shown as Pending in the app).
+  // (Pairing by count - 1st transfer with 1st receipt - slid every later receipt onto the
+  // wrong transfer as soon as one receipt had no transfer.)
   var combinedData = [];
-  var allKeys = {}; var tByAsset = {}; var rByAsset = {};
-  transferList.forEach(function(r) { var k = r.asset.toUpperCase(); if(!tByAsset[k]) tByAsset[k]=[]; tByAsset[k].push(r); allKeys[k]=true; });
-  receiveList.forEach(function(r) { var k = r.asset.toUpperCase(); if(!rByAsset[k]) rByAsset[k]=[]; rByAsset[k].push(r); allKeys[k]=true; });
-  
-  for(var k in tByAsset) tByAsset[k].sort(function(a,b){return a.dateVal-b.dateVal;});
-  for(var k in rByAsset) rByAsset[k].sort(function(a,b){return a.dateVal-b.dateVal;});
-  
+  var byAsset = {};
+  transferList.forEach(function(r) { var k = r.asset.toUpperCase(); (byAsset[k] = byAsset[k] || []).push({ kind: 'T', time: r.dateVal, row: r }); });
+  receiveList.forEach(function(r) { var k = r.asset.toUpperCase(); (byAsset[k] = byAsset[k] || []).push({ kind: 'R', time: r.dateVal, row: r }); });
+
   var pairedList = [];
-  for (var key in allKeys) {
-    var tList = tByAsset[key] || []; var rList = rByAsset[key] || [];
-    var max = Math.max(tList.length, rList.length);
-    for (var m = 0; m < max; m++) {
-      var tr = tList[m] || null; var rr = rList[m] || null;
-      pairedList.push({ sortTime: tr ? tr.dateVal : (rr ? rr.dateVal : 0), tRow: tr, rRow: rr });
-    }
-  }
+  Object.keys(byAsset).forEach(function(k) {
+    var open = null;
+    byAsset[k].sort(function(a, b) { return a.time - b.time || (a.kind === b.kind ? 0 : a.kind === 'T' ? -1 : 1); })   // same moment: sent, then received
+      .forEach(function(e) {
+        if (e.kind === 'T') { open = { sortTime: e.time, tRow: e.row, rRow: null }; pairedList.push(open); }
+        else if (open) { open.rRow = e.row; open = null; }
+        else pairedList.push({ sortTime: e.time, tRow: null, rRow: e.row });
+      });
+  });
   pairedList.sort(function(a, b) { return b.sortTime - a.sortTime; });
   pairedList.forEach(function(pair) {
     var tr = pair.tRow || { dateStr: '-', asset: '-', source: '-', dest: '-' };
@@ -605,8 +771,7 @@ function processAddNewAsset(token, d) {
   try {
     var sess = assetsSession_(token);
     if (!sess.boss && String(d.loc || '').toUpperCase().trim() !== sess.site) return { success: false, message: 'You can only add assets at ' + sess.site + '.' };
-    var ss = SpreadsheetApp.openById(SHEET_ID); 
-    var presentSheet = ss.getSheetByName('Present Assets List');
+    var ss = SpreadsheetApp.openById(SHEET_ID);
     var block = LOCATION_BLOCKS.find(function(b) { return b.name.toUpperCase() === d.loc.toUpperCase(); });
     if (!block) return {success: false, message: 'System Error: Invalid Location Block'};
     
@@ -619,20 +784,9 @@ function processAddNewAsset(token, d) {
     var contractor = String(d.ownership || '').toUpperCase() === 'CONTRACTOR';
     var catIndex = contractor ? CON_CATS.indexOf(catDb) : ALL_CATS.indexOf(catDb);
     if (contractor && catIndex === -1) return {success: false, message: 'A contractor vehicle can be an Excavator, Tractor, Van & Tanker, JCB, Dumper or Crawler / Comp. (the Contractors section has no Misc. column).'};
-    var successInMain = false;
-
     if (catIndex > -1) {
-      var targetCol = contractor ? CON_COL + catIndex : 3 + catIndex; 
-      var blockRange = presentSheet.getRange(block.dataStart, targetCol, block.dataEnd - block.dataStart + 1, 1);
-      var blockValues = blockRange.getValues(); 
-      for (var r = 0; r < blockValues.length; r++) {
-        var val = String(blockValues[r][0]).trim(); var upVal = val.toUpperCase();
-        if (val === '' || upVal === 'NAN' || upVal === 'NA' || IGNORE_WORDS.includes(upVal)) { 
-          blockValues[r][0] = d.name; successInMain = true; break; 
-        }
-      }
-      if (successInMain) { blockRange.setValues(blockValues); } 
-      else { return {success: false, message: 'No empty slot available in Master Hub Sheet.'}; }
+      // first free cell of that site's column (the column has no row limit)
+      putSiteName_(readSiteTab_(ss, contractor ? CON_TAB : OWN_TAB), block.name, catDb, d.name);
     } else { return {success: false, message: 'Invalid Category Parameters'}; }
 
     var photoUrls = saveMultipleImagesToDrive_(d.files);
@@ -708,7 +862,7 @@ function processWebTransfer(token, assetName, category, sourceLoc, destLoc, driv
     row[2] = sourceLoc; 
     row[3] = category; 
     
-    var colIdx = TRANSFER_CAT_COLS[category.toUpperCase()] || 11;
+    var colIdx = TRANSFER_CAT_COLS[normCat_(category)] || 11;
     row[colIdx] = assetName; 
     row[12] = destLoc; 
     row[13] = driverName || ''; 
@@ -754,8 +908,7 @@ function cancelAssetTransfer(token, assetName) {
     var sess = assetsSession_(token);
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var transferSheet = ss.getSheetByName('Asset Transfer Form');
-    var presentSheet = ss.getSheetByName('Present Assets List');
-    if (!transferSheet || !presentSheet) return { success: false, message: 'System sheets missing!' };
+    if (!transferSheet) return { success: false, message: 'System sheets missing!' };
     
     var tData = transferSheet.getDataRange().getValues();
     var rowIndexToDelete = -1; var sourceLoc = ''; var assetCat = '';
@@ -779,30 +932,24 @@ function cancelAssetTransfer(token, assetName) {
     if (rowIndexToDelete > -1) {
       var block = LOCATION_BLOCKS.find(function(b) { return b.name.toUpperCase() === sourceLoc; });
       if (block) {
-        var catDb = (assetCat === 'MISCELLANEUOS') ? 'MISC.' : assetCat;
+        var catDb = normCat_(assetCat);
         // a contractor vehicle goes back to the Contractors section
         var isCon = readOwners_()[String(assetName).toUpperCase()] === 'CONTRACTOR' && CON_CATS.indexOf(catDb) > -1;
         var catIndex = isCon ? CON_CATS.indexOf(catDb) : ALL_CATS.indexOf(catDb);
-        if (catIndex > -1) {
-          var targetCol = isCon ? CON_COL + catIndex : 3 + catIndex; 
-          var blockRange = presentSheet.getRange(block.dataStart, targetCol, block.dataEnd - block.dataStart + 1, 1);
-          var blockValues = blockRange.getValues();
-          for (var r = 0; r < blockValues.length; r++) {
-            var v = String(blockValues[r][0]).trim(); var upV = v.toUpperCase();
-            if (v === '' || upV === 'NAN' || upV === 'NA' || IGNORE_WORDS.includes(upV)) {
-              blockValues[r][0] = assetName; break; 
-            }
-          }
-          blockRange.setValues(blockValues);
-        }
+        if (catIndex > -1) putSiteName_(readSiteTab_(ss, isCon ? CON_TAB : OWN_TAB), block.name, catDb, assetName);
       }
 
-      var klRange = presentSheet.getRange(1, 11, presentSheet.getLastRow() || 120, 2);
-      var klData = klRange.getValues();
-      for (var r = 0; r < klData.length; r++) {
-        if (String(klData[r][0]).trim() === assetName) { klData[r][0] = ''; klData[r][1] = ''; }
-      }
-      klRange.setValues(klData);
+      // out of every site's "Asset In Transfer" box
+      var ownTab = readSiteTab_(ss, OWN_TAB);
+      LOCATION_BLOCKS.forEach(function (b) {
+        var cA = siteCol_(ownTab, b.name, IN_TRANSFER), cD = siteCol_(ownTab, b.name, TRANSFER_DEST);
+        ownTab.rows.forEach(function (row, i) {
+          if (String(row[cA]).trim() === assetName) {
+            ownTab.sheet.getRange(DATA_ROW + i, cA + 1).setValue('');
+            ownTab.sheet.getRange(DATA_ROW + i, cD + 1).setValue('');
+          }
+        });
+      });
       SpreadsheetApp.flush();
       
       transferSheet.deleteRow(rowIndexToDelete);

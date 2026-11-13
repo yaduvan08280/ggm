@@ -390,6 +390,16 @@
 
     /* ── Phones ── */
     @media (max-width: 768px) {
+      /* tabs: all five visible as pills on two rows instead of a strip cut off at the edge */
+      .tabs { flex-wrap: wrap; gap: 6px !important; overflow: visible; border-bottom: none; }
+      .tab { padding: 7px 12px !important; font-size: 13px !important; border: 1px solid var(--border); border-radius: 999px; margin-bottom: 0; background: #fff; }
+      .tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+      /* header: the seconds-ticking clock was cut off by the buttons; keep the LIVE badge */
+      .topbar-left { min-width: 0; }
+      #realtime-clock { display: none; }
+      /* finger-sized tap targets */
+      .hamburger { display: flex !important; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; margin-left: -8px !important; }
+      .detail-close { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
       .fab-sync { left: 16px; }
       .content { padding-bottom: 96px; }
       .tabs { gap: 18px; }
@@ -738,7 +748,7 @@
         <div class="grid-2-1">
           <div class="card" style="max-height: 480px;">
             <div class="card-header"><span class="card-title">Live Operations Ledger</span><span class="card-badge" style="background:#EFF6FF; color:var(--accent2)"><i class="fa-solid fa-bolt"></i> Realtime Streams</span></div>
-            <div class="card-scroll"><table class="data-table list-table"><thead><tr><th>Timestamp</th><th>Asset Name</th><th>Route Map / Hub</th><th style="text-align:right">Current Status</th></tr></thead><tbody id="ledgerBody"><tr><td colspan="4"><div class="loading-state"><div class="spinner"></div><p>Synchronizing Ledger…</p></div></td></tr></tbody></table></div>
+            <div class="card-scroll"><table class="data-table list-table"><thead><tr><th>Sent / Received</th><th>Asset Name</th><th>Route Map / Hub</th><th style="text-align:right">Current Status</th></tr></thead><tbody id="ledgerBody"><tr><td colspan="4"><div class="loading-state"><div class="spinner"></div><p>Synchronizing Ledger…</p></div></td></tr></tbody></table></div>
           </div>
           <div class="card"><div class="card-header"><span class="card-title">Category Mapping</span></div><div class="card-body"><div class="chart-wrap" style="height:210px;"><canvas id="donutChart"></canvas><div class="donut-center"><div class="val" id="donutTotal">0</div><div class="lbl">Assets</div></div></div><div class="legend" id="chartLegend"></div></div></div>
         </div>
@@ -769,8 +779,8 @@
       <div class="section" id="sec-locations"><div class="grid-3" id="locationDetailGrid"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div><p>Mapping geographical matrices…</p></div></div></div>
       
       <div class="section" id="sec-history">
-        <div class="filter-row"><select class="filter-select" id="histFilterType" onchange="renderHistoryTable()"><option value="">All Fleet Operations</option><option value="TRANSFER">Transfers (Outgoing)</option><option value="RECEIVE">Receiving (Incoming)</option></select><select class="filter-select" id="histFilterLoc" onchange="renderHistoryTable()"><option value="">All Locations</option></select><input class="filter-input" placeholder="Filter asset logs…" id="histSearch" oninput="renderHistoryTable()" /><button class="filter-btn" onclick="resetHistFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Logs</button></div>
-        <div class="card" style="flex:1;"><div class="card-header"><span class="card-title">Movement Log Archive</span><span class="card-badge" style="background:#F1F5F9; color:var(--muted)" id="histCount">0 records encrypted</span></div><div class="card-scroll"><table class="data-table list-table"><thead><tr><th>Date & Timestamp</th><th>Asset Name</th><th>Operation Type</th><th>Source Hub</th><th>Target Destination / Terminal At</th></tr></thead><tbody id="historyBody"><tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><p>Decrypting movement parameters…</p></div></td></tr></tbody></table></div></div>
+        <div class="filter-row"><select class="filter-select" id="histFilterType" onchange="renderHistoryTable()"><option value="">All Movements</option><option value="RECEIVED">Received</option><option value="PENDING">Not Received Yet (Pending)</option></select><select class="filter-select" id="histFilterLoc" onchange="renderHistoryTable()"><option value="">All Locations</option></select><input class="filter-input" placeholder="Filter asset logs…" id="histSearch" oninput="renderHistoryTable()" /><button class="filter-btn" onclick="resetHistFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Logs</button></div>
+        <div class="card" style="flex:1;"><div class="card-header"><span class="card-title">Movement Log Archive</span><span class="card-badge" style="background:#F1F5F9; color:var(--muted)" id="histCount">0 records encrypted</span></div><div class="card-scroll"><table class="data-table list-table"><thead><tr><th>Sent On</th><th>Asset Name</th><th>From</th><th>To</th><th>Received On</th></tr></thead><tbody id="historyBody"><tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><p>Decrypting movement parameters…</p></div></td></tr></tbody></table></div></div>
       </div>
 
       <div class="section" id="sec-analytics">
@@ -1005,6 +1015,21 @@ function populateLocationDropdowns(locs) {
   ['fleetFilterLoc', 'histFilterLoc'].forEach(function(id) { var sel = document.getElementById(id); if (!sel) return; var val = sel.value; while (sel.options.length > 1) sel.remove(1); locs.forEach(function(l) { var o = document.createElement('option'); o.value = l; o.textContent = l; sel.appendChild(o); }); sel.value = val; });
 }
 
+/** "07-Nov-2026 | 10:47 AM" -> whole days since that day, or null. */
+function daysSince(str) {
+  var m = String(str || '').match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/); if (!m) return null;
+  var d = new Date(m[2] + ' ' + m[1] + ', ' + m[3]); if (isNaN(d.getTime())) return null;
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((today - d) / 86400000);
+}
+
+/** The receiving date of a History row, or "Pending" (with how long it has been on the way). */
+function receivedHtml(row) {
+  if (row[5] && row[5] !== '-') return '<span class="mono">' + row[5] + '</span>';
+  var d = daysSince(row[0]);
+  return '<span class="badge transit"><i class="fa-solid fa-hourglass-half"></i> Pending' + (d > 0 ? ' &middot; ' + d + (d === 1 ? ' day' : ' days') : '') + '</span>';
+}
+
 function renderLedger() {
   var body = document.getElementById('ledgerBody'); if (!body) return;
   if (!APP.history.length) { body.innerHTML = '<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No transactions parsed yet.</p></div></td></tr>'; return; }
@@ -1038,7 +1063,11 @@ function renderLedger() {
       }
     } else { route = '<div class="route"><i class="fa-solid fa-location-dot" style="color:var(--green)"></i> <span style="font-weight:600; margin-left:4px">' + row[7] + '</span></div>'; badge = '<span class="badge base"><i class="fa-solid fa-warehouse"></i> Received</span>'; }
     
-    html += '<tr class="fade-in cursor-pointer" style="animation-delay:'+(idx*0.02)+'s" onclick="showAssetDetail(\'' + encodeURIComponent(asset) + '\')"><td><span class="hide-desktop">Timestamp</span><span class="mono">' + date + '</span></td><td><span class="hide-desktop">Asset Name</span><span style="font-weight:600; display:flex; align-items:center; gap:8px"><i class="fa ' + iconClass + '" style="color:var(--muted)"></i>' + asset + '</span></td><td><span class="hide-desktop">Route / Hub</span>' + route + '</td><td style="text-align:right"><span class="hide-desktop">Status</span><div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">' + badge + '</div></td></tr>';
+    // sent date, and under it the receiving date (or Pending)
+    var when = hasTransfer
+      ? '<span class="mono">' + row[0] + '</span><div style="font-size:12px;margin-top:4px;color:var(--muted)">Received: ' + receivedHtml(row) + '</div>'
+      : '<span class="mono">' + row[5] + '</span><div style="font-size:12px;margin-top:4px;color:var(--muted)">Received</div>';
+    html += '<tr class="fade-in cursor-pointer" style="animation-delay:'+(idx*0.02)+'s" onclick="showAssetDetail(\'' + encodeURIComponent(asset) + '\')"><td><span class="hide-desktop">Sent / Received</span>' + when + '</td><td><span class="hide-desktop">Asset Name</span><span style="font-weight:600; display:flex; align-items:center; gap:8px"><i class="fa ' + iconClass + '" style="color:var(--muted)"></i>' + asset + '</span></td><td><span class="hide-desktop">Route / Hub</span>' + route + '</td><td style="text-align:right"><span class="hide-desktop">Status</span><div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">' + badge + '</div></td></tr>';
   });
   body.innerHTML = html;
 }
@@ -1088,16 +1117,27 @@ function resetFleetFilters() { ['fleetFilterLoc','fleetFilterCat','fleetFilterSt
 function renderHistoryTable() {
   var body = document.getElementById('historyBody'); if (!body) return;
   var typeF = (document.getElementById('histFilterType') || {}).value || ''; var locF = (document.getElementById('histFilterLoc') || {}).value || ''; var q = ((document.getElementById('histSearch') || {}).value || '').toLowerCase().trim();
+  // one row per movement: when it was sent, and when (or whether) it was received
   var rows = [];
-  APP.history.forEach(function(row) { var isTransfer = row[0] && row[0] !== '-'; var isReceive  = row[5] && row[5] !== '-'; var asset = isTransfer ? row[1] : row[6]; var date = isTransfer ? row[0] : row[5]; var from = isTransfer ? row[2] : null; var to = isTransfer ? row[3] : row[7]; var type = isTransfer ? 'TRANSFER' : (isReceive ? 'RECEIVE' : null); if (!type || !asset || asset === '-') return; if (typeF && type !== typeF) return; if (q && asset.toLowerCase().indexOf(q) === -1) return; if (locF && from !== locF && to !== locF) return; rows.push({ date: date, asset: asset, type: type, from: from, to: to }); });
-  var cntEl = document.getElementById('histCount'); if (cntEl) cntEl.textContent = rows.length + ' logs encrypted';
+  APP.history.forEach(function(row) {
+    var sent = row[0] && row[0] !== '-', got = row[5] && row[5] !== '-';
+    if (!sent && !got) return;
+    var asset = sent ? row[1] : row[6]; if (!asset || asset === '-') return;
+    var from = sent ? row[2] : null, to = sent ? row[3] : row[7];
+    if (typeF === 'RECEIVED' && !got) return;
+    if (typeF === 'PENDING' && got) return;
+    if (q && asset.toLowerCase().indexOf(q) === -1) return;
+    if (locF && from !== locF && to !== locF) return;
+    rows.push({ row: row, sent: sent ? row[0] : '', asset: asset, from: from, to: to });
+  });
+  var cntEl = document.getElementById('histCount'); if (cntEl) cntEl.textContent = rows.length + ' movements';
   if (!rows.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>Log archives empty under filters.</p></div></td></tr>'; return; }
   var html = '';
   rows.forEach(function(r, idx) {
-    var typeBadge = r.type === 'TRANSFER' ? '<span class="badge transit"><i class="fa-solid fa-paper-plane"></i> Outbound</span>' : '<span class="badge base"><i class="fa-solid fa-boxes-packing"></i> Inbound</span>'; var from = r.from ? '<span class="route-loc">' + r.from + '</span>' : '<span style="color:var(--muted)">—</span>'; var to = r.to ? '<span class="route-loc" style="font-weight:600">' + r.to + '</span>' : '<span style="color:var(--muted)">—</span>';
+    var from = r.from ? '<span class="route-loc">' + r.from + '</span>' : '<span style="color:var(--muted)">—</span>'; var to = r.to ? '<span class="route-loc" style="font-weight:600">' + r.to + '</span>' : '<span style="color:var(--muted)">—</span>';
     var aCat = APP.assets[r.asset] ? APP.assets[r.asset].cat : 'MISC.';
     var iconClass = getCatIcon(aCat);
-    html += '<tr class="fade-in" style="animation-delay:'+(idx*0.02)+'s"><td><span class="hide-desktop">Timestamp</span><span class="mono">' + (r.date || '—') + '</span></td><td><span class="hide-desktop">Asset Name</span><span style="font-weight:700; display:flex; align-items:center; gap:8px"><i class="fa ' + iconClass + '" style="color:var(--muted)"></i>' + r.asset + '</span></td><td><span class="hide-desktop">Operation</span>' + typeBadge + '</td><td><span class="hide-desktop">Source</span>' + from + '</td><td><span class="hide-desktop">Terminal</span>' + to + '</td></tr>';
+    html += '<tr class="fade-in" style="animation-delay:'+(idx*0.02)+'s"><td><span class="hide-desktop">Sent On</span><span class="mono">' + (r.sent || '—') + '</span></td><td><span class="hide-desktop">Asset Name</span><span style="font-weight:700; display:flex; align-items:center; gap:8px"><i class="fa ' + iconClass + '" style="color:var(--muted)"></i>' + r.asset + '</span></td><td><span class="hide-desktop">From</span>' + from + '</td><td><span class="hide-desktop">To</span>' + to + '</td><td><span class="hide-desktop">Received On</span>' + receivedHtml(r.row) + '</td></tr>';
   });
   body.innerHTML = html;
 }
@@ -1657,7 +1697,13 @@ function showAssetDetail(encodedName) {
     `;
   }
 
-  body.innerHTML = '<div class="detail-row"><div class="detail-row-lbl">Current Status</div><div class="detail-row-val">' + badge + '</div></div><div class="detail-row"><div class="detail-row-lbl">Belongs to</div><div class="detail-row-val">' + (a.owner === 'CONTRACTOR' ? '<i class="fa-solid fa-handshake" style="color:#D97706;margin-right:6px"></i>Contractor' : '<i class="fa-solid fa-building" style="color:var(--accent2);margin-right:6px"></i>Own vehicle') + '</div></div><div class="detail-row"><div class="detail-row-lbl">Asset Category</div><div class="detail-row-val" style="display:flex;align-items:center;gap:8px"><i class="fa ' + iconClass + '" style="color:' + color + '"></i>' + a.cat + '</div></div><div class="detail-row"><div class="detail-row-lbl">Hub Terminal</div><div class="detail-row-val"><i class="fa-solid fa-location-dot" style="color:var(--accent2);margin-right:6px"></i>' + (a.location || '—') + '</div></div>' + (a.status === 'IN_TRANSIT' ? '<div class="detail-row"><div class="detail-row-lbl">Target Destination</div><div class="detail-row-val"><i class="fa-solid fa-flag-checkered" style="color:var(--green);margin-right:6px"></i>' + (a.dest || '—') + '</div></div>' : '') + vehicleHtml + '<div class="detail-row" style="background:#EFF6FF; border-color:#BFDBFE; margin-top:10px;"><div class="detail-row-lbl" style="color:var(--accent2)">Encryption Note</div><div style="font-size:13px;color:var(--text);margin-top:4px">Full asset velocity streams are systematically bound to workspace configurations.</div></div>' + actionHtml;
+  // its latest movement (History is newest first): sent on, and received on or Pending
+  var key = name.trim().toUpperCase();
+  var mv = APP.history.filter(function(r) { return String(r[1] || '').trim().toUpperCase() === key || String(r[6] || '').trim().toUpperCase() === key; })[0];
+  var moveHtml = '';
+  if (mv && mv[0] && mv[0] !== '-') moveHtml = '<div class="detail-row"><div class="detail-row-lbl">Last Sent</div><div class="detail-row-val"><span class="mono">' + mv[0] + '</span> &nbsp;' + mv[2] + ' <i class="fa-solid fa-arrow-right" style="font-size:11px;color:var(--muted)"></i> ' + mv[3] + '</div></div><div class="detail-row"><div class="detail-row-lbl">Received On</div><div class="detail-row-val">' + receivedHtml(mv) + '</div></div>';
+  else if (mv) moveHtml = '<div class="detail-row"><div class="detail-row-lbl">Received On</div><div class="detail-row-val">' + receivedHtml(mv) + ' &nbsp;at ' + mv[7] + '</div></div>';
+  body.innerHTML = '<div class="detail-row"><div class="detail-row-lbl">Current Status</div><div class="detail-row-val">' + badge + '</div></div>' + moveHtml + '<div class="detail-row"><div class="detail-row-lbl">Belongs to</div><div class="detail-row-val">' + (a.owner === 'CONTRACTOR' ? '<i class="fa-solid fa-handshake" style="color:#D97706;margin-right:6px"></i>Contractor' : '<i class="fa-solid fa-building" style="color:var(--accent2);margin-right:6px"></i>Own vehicle') + '</div></div><div class="detail-row"><div class="detail-row-lbl">Asset Category</div><div class="detail-row-val" style="display:flex;align-items:center;gap:8px"><i class="fa ' + iconClass + '" style="color:' + color + '"></i>' + a.cat + '</div></div><div class="detail-row"><div class="detail-row-lbl">Hub Terminal</div><div class="detail-row-val"><i class="fa-solid fa-location-dot" style="color:var(--accent2);margin-right:6px"></i>' + (a.location || '—') + '</div></div>' + (a.status === 'IN_TRANSIT' ? '<div class="detail-row"><div class="detail-row-lbl">Target Destination</div><div class="detail-row-val"><i class="fa-solid fa-flag-checkered" style="color:var(--green);margin-right:6px"></i>' + (a.dest || '—') + '</div></div>' : '') + vehicleHtml + '<div class="detail-row" style="background:#EFF6FF; border-color:#BFDBFE; margin-top:10px;"><div class="detail-row-lbl" style="color:var(--accent2)">Encryption Note</div><div style="font-size:13px;color:var(--text);margin-top:4px">Full asset velocity streams are systematically bound to workspace configurations.</div></div>' + actionHtml;
   
   panel.classList.add('open'); if (window.innerWidth <= 768) { overlay.style.display = 'block'; setTimeout(function(){ overlay.classList.add('active'); }, 10); }
 }

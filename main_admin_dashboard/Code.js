@@ -136,35 +136,42 @@ function getRenewalData_() {
   } catch (error) { return { error: error.toString() }; }
 }
 
-function actionRenewalTask(token, taskId, action, remarkText) {
+/** Approve = the renewal is finished here and now: new expiry on the entry tab, a Renewal Log line,
+ *  the task leaves the Task Feed. details = { renewedOn, newValidUntil ('yyyy-mm-dd'), cost } from the
+ *  approve dialog; anything not given comes from what staff submitted (Feed Inputs, RenewalCore.js). */
+function actionRenewalTask(token, taskId, action, remarkText, details) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
     const ss = SpreadsheetApp.openById(RENEWAL_SHEET_ID);
-    const sheet = ss.getSheetByName('Task Feed');
-    const idRange = sheet.getRange("B:B"); 
-    const finder = idRange.createTextFinder(taskId.toString().trim()).matchEntireCell(true);
-    const match = finder.findNext();
-
-    if (!match) return { success: false, error: "Renewal ID not found." };
-    const row = match.getRow();
+    const id = String(taskId || '').trim().toUpperCase();
+    if (!rcFindDoc_(ss, id)) return { success: false, error: "Renewal ID not found." };
+    const x = rcReadInputs_(ss)[id] || {};
 
     if (action === 'Approve') {
-        sheet.getRange(row, 21).setValue('Completed');
-        sheet.getRange(row, 17).setValue(true);
-        sheet.getRange(row, 22).setValue('');
+        details = details || {};
+        const d = {
+          renewedOn: rcParseDay_(details.renewedOn) || (x.renewedOn instanceof Date ? x.renewedOn : null),
+          newValid: rcParseDay_(details.newValidUntil) || (x.newValid instanceof Date ? x.newValid : null),
+          cost: details.cost !== undefined && details.cost !== '' ? (Number(String(details.cost).replace(/[^\d.]/g, '')) || 0)
+                : (typeof x.cost === 'number' ? x.cost : 0),
+          link: String(x.link || '').trim()
+        };
+        const problem = rcCheckRenewal_(ss, id, d);
+        if (problem) return { success: false, error: problem.replace(id + ': ', '') };
+        rcApplyRenewal_(ss, id, d, sess.u || 'Main Admin');
+        rcClearInputs_(ss, id);
+        _clearCached(CACHE_KEY_REN);
+        return { success: true, message: 'Renewed - valid until ' + rcShow_(d.newValid) + '. It has left the Task Feed.' };
     } else if (action === 'Reject') {
-        sheet.getRange(row, 21).setValue('Rejected');
-        sheet.getRange(row, 17).setValue(false);
-        if (remarkText) sheet.getRange(row, 22).setValue(remarkText);
+        rcSetInputs_(ss, id, { status: 'Rejected', done: false, remark: remarkText || x.remark || '', actionBy: sess.u, actionAt: new Date() });
     }
-    maStamp_(sheet, row, 4, MA_COLS.RENEWAL_BY, ['Action By', 'Action At'], [sess.u, maNow_()], sess);
 
     _clearCached(CACHE_KEY_REN);
     return { success: true, message: `Renewal marked as ${action}` };
-  } catch (error) { return { success: false, error: error.toString() };
+  } catch (error) { return { success: false, error: (error && error.message) || error.toString() };
   } finally { lock.releaseLock(); }
 }
 
@@ -476,6 +483,14 @@ function transferTask(token, taskId, newDoerName, newDueDate, transferReason) {
     const oldCleanName = getCleanName(oldDoerRaw);
     const newCleanName = getCleanName(newDoerName);
 
+    // Only open work moves: a finished task stays with whoever did it, and one waiting for review is decided first.
+    const status = String(sheet.getRange(row, 10).getDisplayValue()).trim().toLowerCase();
+    if (status === 'done' || status === 'completed') return { success: false, error: "Task " + taskId + " is already finished. Only open tasks can be transferred." };
+    if (status === 'review') return { success: false, error: "Task " + taskId + " is waiting for your review. Approve or reject it first." };
+    if (status === 'week shifted' || status === 'cancelled') return { success: false, error: "Task " + taskId + " is " + status + " and cannot be transferred." };
+    if (!String(transferReason || '').trim()) return { success: false, error: "Write why the task is being transferred." };
+    if (oldCleanName.toUpperCase() === newCleanName.toUpperCase()) return { success: false, error: "Task " + taskId + " is already with " + oldCleanName + "." };
+
     const timestamp = Utilities.formatDate(new Date(), "GMT+05:30", "dd/MM/yyyy HH:mm");
     const reasonText = transferReason ? " | Reason: " + transferReason.trim() : "";
     const transferLog = "Transferred from " + oldCleanName + " to " + newCleanName + " on " + timestamp + reasonText;
@@ -490,6 +505,9 @@ function transferTask(token, taskId, newDoerName, newDueDate, transferReason) {
 
     // Reset status to Pending for new assignee
     sheet.getRange(row, 10).setValue("Pending");
+
+    // A transfer the staff member had asked for in Staff Dashboard (column R) no longer applies.
+    sheet.getRange(row, 18).setValue("");
 
     // Append Transfer History to Extra Remark
     const existingHistory = sheet.getRange(row, 17).getDisplayValue().trim();

@@ -49,6 +49,10 @@ function stampChecklist_(cSheet, car, task, dateObj, text, color) {
   }
 
   var col = checklistColFor_(layout, dateObj);
+  if (!col && ensureChecklistMonth_(cSheet, dateObj).length) {   // a new month: add it, then write
+    layout = checklistLayout_(cSheet);
+    col = checklistColFor_(layout, dateObj);
+  }
   if (!col) {
     return { ok: false, reason: 'The Checklist has no column for ' + fmtDMY_(dateObj) +
              ' — add that month to the calendar.' };
@@ -143,6 +147,12 @@ function dailyRollover() {
     var cols  = ensureMasterCols_(mSheet);
     var today = todayStart_();
     var yesterday = addDays_(today, -1);
+
+    // The calendar grows by itself: today's month, and next month 3 days before it starts.
+    if (cSheet) {
+      var added = ensureChecklistMonth_(cSheet, today).concat(ensureChecklistMonth_(cSheet, addDays_(today, 3)));
+      if (added.length) Logger.log('dailyRollover: Checklist now has ' + added.join(', '));
+    }
 
     var lastRow = mSheet.getLastRow();
     if (lastRow < 2) return;
@@ -582,8 +592,20 @@ function onOpen() {
     .addItem('Run rollover now', 'dailyRollover')
     .addItem('Audit schedule column', 'auditSchedules')
     .addItem('Check Checklist calendar', 'diagnoseChecklist')
+    .addItem('Add the next month to the Checklist', 'addChecklistMonthNow')
     .addSeparator()
     .addItem('Reset a password to ' + DEFAULT_PASSWORD, 'adminResetToDefault')
     .addItem('Log everyone out', 'adminLogoutAllSessions')
     .addToUi();
+}
+
+/** Menu: add this month (and next month in its last days) to the Checklist now. */
+function addChecklistMonthNow() {
+  portalAssertEditor_();
+  var cSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_CHECKLIST);
+  var today = todayStart_();
+  var added = ensureChecklistMonth_(cSheet, today).concat(ensureChecklistMonth_(cSheet, addDays_(today, 3)));
+  var msg = added.length ? 'Added to the Checklist: ' + added.join(', ') : 'The Checklist already has this month.';
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
+  return msg;
 }

@@ -158,6 +158,10 @@ input{font-family:inherit;color:var(--ink)}
 .rfr:hover{color:var(--ink)}
 .rfr svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .rfr.busy svg{animation:spin .8s linear infinite}
+/* EN / हिं switch: shows the language a tap switches to */
+.lang-btn{font-size:13px;font-weight:800;letter-spacing:.02em}
+.lt.lang-btn{right:62px}
+.seg.two{grid-template-columns:repeat(2,1fr)}
 .login-h{position:relative}
 .lt{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:12px;
   background:rgba(255,255,255,.08);color:#F4F0E5;display:flex;align-items:center;justify-content:center;transition:.15s}
@@ -300,7 +304,43 @@ body.has-nav .home{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
   .toast{left:14px;right:14px;transform:translateY(20px);text-align:center;max-width:none}
   .toast.on{transform:translateY(0)}
 }
-@media(max-width:430px){.hello h1{font-size:19px}}
+@media(max-width:430px){
+  .hello{margin:14px 0 12px}
+  .hello h1{font-size:19px}
+  .hello p{font-size:12px}
+  .date{font-size:10px;margin-bottom:4px}
+  .home{padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(24px + env(safe-area-inset-bottom,0px))}
+  .brand-mark{width:30px;height:30px;border-radius:9px}
+  .brand-mark::before{left:9px;top:6px;height:18px}.brand-mark::after{left:16px;top:6px;height:18px}
+  .brand-name{font-size:14.5px}.brand-sub{font-size:9.5px}
+  .acct,.rfr{width:38px;height:38px;border-radius:12px}
+  .tbtns{gap:7px}
+  .grid{gap:10px}
+  .tile{padding:12px 13px;min-height:104px;border-radius:16px}
+  .chip{width:38px;height:38px;border-radius:11px;font-size:18px;margin-bottom:10px}
+  .chip svg{width:20px;height:20px}
+  .tname{font-size:13px}
+  .tsub{font-size:11px}
+  .topen{font-size:9.5px;padding-top:8px}
+  .badge{min-width:21px;height:21px;font-size:11px;top:-7px;right:-7px;border-width:2px}
+  .sum{font-size:11.5px;padding:6px 11px;margin-top:8px}
+  .sec{margin:16px 0 8px;font-size:10px}
+  .bnav{padding:5px;border-radius:18px;bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .bnav button{padding:7px 2px;font-size:10.5px;border-radius:13px;gap:2px}
+  .bnav button svg{width:19px;height:19px}
+  body.has-nav .home{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+  .litem{padding:11px 13px;gap:12px}
+  .litem .chip{width:36px;height:36px}
+  .litem .lt1{font-size:13px}.litem .lt2{font-size:11px}
+  .vbar{height:calc(42px + env(safe-area-inset-top,0px));gap:8px;padding-left:6px}
+  .x{width:30px;height:30px;font-size:16px}
+  .vtitle{font-size:13px}
+  .vchip{width:24px;height:24px}
+  .btn{font-size:12.5px;padding:9px 14px}
+  .btn-block{padding:12px 14px;font-size:13.5px}
+  .login-h{padding:18px 20px}.login-b{padding:18px 20px 20px}
+  .login-b h1{font-size:20px}
+}
 @media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}.tile,.toast{transition:none}.skel .chip,.skel .bar{animation:none}}
 </style>
 <script>/* saved theme first, so the page never flashes the wrong colours */
@@ -320,6 +360,7 @@ try { var t0 = localStorage.getItem('ggm_theme'); if (t0 === 'light' || t0 === '
     <div class="login-h">
       <div class="brand"><div class="brand-mark"></div>
         <div><div class="brand-name"><?= title ?></div><div class="brand-sub">Apps &amp; dashboards</div></div></div>
+      <button class="lt lang-btn" type="button" aria-label="Language" title="हिन्दी / English">हिं</button>
       <button class="lt theme-btn" type="button" aria-label="Switch theme" title="Switch theme"><svg viewBox="0 0 24 24"></svg></button>
     </div>
     <div class="login-b">
@@ -391,6 +432,7 @@ try { var t0 = localStorage.getItem('ggm_theme'); if (t0 === 'light' || t0 === '
       <div class="brand"><div class="brand-mark"></div>
         <div><div class="brand-name"><?= title ?></div><div class="brand-sub">Apps &amp; dashboards</div></div></div>
       <div class="tbtns">
+        <button class="rfr lang-btn" id="langBtn" type="button" aria-label="Language" title="हिन्दी / English">हिं</button>
         <button class="rfr theme-btn" id="themeBtn" type="button" aria-label="Switch theme" title="Switch theme"><svg viewBox="0 0 24 24"></svg></button>
         <button class="rfr" id="refreshBtn" type="button" aria-label="Refresh apps and counts" title="Refresh">
           <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></svg>
@@ -446,6 +488,11 @@ try { var t0 = localStorage.getItem('ggm_theme'); if (t0 === 'light' || t0 === '
       <button type="button" role="radio" data-t="auto">Auto</button>
       <button type="button" role="radio" data-t="light">Light</button>
       <button type="button" role="radio" data-t="dark">Dark</button>
+    </div>
+    <div class="seg-l">Language</div>
+    <div class="seg two" id="langSeg" role="radiogroup" aria-label="Language">
+      <button type="button" role="radio" data-l="en">English</button>
+      <button type="button" role="radio" data-l="hi">हिन्दी</button>
     </div>
     <div class="menu-list">
       <button class="btn btn-ghost" id="openAdmin" hidden style="background:var(--amber-wash);border-color:var(--amber-line)">⚙️ Admin: Portal-only switch</button>
@@ -626,7 +673,7 @@ function signOut(){
 
 /* ===================== home ===================== */
 function todayText(){
-  try { return new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }); }
+  try { return new Date().toLocaleDateString(LANG === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'long', day: 'numeric', month: 'long' }); }
   catch(_){ return new Date().toDateString(); }
 }
 /** Grey placeholder tiles while the first app list loads. */
@@ -642,6 +689,14 @@ function skeleton(){
 }
 
 function renderHome(){
+  if (home.user.lang && home.user.lang !== LANG){
+    let picked = false; try { picked = localStorage.getItem(LANG_KEY + '_pick') === '1'; } catch(_){}
+    if (picked && session){                        // chosen on the sign-in screen: save it now
+      try { localStorage.removeItem(LANG_KEY + '_pick'); } catch(_){}
+      home.user.lang = LANG; saveHome(home);
+      run('setLanguage', session, LANG).catch(() => {});
+    } else setLangLocal(home.user.lang);           // chosen on another phone: follow it
+  }
   const name = (home.user.name || home.user.username).trim();
   const h = new Date().getHours();
   $('today').textContent = todayText();
@@ -1004,6 +1059,118 @@ try { google.script.history.setChangeHandler(e => {
   if (!(e.state && e.state.app) && current && Date.now() - openedAt > 1500) closeApp();
 }); } catch(_){}
 
+/* ===================== language (English / हिन्दी) =====================
+   One switch for everything: the portal itself, and every app opened from it (the
+   choice rides in the app's launch pass; apps without their own Hindi are translated
+   by Google). Saved on the person's row, so it follows them to any phone. */
+const HI = {
+  'Sign in': 'साइन इन', 'Signing in…': 'साइन इन हो रहा है…', 'Password': 'पासवर्ड', 'Show': 'दिखाएँ', 'Hide': 'छिपाएँ',
+  'Username or phone': 'यूज़रनेम या फ़ोन', 'Forgot password?': 'पासवर्ड भूल गए?', 'First time here?': 'पहली बार आए हैं?',
+  'One sign-in opens every app you have access to.': 'एक बार साइन इन करें, आपके सभी ऐप खुल जाएँगे।',
+  'Apps & dashboards': 'ऐप्स और डैशबोर्ड', 'Apps': 'ऐप्स', 'Dashboards': 'डैशबोर्ड', 'Sheets': 'शीट्स', 'Forms': 'फ़ॉर्म',
+  'Tap an app to open it.': 'ऐप खोलने के लिए उस पर टैप करें।', 'Loading your apps…': 'आपके ऐप्स लोड हो रहे हैं…',
+  'Open': 'खोलें', 'VIEW': 'देखें', 'Up to date.': 'सब अपडेट है।', 'Refresh': 'रीफ़्रेश', 'Loading…': 'लोड हो रहा है…',
+  'Theme': 'थीम', 'Auto': 'ऑटो', 'Light': 'लाइट', 'Dark': 'डार्क', 'Language': 'भाषा',
+  'Dark theme': 'डार्क थीम', 'Light theme': 'लाइट थीम',
+  'Add profile photo': 'प्रोफ़ाइल फ़ोटो जोड़ें', 'Change profile photo': 'प्रोफ़ाइल फ़ोटो बदलें', 'Remove profile photo': 'प्रोफ़ाइल फ़ोटो हटाएँ',
+  'Saving photo…': 'फ़ोटो सेव हो रही है…', 'Profile photo removed.': 'प्रोफ़ाइल फ़ोटो हटा दी गई।', 'Pick a photo (JPG or PNG).': 'कोई फ़ोटो चुनें (JPG या PNG)।',
+  'Profile photo saved. It shows in your apps within a few minutes.': 'प्रोफ़ाइल फ़ोटो सेव हो गई। कुछ मिनटों में आपके ऐप्स में दिखेगी।',
+  'Change password': 'पासवर्ड बदलें', 'Sign out': 'साइन आउट', 'Close': 'बंद करें', 'Cancel': 'रद्द करें',
+  'Current password': 'मौजूदा पासवर्ड', 'New password': 'नया पासवर्ड', 'New password again': 'नया पासवर्ड दोबारा',
+  'Save password': 'पासवर्ड सेव करें', 'Saving…': 'सेव हो रहा है…',
+  'Other phones signed in as you will be signed out.': 'आपके नाम से साइन इन बाकी फ़ोन साइन आउट हो जाएँगे।',
+  'The two new passwords do not match.': 'दोनों नए पासवर्ड एक जैसे नहीं हैं।', 'The two passwords do not match.': 'दोनों पासवर्ड एक जैसे नहीं हैं।',
+  'Password changed. Other phones signed in as you are now signed out.': 'पासवर्ड बदल गया। बाकी फ़ोन साइन आउट हो गए।',
+  'Reset password': 'पासवर्ड रीसेट करें', 'Set your password': 'अपना पासवर्ड बनाएँ', 'Who are you?': 'आप कौन हैं?',
+  "We'll email a 6-digit code to the address on your account.": 'हम आपके अकाउंट के ईमेल पर 6 अंकों का कोड भेजेंगे।',
+  'Send code': 'कोड भेजें', 'Enter the code': 'कोड डालें', '6-digit code': '6 अंकों का कोड', 'Verify': 'जाँचें',
+  'Resend code': 'कोड दोबारा भेजें', 'Back to sign in': 'साइन इन पर वापस', 'Save & sign in': 'सेव करें और साइन इन करें',
+  'At least 6 characters. Other devices will be signed out.': 'कम से कम 6 अक्षर। बाकी डिवाइस साइन आउट हो जाएँगे।',
+  'Password saved. You are signed in.': 'पासवर्ड सेव हो गया। आप साइन इन हैं।',
+  'Your sign-in has ended. Please sign in again.': 'आपका साइन इन खत्म हो गया। फिर से साइन इन करें।',
+  'No connection to the portal. Retrying…': 'पोर्टल से कनेक्शन नहीं है। फिर कोशिश कर रहे हैं…',
+  'No apps are assigned to you yet. Ask the IT admin to give you access.': 'अभी आपको कोई ऐप नहीं दिया गया है। IT एडमिन से एक्सेस माँगें।',
+  'Your dashboards, sheets and forms are in the menu below.': 'आपके डैशबोर्ड, शीट्स और फ़ॉर्म नीचे मेनू में हैं।',
+  'You do not have access to that app.': 'आपको उस ऐप का एक्सेस नहीं है।',
+  "Still loading. If this takes much longer, check the phone's internet and try again.": 'अभी लोड हो रहा है। ज़्यादा देर लगे तो फ़ोन का इंटरनेट देखें और फिर कोशिश करें।',
+  'Admin': 'एडमिन', 'Portal-only mode': 'केवल पोर्टल मोड', 'Only Portal Admin accounts see this.': 'यह केवल पोर्टल एडमिन देखते हैं।',
+  '⚙️ Admin: Portal-only switch': '⚙️ एडमिन: केवल पोर्टल स्विच', 'No apps are connected yet.': 'अभी कोई ऐप जुड़ा नहीं है।',
+  'Language: English': 'भाषा: English', 'Language: हिन्दी': 'भाषा: हिन्दी'
+};
+const HI_WORD = { 'pending': 'बाकी', 'due': 'ड्यू', 'waiting on you': 'आपके पास बाकी', 'to receive': 'लेने हैं', 'to review': 'जाँचने हैं',
+  'need attention': 'ध्यान दें', 'to follow up': 'फ़ॉलो-अप' };
+const HI_RX = [
+  [/^Good morning, (.+)$/, 'सुप्रभात, $1'], [/^Good afternoon, (.+)$/, 'नमस्ते, $1'], [/^Good evening, (.+)$/, 'शुभ संध्या, $1'],
+  [/^(\d+) things? waiting in (\d+) apps?$/, '$2 ऐप में $1 काम बाकी'],
+  [/^(\d+) (pending|due|waiting on you|to receive|to review|need attention|to follow up)$/, (m, n, w) => n + ' ' + HI_WORD[w]],
+  [/^Step (\d) of 3$/, 'चरण $1 / 3'],
+  [/^Sent to (.+)\. It expires in 10 minutes\.$/, '$1 पर भेजा गया। 10 मिनट में खत्म हो जाएगा।'],
+  [/^No (dashboards|sheets|forms) are shared with you yet\.$/, (m, w) => 'अभी आपके साथ कोई ' + ({ dashboards: 'डैशबोर्ड', sheets: 'शीट', forms: 'फ़ॉर्म' })[w] + ' साझा नहीं है।'],
+  [/^Your browser blocked the new tab\. Tap (.+) again\.$/, 'ब्राउज़र ने नया टैब रोक दिया। $1 पर फिर टैप करें।']
+];
+const LANG_KEY = 'ggm_portal_lang';
+let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'hi' ? 'hi' : 'en'; } catch(_){ return 'en'; } })();
+
+function hiOf(en){
+  const k = en.trim();
+  if (!k) return null;
+  if (Object.prototype.hasOwnProperty.call(HI, k)) return HI[k];
+  for (const [rx, rep] of HI_RX) if (rx.test(k)) return k.replace(rx, rep);
+  return null;
+}
+/* Each text node remembers its English, so switching back restores it exactly. */
+function trNode(n){
+  const cur = n.nodeValue;
+  if (LANG === 'hi'){
+    if (n.__hi !== undefined && cur === n.__hi) return;
+    const h = hiOf(cur);
+    if (h == null){ n.__en = n.__hi = undefined; return; }
+    n.__en = cur; n.__hi = cur.replace(cur.trim(), h); n.nodeValue = n.__hi;
+  } else if (n.__en !== undefined){
+    if (cur === n.__hi) n.nodeValue = n.__en;
+    n.__en = n.__hi = undefined;
+  }
+}
+function trTree(root){
+  if (!root) return;
+  if (root.nodeType === 3){ trNode(root); return; }
+  if (root.nodeType !== 1 || /^(SCRIPT|STYLE|INPUT|TEXTAREA)$/.test(root.nodeName)) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: x => /^(SCRIPT|STYLE)$/.test(x.parentNode.nodeName) ? 2 : 1 });
+  let n; while ((n = w.nextNode())) trNode(n);
+}
+function paintLangButtons(){
+  document.querySelectorAll('.lang-btn').forEach(b => { b.textContent = LANG === 'hi' ? 'EN' : 'हिं'; });
+  document.querySelectorAll('#langSeg button').forEach(b => b.setAttribute('aria-checked', b.dataset.l === LANG ? 'true' : 'false'));
+  document.documentElement.lang = LANG === 'hi' ? 'hi' : 'en';
+}
+function setLangLocal(l){
+  LANG = l === 'hi' ? 'hi' : 'en';
+  try { localStorage.setItem(LANG_KEY, LANG); } catch(_){}
+  paintLangButtons();
+  trTree(document.body);
+  if ($('today') && home) $('today').textContent = todayText();
+}
+/* Apps kept open in the background were opened in the old language: drop them so the next
+   open asks for a fresh pass (in the new language). */
+function dropParkedApps(){ frames.forEach((f, id) => { if (id !== current) { f.el.remove(); frames.delete(id); } }); }
+async function chooseLang(l){
+  l = l === 'hi' ? 'hi' : 'en';
+  if (l === LANG) return;
+  setLangLocal(l);
+  dropParkedApps();
+  toast(l === 'hi' ? 'भाषा: हिन्दी' : 'Language: English');
+  if (!session){ try { localStorage.setItem(LANG_KEY + '_pick', '1'); } catch(_){} return; }
+  try { await run('setLanguage', session, l); if (home){ home.user.lang = l; saveHome(home); } }
+  catch(e){ if (isSessionErr(e)) fail(e); }
+}
+document.querySelectorAll('.lang-btn').forEach(b => b.addEventListener('click', () => chooseLang(LANG === 'hi' ? 'en' : 'hi')));
+document.querySelectorAll('#langSeg button').forEach(b => b.addEventListener('click', () => chooseLang(b.dataset.l)));
+new MutationObserver(list => {
+  if (LANG !== 'hi') return;
+  list.forEach(m => { if (m.type === 'characterData') trNode(m.target); else m.addedNodes.forEach(trTree); });
+}).observe(document.body, { childList: true, subtree: true, characterData: true });
+setLangLocal(LANG);
+
 /* ===================== profile photo ===================== */
 /** Shows the photo (or the first letter) on the account button and in the menu. */
 function paintMe(){
@@ -1085,7 +1252,7 @@ $('photoFile').addEventListener('change', async e => {
   finally { b.disabled = false; paintMe(); }
 });
 $('photoDel').addEventListener('click', async () => {
-  if (!confirm('Remove your profile photo?')) return;
+  if (!confirm(LANG === 'hi' ? 'अपनी प्रोफ़ाइल फ़ोटो हटाएँ?' : 'Remove your profile photo?')) return;
   const b = $('photoDel'); b.disabled = true;
   try {
     await run('removePhoto', session);
