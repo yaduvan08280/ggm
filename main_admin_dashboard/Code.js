@@ -79,8 +79,12 @@ function doGet(e) {
 // NEW SYSTEM: SINGLE BATCH FETCH
 // -----------------------------------------------------
 function getDashboardData(token) {
-  if (!maSessionOrNull_(token)) return { sessionExpired: true };
+  var sess = maSessionOrNull_(token);
+  if (!sess) return { sessionExpired: true };
+  var me = { u: sess.u, role: sess.role || 'ADMIN', ea: !!sess.ea };
+  if (sess.ea) return { me: me, master: getSheetData_() };   // EA: Delegated Tasks only
   return {
+    me: me,
     master: getSheetData_(),
     leaves: getLeaveData_(),
     renewals: getRenewalData_(),
@@ -142,6 +146,7 @@ function getRenewalData_() {
 function actionRenewalTask(token, taskId, action, remarkText, details) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
+  if (sess.ea) return MA_EA_DENIED;
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -219,6 +224,7 @@ function getLeaveData_() {
 function updateLeaveStatus(token, rowNum, newStatus, remark) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
+  if (sess.ea) return MA_EA_DENIED;
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -335,6 +341,7 @@ function getScoresData_() {
 function markRoutineDone(token, taskId, location) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
+  if (sess.ea) return MA_EA_DENIED;
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -405,7 +412,13 @@ function addNewTask(token, doerName, taskText, dueDate, givenBy, fileDataArray) 
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
   const lock = LockService.getScriptLock();
   if (!sess.legacy) {
-    givenBy = sess.u;                                   // who assigns = who is signed in
+    if (sess.ea) {                                      // EA enters tasks for an admin: that admin is "Given By"
+      givenBy = String(givenBy || '').trim();
+      var givers = null;
+      try { givers = maGivers_(sess.u).map(function (x) { return x.u; }); } catch (e) { console.error('maGivers_: ' + e); }
+      if (!givenBy || givenBy.toLowerCase() === String(sess.u).toLowerCase()) return { success: false, error: 'Pick who is giving this task.' };
+      if (givers && givers.indexOf(givenBy) < 0) return { success: false, error: "'" + givenBy + "' cannot give tasks here." };
+    } else givenBy = sess.u;                            // who assigns = who is signed in
     if (!maDoerAllowed_(doerName)) return { success: false, error: "'" + doerName + "' is not a GGM Portal user with the Staff Dashboard." };
   }
   try {
@@ -463,6 +476,7 @@ function addNewTask(token, doerName, taskText, dueDate, givenBy, fileDataArray) 
 function transferTask(token, taskId, newDoerName, newDueDate, transferReason) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
+  if (sess.ea) return MA_EA_DENIED;
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -529,6 +543,7 @@ function transferTask(token, taskId, newDoerName, newDueDate, transferReason) {
 function editTask(token, taskId, newDoerName, newTaskText, newDueDate) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
+  if (sess.ea) return MA_EA_DENIED;
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -555,6 +570,7 @@ function editTask(token, taskId, newDoerName, newTaskText, newDueDate) {
 function updateTaskStatusById(token, taskId, newStatus) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
+  if (sess.ea) return MA_EA_DENIED;
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -584,6 +600,7 @@ function updateTaskStatusById(token, taskId, newStatus) {
 function rejectTaskByBoss(token, taskId, remark) {
   var sess = maSessionOrNull_(token);
   if (!sess) return { success: false, error: 'SESSION_EXPIRED' };
+  if (sess.ea) return MA_EA_DENIED;
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -613,7 +630,9 @@ function getDoerList(token) {
   if (!sess) return { error: 'SESSION_EXPIRED' };
   // Connected to GGM Portal: "Assign to" = every active portal user who has the Staff Dashboard.
   if (!sess.legacy) {
-    try { return { doers: maPortalDoers_() }; } catch (e) { console.error('maPortalDoers_: ' + e); }
+    var givers;                                         // EA picks "Given By" from these
+    if (sess.ea) { try { givers = maGivers_(sess.u); } catch (e) { console.error('maGivers_: ' + e); givers = []; } }
+    try { return { doers: maPortalDoers_(), givers: givers }; } catch (e) { console.error('maPortalDoers_: ' + e); }
   }
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -628,7 +647,7 @@ function getDoerList(token) {
       const name = row[0] ? row[0].toString().trim() : "";
       if (name) doersArray.push(name);
     });
-    return { doers: [...new Set(doersArray)].sort((a, b) => a.localeCompare(b)) };
+    return { doers: [...new Set(doersArray)].sort((a, b) => a.localeCompare(b)), givers: givers };
   } catch (error) { return { error: error.toString() }; }
 }
 

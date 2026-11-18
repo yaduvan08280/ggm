@@ -35,12 +35,13 @@ function setupEmployeesSheet_(ss) {
   var sh = ss.getSheetByName(SHEET_EMPLOYEES);
   if (sh) return sh;
   sh = ss.insertSheet(SHEET_EMPLOYEES);
-  sh.appendRow(['Employee ID', 'Name', 'Site', 'Supervisor', 'Designation', 'Active']);
+  sh.appendRow(['Employee ID', 'Name', 'Site', 'Supervisor', 'Designation', 'Active', 'Secondary Site']);
   styleHeader_(sh, EMP_COL_COUNT);
   sh.setFrozenRows(1);
   sh.getRange(empColA1_(EMP_COL_ACTIVE)).insertCheckboxes();
   var siteRule = SpreadsheetApp.newDataValidation().requireValueInList(SITES, true).build();
   sh.getRange(empColA1_(EMP_COL_SITE)).setDataValidation(siteRule);
+  sh.getRange(empColA1_(EMP_COL_SECONDARY)).setDataValidation(siteRule);
   sh.setColumnWidths(1, EMP_COL_COUNT, 150);
   sh.setColumnWidth(EMP_COL_SUPERVISOR, 170);
   refreshSupervisorDropdown_(ss);

@@ -287,6 +287,16 @@ body.has-nav .home{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .litem .lt1{font-size:14px;font-weight:700;line-height:1.3}
 .litem .lt2{font-size:12px;color:var(--ink-soft);margin-top:1px}
 .litem .go{margin-left:auto;color:var(--ink-faint);font-size:16px}
+.litem{cursor:pointer}
+.litem:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* forms: a "Copy link" button in place of the arrow */
+.litem .cpy{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:10px;
+  border:1.5px solid var(--line);background:var(--bg);color:var(--ink-soft);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.15s}
+.litem .cpy svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.litem .cpy:hover{border-color:#7C3AED;color:#7C3AED}
+.litem .cpy.done{border-color:#15803D;color:#15803D;background:#ECFDF3}
+.litem .cpy.busy{opacity:.6;pointer-events:none}
+.linkbox{width:100%;font:inherit;font-size:12.5px;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink)}
 @media(max-width:820px){
   .bnav{left:12px;right:12px;transform:none;justify-content:space-around}
   .bnav button{flex:1;min-width:0;padding:8px 4px}
@@ -511,6 +521,19 @@ try { var t0 = localStorage.getItem('ggm_theme'); if (t0 === 'light' || t0 === '
   <div class="lb-name" id="lbName"></div>
 </div>
 
+<!-- copy a form link by hand (only if the browser refuses to copy it) -->
+<div class="scrim" id="linkDlg" hidden>
+  <div class="panel">
+    <h2 id="linkName">Form link</h2>
+    <p class="who">Copy this link and share it.</p>
+    <input class="linkbox" id="linkBox" readonly>
+    <div class="row" style="margin-top:14px">
+      <button type="button" class="btn btn-ghost" id="linkClose">Close</button>
+      <button type="button" class="btn btn-dark" id="linkCopy">Copy link</button>
+    </div>
+  </div>
+</div>
+
 <!-- change password -->
 <div class="scrim" id="pwDlg" hidden>
   <form class="panel" id="pwForm">
@@ -578,6 +601,10 @@ const frames = new Map(); // appId -> { el, used }
 const $ = id => document.getElementById(id);
 
 /* ===================== helpers ===================== */
+/* "Copy link" on forms (set up here so the first render can use them) */
+const COPY_SVG = '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+const TICK_SVG = '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+const linkCache = {};
 function run(fn, ...args){
   return new Promise((ok, fail) => google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](...args));
 }
@@ -667,7 +694,8 @@ function signOut(){
   frames.forEach(f => f.el.remove()); frames.clear();
   session = null; home = null; save(null); saveHome(null); renderHome.sig = null;
   navView = null; $('bnav').hidden = true; document.body.classList.remove('has-nav');
-  $('menu').hidden = true; $('pwDlg').hidden = true; $('lightbox').hidden = true;
+  $('menu').hidden = true; $('pwDlg').hidden = true; $('lightbox').hidden = true; $('linkDlg').hidden = true;
+  for (const k in linkCache) delete linkCache[k];
   screen('login');
 }
 
@@ -858,7 +886,9 @@ function showView(v, keep){
     box.appendChild(d); return;
   }
   list.forEach(it => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'litem';
+    // a div, not a button: forms carry their own "Copy link" button inside
+    const b = document.createElement('div'); b.className = 'litem'; b.setAttribute('role', 'button'); b.tabIndex = 0;
+    b.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === b){ e.preventDefault(); b.click(); } });
     const chip = document.createElement('span'); chip.className = 'chip tinted';
     const color = v === 'dashboards' && hexOk(it.color) ? it.color.trim() : v === 'sheets' ? '#15803D' : v === 'forms' ? '#7C3AED' : '#0284C7';
     b.style.setProperty('--c', color);
@@ -868,7 +898,12 @@ function showView(v, keep){
     tx.appendChild(t1);
     const sub = [it.site, it.desig].filter(Boolean).join(' · ');
     if (sub){ const t2 = document.createElement('div'); t2.className = 'lt2'; t2.textContent = sub; tx.appendChild(t2); }
-    const go = document.createElement('span'); go.className = 'go'; go.textContent = '↗';
+    let go;
+    if (v === 'forms'){
+      go = document.createElement('button'); go.type = 'button'; go.className = 'cpy'; go.title = 'Copy the form link';
+      go.innerHTML = COPY_SVG + '<span>Copy link</span>';
+      go.addEventListener('click', e => { e.stopPropagation(); copyLinkItem('form', it, go); });
+    } else { go = document.createElement('span'); go.className = 'go'; go.textContent = '↗'; }
     b.append(chip, tx, go);
     b.addEventListener('click', () => v === 'dashboards' ? openApp(it) : openLinkItem(v === 'sheets' ? 'sheet' : 'form', it));
     box.appendChild(b);
@@ -886,6 +921,53 @@ async function openLinkItem(kind, it){
     else if (!window.open(r.url, '_blank')) toast('Your browser blocked the new tab. Tap ' + it.name + ' again.');
   } catch(e){ if (w) w.close(); fail(e); }
 }
+
+/* "Copy link" on a form: the link is still only handed out on the tap (the tick is checked again). */
+function copyOld(text){
+  const t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', '');
+  t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(t); t.select(); t.setSelectionRange(0, text.length);
+  let ok = false; try { ok = document.execCommand('copy'); } catch(_){}
+  t.remove(); return ok;
+}
+async function copyText(text){
+  try { if (navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } } catch(_){}
+  return copyOld(text);
+}
+function copiedMark(btn){
+  btn.classList.add('done'); btn.innerHTML = TICK_SVG + '<span>Copied</span>';
+  clearTimeout(btn.t); btn.t = setTimeout(() => { btn.classList.remove('done'); btn.innerHTML = COPY_SVG + '<span>Copy link</span>'; trTree(btn); }, 2200);
+  trTree(btn); toast('Link copied. Paste it anywhere to share.');
+}
+function showLinkBox(it, url){
+  $('linkName').textContent = it.name; $('linkBox').value = url; $('linkDlg').hidden = false;
+  setTimeout(() => { try { $('linkBox').focus(); $('linkBox').select(); } catch(_){} }, 30);
+}
+async function copyLinkItem(kind, it, btn){
+  const key = kind + '|' + it.name;
+  if (linkCache[key]){ if (await copyText(linkCache[key])) copiedMark(btn); else showLinkBox(it, linkCache[key]); return; }
+  btn.classList.add('busy');
+  const p = run('openLink', session, kind, it.name, 'copy').then(r => (linkCache[key] = r.url));
+  p.catch(() => {});
+  try {
+    // ClipboardItem with a promise keeps the tap's permission while the link is fetched (Safari needs this)
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/plain': p.then(u => new Blob([u], { type: 'text/plain' })) })]);
+        copiedMark(btn); return;
+      } catch(_){}
+    }
+    const url = await p;
+    if (await copyText(url)) copiedMark(btn); else showLinkBox(it, url);
+  } catch(e){ fail(e); }
+  finally { btn.classList.remove('busy'); }
+}
+$('linkClose').addEventListener('click', () => $('linkDlg').hidden = true);
+$('linkCopy').addEventListener('click', () => {
+  const box = $('linkBox'); box.focus(); box.select();
+  if (copyOld(box.value)){ $('linkDlg').hidden = true; toast('Link copied. Paste it anywhere to share.'); }
+  else toast('Press and hold the link to copy it.');
+});
 
 $('bnav').querySelectorAll('button').forEach(b => b.addEventListener('click', () => showView(b.dataset.v)));
 
@@ -1095,7 +1177,11 @@ const HI = {
   "Still loading. If this takes much longer, check the phone's internet and try again.": 'अभी लोड हो रहा है। ज़्यादा देर लगे तो फ़ोन का इंटरनेट देखें और फिर कोशिश करें।',
   'Admin': 'एडमिन', 'Portal-only mode': 'केवल पोर्टल मोड', 'Only Portal Admin accounts see this.': 'यह केवल पोर्टल एडमिन देखते हैं।',
   '⚙️ Admin: Portal-only switch': '⚙️ एडमिन: केवल पोर्टल स्विच', 'No apps are connected yet.': 'अभी कोई ऐप जुड़ा नहीं है।',
-  'Language: English': 'भाषा: English', 'Language: हिन्दी': 'भाषा: हिन्दी'
+  'Language: English': 'भाषा: English', 'Language: हिन्दी': 'भाषा: हिन्दी',
+  'Copy link': 'लिंक कॉपी करें', 'Copied': 'कॉपी हो गया', 'Close': 'बंद करें', 'Form link': 'फ़ॉर्म लिंक',
+  'Copy this link and share it.': 'यह लिंक कॉपी करके भेजें।',
+  'Link copied. Paste it anywhere to share.': 'लिंक कॉपी हो गया। कहीं भी पेस्ट करके भेजें।',
+  'Press and hold the link to copy it.': 'लिंक को दबाकर रखें और कॉपी करें।'
 };
 const HI_WORD = { 'pending': 'बाकी', 'due': 'ड्यू', 'waiting on you': 'आपके पास बाकी', 'to receive': 'लेने हैं', 'to review': 'जाँचने हैं',
   'need attention': 'ध्यान दें', 'to follow up': 'फ़ॉलो-अप' };

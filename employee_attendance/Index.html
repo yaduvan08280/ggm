@@ -66,6 +66,7 @@
           <p id="markDate">–</p>
           <span class="clock" id="markClock">–</span>
         </div>
+        <button class="dome-add" onclick="openSupervisorAdd()" aria-label="Add a worker to my list" title="Add a worker to my list"><span data-ic="plus"></span></button>
       </div>
       <div id="markBanner"></div>
       <div id="markKpis" class="kpi-grid kpi-4"></div>
@@ -76,7 +77,6 @@
         <button class="s-clear hidden" id="markClear" onclick="clearMarkSearch()" aria-label="Clear search" data-ic="x"></button>
       </div>
       <div id="markFilters" class="chiprow"></div>
-      <button class="btn btn-ghost" style="margin-bottom:12px" onclick="openSupervisorAdd()"><span data-ic="plus"></span>Add a worker to my list</button>
       <div id="markCount" class="listcount"></div>
       <div id="markList"></div>
     </section>
@@ -127,6 +127,47 @@
       <div id="recKpis"></div>
       <div id="recCount" class="listcount"></div>
       <div id="recTable"></div>
+    </section>
+
+    <!-- ---------- SALARY (HR / Accounts / Admin): the month's pay + advances & loans ---------- -->
+    <section id="v_salary" class="hidden">
+      <div class="pagehead">
+        <div><h1>Salary</h1><p id="salSub">–</p></div>
+        <label class="fld sal-month"><span>Month</span><input id="salMonth" type="month" onchange="pickSalMonth()"></label>
+      </div>
+      <div class="seg two" id="salSeg" role="radiogroup">
+        <button data-t="pay" aria-checked="true" onclick="pickSalTab('pay')">Salary</button>
+        <button data-t="adv" aria-checked="false" onclick="pickSalTab('adv')">Advances &amp; loans</button>
+      </div>
+      <div id="salPay">
+        <div id="salState"></div>
+        <div id="salKpis"></div>
+        <div id="salActions" class="btn-row"></div>
+        <div id="salProblems"></div>
+        <div id="salChips" class="chiprow"></div>
+        <div class="searchbar">
+          <span class="s-ic" data-ic="search"></span>
+          <input id="salSearch" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                 placeholder="Search name, ID, site, designation or firm" oninput="onSalSearch()">
+          <button class="s-clear hidden" id="salClear" onclick="clearSalSearch()" aria-label="Clear search" data-ic="x"></button>
+        </div>
+        <div id="salCount" class="listcount"></div>
+        <div id="salList"></div>
+        <div id="salFirms"></div>
+      </div>
+      <div id="salAdv" class="hidden">
+        <div id="advKpis"></div>
+        <button class="btn btn-primary" style="margin-bottom:12px" onclick="openGiveAdvance()"><span data-ic="plus"></span>Give advance / loan</button>
+        <div id="advChips" class="chiprow"></div>
+        <div class="searchbar">
+          <span class="s-ic" data-ic="search"></span>
+          <input id="advSearch" type="search" inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                 placeholder="Search name, ID or entry no." oninput="onAdvSearch()">
+          <button class="s-clear hidden" id="advClear" onclick="clearAdvSearch()" aria-label="Clear search" data-ic="x"></button>
+        </div>
+        <div id="advCount" class="listcount"></div>
+        <div id="advList"></div>
+      </div>
     </section>
 
     <!-- ---------- STAFF ---------- -->

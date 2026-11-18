@@ -25,12 +25,12 @@ var MA_COLS = {
 function portalAdapter_() {
   return {
     startSession: function (c, src) {
-      return { token: portalNewSession_(c, src), username: c.u, name: c.n };
+      return { token: portalNewSession_(c, src), username: c.u, name: c.n, role: maRole_(c.r) };
     },
     provision: function (w) { return w.active ? 'no sheet write needed' : 'signed out'; },
     endSessions: function () { return 0; },   // cache sessions end through Portal.js (revoke list / epoch)
     counts: maCounts_,
-    meta: function () { return {}; },
+    meta: function () { return { roles: ['ADMIN', 'EA'] }; },   // GGM Portal → Access → MAIN ADMIN → Role
     listUsers: function () { return []; }
   };
 }
@@ -45,7 +45,7 @@ function maLogin(id, pw) {
   if (!portalEnabled_()) return { success: false, message: 'This app is not connected to GGM Portal yet.' };
   try {
     var b = portalRemoteLogin_(id, pw);
-    return { success: true, token: b.token, username: b.username, name: b.name };
+    return { success: true, token: b.token, username: b.username, name: b.name, role: b.role || '' };
   } catch (e) {
     return { success: false, message: e.message || String(e) };
   }
@@ -56,9 +56,50 @@ function maSessionOrNull_(token) {
   if (!portalEnabled_()) return { legacy: true, u: '', n: '' };
   try {
     var rec = portalCheck_(token);
-    return { legacy: false, u: rec.u, n: rec.n };
+    var role = maRole_(rec.r);
+    maNoteEA_(rec.u, role === 'EA');
+    return { legacy: false, u: rec.u, n: rec.n, role: role, ea: role === 'EA' };
   } catch (e) { return null; }
 }
+
+/**
+ * Roles (GGM Portal → Access → MAIN ADMIN → Role):
+ *   ADMIN (or blank) - everything, as before.
+ *   EA               - only Delegated Tasks: sees them and adds new ones for an admin
+ *                      (picks that admin in "Given By"; never herself). No approve / edit /
+ *                      transfer / leave / renewal / routine actions.
+ */
+function maRole_(r) { return String(r || '').trim().toUpperCase() === 'EA' ? 'EA' : 'ADMIN'; }
+
+/** EA usernames seen in sessions (kept so they never show up in anyone's "Given By" list). */
+function maEAList_() { try { return JSON.parse(portalP_('MA_EA_USERS') || '[]'); } catch (e) { return []; } }
+function maNoteEA_(u, isEA) {
+  u = String(u || '').trim(); if (!u) return;
+  var list = maEAList_(), lc = u.toLowerCase();
+  var has = list.some(function (x) { return String(x).toLowerCase() === lc; });
+  if (isEA === has) return;                              // nothing changed: no write
+  list = list.filter(function (x) { return String(x).toLowerCase() !== lc; });
+  if (isEA) list.push(u);
+  portalSetP_('MA_EA_USERS', JSON.stringify(list));
+}
+
+/** "Given By" choices for an EA: every active portal user with this app, except EAs (cached 5 min). */
+function maGivers_(me) {
+  var cache = CacheService.getScriptCache(), list = null, hit = cache.get('ma_givers');
+  if (hit) list = JSON.parse(hit);
+  else {
+    list = portalCallHub_('directory', { app: portalAppId_() || 'MAIN ADMIN' })
+      .map(function (x) { return { u: String(x.u || '').trim(), n: String(x.n || x.u || '').trim() }; })
+      .filter(function (x) { return x.u; })
+      .sort(function (a, b) { return a.n.localeCompare(b.n); });
+    cache.put('ma_givers', JSON.stringify(list), 300);
+  }
+  var ea = maEAList_().map(function (x) { return String(x).toLowerCase(); });
+  me = String(me || '').toLowerCase();
+  return list.filter(function (x) { var lc = x.u.toLowerCase(); return lc !== me && ea.indexOf(lc) < 0; });
+}
+
+var MA_EA_DENIED = { success: false, error: 'Your role (EA) can only add new tasks.' };
 
 
 function maNow_() { return Utilities.formatDate(new Date(), 'GMT+05:30', 'dd/MM/yyyy HH:mm:ss'); }
@@ -131,6 +172,6 @@ function maCounts_(list) {
     });
   } catch (e) {}
   var out = {};
-  list.forEach(function (x) { out[x.u] = n; });
+  list.forEach(function (x) { out[x.u] = maRole_(x.r) === 'EA' ? 0 : n; });   // EA has nothing to approve
   return out;
 }

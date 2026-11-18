@@ -4,7 +4,7 @@
  *
  * Who can sign in through the portal: the tab "Portal Users ATTENDANCE" in this
  * spreadsheet, written by the hub the moment the IT admin ticks ATTENDANCE for
- * someone in the Access grid and picks their Role (Supervisor / HR / Admin) and
+ * someone in the Access grid and picks their Role (Supervisor / HR / Accounts / Admin) and
  * Site (Supervisors need one; blank = all sites). That tab is the only list of
  * users: the Employees tab's Supervisor dropdown follows its Supervisor rows.
  *
@@ -21,7 +21,7 @@ var GGM_APP = {
 
   /** Dropdowns in the hub's Access grid. */
   meta: function () {
-    return { roles: ['Supervisor', 'HR', 'Admin'], sites: SITES.slice(), siteRoles: ['Supervisor'] };
+    return { roles: ['Supervisor', 'HR', 'Accounts', 'Admin'], sites: SITES.slice(), siteRoles: ['Supervisor'] };
   },
 
   /**
@@ -47,12 +47,16 @@ function attBadge_(x) {
   if (role === 'Supervisor') {
     if (!site || SITES.indexOf(site) === -1 || !isSubmissionWindowOpen_(site).open) return 0;
     var mine = employeesForSupervisor_(ss_(), site, x.u);
-    return activeDayRows_(site).filter(function (r) { return mine[r.id] && !r.status; }).length;
+    var n = activeDayRows_(site).filter(function (r) { return mine[r.id] && !r.status; }).length;
+    visitorsAt_(site).forEach(function (e) {          // staying here from their main site
+      if (activeDayRows_(e.site).some(function (r) { return r.id === e.id && !r.status; })) n++;
+    });
+    return n;
   }
   if (role !== 'HR' && role !== 'Admin') return 0;
   var n = 0;
   scopeSites_({ role: role, site: site }).forEach(function (s) {
-    n += activeDayRows_(s).filter(function (r) { return r.status && r.approval === APPROVAL_PENDING; }).length;
+    n += activeDayRows_(s).filter(function (r) { return r.status && (r.approval === APPROVAL_PENDING || r.approval === APPROVAL_MISMATCH); }).length;
   });
   return n;
 }

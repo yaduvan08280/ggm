@@ -28,8 +28,10 @@ const NAVS = {
     { id: 'verify', ic: 'shield', label: 'Verify' },
     { id: 'record', ic: 'list',   label: 'Record' },
     { id: 'staff',  ic: 'users',  label: 'Staff' },
+    { id: 'salary', ic: 'rupee',  label: 'Salary' },
     { id: 'more',   ic: 'gear',   label: 'More' }
   ],
+  Accounts: [],   // salary only: no bottom bar
   Admin: [
     { id: 'overview', ic: 'mount',  label: 'Overview' },
     { id: 'trends',   ic: 'trend',  label: 'Trends' },
@@ -39,7 +41,7 @@ const NAVS = {
     { id: 'more',     ic: 'gear',   label: 'More' }
   ]
 };
-const ALL_VIEWS = ['mark', 'today', 'verify', 'record', 'staff', 'overview', 'trends', 'more', 'users'];
+const ALL_VIEWS = ['mark', 'today', 'verify', 'record', 'staff', 'overview', 'trends', 'more', 'users', 'salary'];
 /* one colour per site, used on site rows everywhere */
 const SITE_COLORS = ['#3B82C4', '#4F9D69', '#C2410C', '#7C5CC4', '#0E8F86', '#B7841B', '#BE185D'];
 function siteColor(site) { const i = CFG.allSites.indexOf(site); return SITE_COLORS[(i < 0 ? 0 : i) % SITE_COLORS.length]; }
@@ -81,6 +83,7 @@ const ICON = {
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+  rupee: '<path d="M6 4h12M6 9h12"/><path d="M9 4c4 0 6.5 1.8 6.5 5S13 14 9 14H6l8.5 7"/>',
   print: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>'
 };
 function ic(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[name] || '') + '</svg>'; }
@@ -381,6 +384,7 @@ function enterApp() {
   scheduleMidnightReload();
   startPolling();
   if (SESSION.role === 'Supervisor') { document.body.classList.add('no-nav'); go('mark'); }
+  else if (SESSION.role === 'Accounts') { document.body.classList.add('no-nav'); go('salary'); }
   else if (SESSION.role === 'HR') go('today');
   else go('overview');
 }
@@ -418,6 +422,7 @@ function loadView(view, force) {
     case 'trends':   return loadTrends(force);
     case 'more':     return loadMore(force);
     case 'users':    return loadUsers(force);
+    case 'salary':   return loadSalary(force);
   }
   return Promise.resolve();
 }
@@ -601,6 +606,7 @@ function approvalStamp(st, ap) {
   if (!st) return '';
   if (ap === 'Approved') return `<span class="stamp s-correct">${ic('check')}HR approved</span>`;
   if (ap === 'SentBack') return `<span class="stamp s-wait">${ic('undo')}Sent back</span>`;
+  if (ap === 'Mismatch') return `<span class="stamp s-mismatch">${ic('clock')}Punches don't match</span>`;
   return '<span class="stamp s-muted">Awaiting check</span>';
 }
 
@@ -730,7 +736,7 @@ function renderEmpMonth(d) {
     new Array(lead).fill('<div></div>').join('') +
     d.days.map(x => {
       const cls = x.st === 'Full Day' ? 'full' : x.st === 'Half Day' ? 'half' : x.st === 'Absent' ? 'absent' : (x.future ? 'future' : 'miss');
-      const ap = x.ap === 'Approved' ? ' ok' : x.ap === 'SentBack' ? ' sb' : '';
+      const ap = x.ap === 'Approved' ? ' ok' : x.ap === 'SentBack' ? ' sb' : x.ap === 'Mismatch' ? ' pm' : '';
       const code = x.st === 'Full Day' ? 'FD' : x.st === 'Half Day' ? 'HD' : x.st === 'Absent' ? 'A' : '';
       return `<div class="d ${cls}${ap}${isThis && x.d === now.getDate() ? ' today' : ''}" title="${esc(x.st || 'not marked')}">${x.d}<small>${code}</small></div>`;
     }).join('');
@@ -750,7 +756,7 @@ function renderEmpMonth(d) {
    ===================================================================== */
 
 const MARK_FILTERS = [
-  { k: 'all', label: 'Everyone' }, { k: 'Full Day', label: 'Full day' }, { k: 'Half Day', label: 'Half day' },
+  { k: 'all', label: 'Everyone' }, { k: 'mine', label: 'My workers' }, { k: 'byme', label: 'Marked by me' }, { k: 'Full Day', label: 'Full day' }, { k: 'Half Day', label: 'Half day' },
   { k: 'Absent', label: 'Absent' }, { k: 'unmarked', label: 'Not marked' }
 ];
 
@@ -765,7 +771,7 @@ function loadMark(force) {
 function applyPending(d) {
   Object.keys(PENDING_MARKS).forEach(id => {
     const e = d.employees.filter(x => x.id === id)[0];
-    if (e) { e.status = PENDING_MARKS[id]; e.approval = 'Pending'; e.sentBack = false; e.locked = true; }
+    if (e) { e.status = PENDING_MARKS[id]; e.approval = 'Pending'; e.sentBack = false; e.locked = true; e.byMe = true; }
   });
   const c = { full: 0, half: 0, absent: 0, unmarked: 0 };
   d.employees.forEach(e => {
@@ -824,8 +830,11 @@ function renderMarkKpis() {
 
 function renderMarkFilters() {
   $('markFilters').innerHTML = MARK_FILTERS.map(f =>
-    `<button class="chip ${MARK_FILTER === f.k ? 'active' : ''}" onclick="pickMarkFilter('${f.k}')">${esc(f.label)}</button>`).join('');
+    `<button class="chip ${MARK_FILTER === f.k ? 'active' : ''}" onclick="pickMarkFilter('${f.k}')">${esc(f.label)}${MARK_DATA && f.k === 'mine' ? ' · ' + MARK_DATA.employees.filter(isMine).length : ''}${MARK_DATA && f.k === 'byme' ? ' · ' + MARK_DATA.employees.filter(e => e.byMe).length : ''}</button>`).join('');
 }
+
+/** Assigned to this supervisor by name (not shared with the site's other supervisors, not a visitor). */
+function isMine(e) { return !e.unassigned && !e.home; }
 
 /** Tapping the tile or chip you are already on takes you back to everyone. */
 function pickMarkFilter(k) {
@@ -849,12 +858,17 @@ function markVisible() {
   const rows = MARK_DATA.employees.filter(e => {
     if (MARK_FILTER === 'all') return true;
     if (MARK_FILTER === 'unmarked') return !e.status;
+    if (MARK_FILTER === 'mine') return isMine(e);
+    if (MARK_FILTER === 'byme') return !!e.byMe;
     return e.status === MARK_FILTER;
   });
   return rank(rows, MARK_QUERY, e => e.name, e => e.id, e => e.designation);
 }
 
-function unassignedTag(e) { return e.unassigned ? '<span class="stamp s-wait">Shared with the other supervisors</span>' : ''; }
+function unassignedTag(e) {
+  if (e.home) return '<span class="stamp s-half">' + ic('right') + 'Staying here from ' + esc(e.home) + '</span>';
+  return e.unassigned ? '<span class="stamp s-wait">Shared with the other supervisors</span>' : '';
+}
 function approvalTag(e) { return approvalStamp(e.status, e.approval); }
 
 function renderMarkList() {
@@ -880,8 +894,8 @@ function renderMarkList() {
     }).join('');
     const tags = unassignedTag(e) + approvalTag(e);
     return `<div class="emp ${statusClass(e.status, 'is-')} ${e.sentBack ? 'is-rejected' : ''}" id="emp_${esc(e.id)}">
-      <div class="emp-head tap" onclick="openEmployee('${js(d.site)}','${js(e.id)}')">
-        ${av(d.site, e.id, e.name)}
+      <div class="emp-head tap" onclick="openEmployee('${js(e.home || d.site)}','${js(e.id)}')">
+        ${av(e.home || d.site, e.id, e.name)}
         <div class="emp-id-name"><b>${hl(e.name, MARK_QUERY)}</b><small>${hl(e.id, MARK_QUERY)}${e.designation ? ' · ' + hl(e.designation, MARK_QUERY) : ''}</small></div>
         ${e.status ? `<span class="stamp ${statusClass(e.status, 's-')}">${esc(e.status)}</span>` : ''}
       </div>
@@ -920,10 +934,10 @@ function mark(id, status, btn) {
 function applyLocalMark(id, status) {
   if (!MARK_DATA) return;
   applyPending(MARK_DATA);
-  refreshRing(); renderMarkBanner(); renderMarkKpis();
+  refreshRing(); renderMarkBanner(); renderMarkKpis(); renderMarkFilters();
   const filtered = MARK_FILTER !== 'all' || !!MARK_QUERY;
   $('markCount').textContent = filtered ? 'Showing ' + markVisible().length + ' of ' + MARK_DATA.employees.length : MARK_DATA.employees.length + ' on the roll';
-  if (MARK_FILTER !== 'all') setTimeout(renderMarkList, 700);   // let the stamp play first
+  if (MARK_FILTER !== 'all' && MARK_FILTER !== 'mine') setTimeout(renderMarkList, 700);   // let the stamp play first
 }
 
 function lockCard(id, status) {
@@ -1080,7 +1094,7 @@ function renderUnmarked() { VERIFY_FILTER = 'unmarked'; paintVerify(); }
 
 function verifyRows() {
   const rows = siteRows(got('today'));
-  return rows.filter(r => VERIFY_FILTER === 'unmarked' ? !r.st : VERIFY_FILTER === 'pending' ? (r.st && r.ap === 'Pending')
+  return rows.filter(r => VERIFY_FILTER === 'unmarked' ? !r.st : VERIFY_FILTER === 'pending' ? (r.st && (r.ap === 'Pending' || r.ap === 'Mismatch'))
     : VERIFY_FILTER === 'sentback' ? (r.st && r.ap === 'SentBack') : !!r.st);
 }
 
@@ -1089,12 +1103,15 @@ function paintVerify() {
   if (!d) return;
   renderChips('verifyChips', ACTIVE_SITE, 'pickVerifySite', countBySite(d.rows));
   const all = siteRows(d);
-  const n = { pending: all.filter(r => r.st && r.ap === 'Pending').length, unmarked: all.filter(r => !r.st).length,
+  const n = { pending: all.filter(r => r.st && (r.ap === 'Pending' || r.ap === 'Mismatch')).length, unmarked: all.filter(r => !r.st).length,
               all: all.filter(r => r.st).length, sentback: all.filter(r => r.st && r.ap === 'SentBack').length };
   $('verifyFilters').innerHTML = [['pending', 'Awaiting check'], ['unmarked', 'Not marked'], ['all', 'Everything'], ['sentback', 'Sent back']]
     .map(f => `<button class="chip ${VERIFY_FILTER === f[0] ? 'active' : ''}" onclick="pickVerifyFilter('${f[0]}')">${f[1]}<span class="n">${n[f[0]]}</span></button>`).join('');
+  // purple (punches do not fit) is checked one by one, never in "Approve all"
+  const plain = all.filter(r => r.st && r.ap === 'Pending').length, purple = n.pending - plain;
   $('verifyActions').innerHTML = VERIFY_FILTER === 'pending' && n.pending
-    ? `<button class="btn btn-ghost" style="margin-bottom:12px" onclick="approveAll()">${ic('check')}Approve all ${n.pending} waiting${ACTIVE_SITE === 'ALL' ? '' : ' at ' + esc(ACTIVE_SITE)}</button>` : '';
+    ? (plain ? `<button class="btn btn-ghost" style="margin-bottom:12px" onclick="approveAll()">${ic('check')}Approve all ${plain} waiting${ACTIVE_SITE === 'ALL' ? '' : ' at ' + esc(ACTIVE_SITE)}</button>` : '') +
+      (purple ? `<div class="listcount">${purple} with punches that don't match — check ${purple === 1 ? 'it' : 'them'} one by one</div>` : '') : '';
 
   const base = verifyRows();
   const rows = verifyVisible();
@@ -1177,8 +1194,8 @@ function approveAll() {
   d.rows.forEach(r => { if (sites.indexOf(r.s) > -1 && r.st && r.ap === 'Pending') r.ap = 'Approved'; });
   save('today'); repaintHr();
   Promise.all(sites.map(s => call('verifyAllPending', SESSION.token, s))).then(results => {
-    const n = results.reduce((a, r) => a + ((r && r.count) || 0), 0);
-    toast(n + ' record' + (n === 1 ? '' : 's') + ' approved', 'ok');
+    const n = results.reduce((a, r) => a + ((r && r.count) || 0), 0), left = results.reduce((a, r) => a + ((r && r.left) || 0), 0);
+    toast(n + ' record' + (n === 1 ? '' : 's') + ' approved' + (left ? ' · ' + left + " with punches that don't match left to check" : ''), 'ok');
     loadView(VIEW, true);
   }).catch(err => { handleError(err); loadView(VIEW, true); });
 }
@@ -1368,12 +1385,12 @@ function printRecord() {
    mark that does not fit bright red in the site sheets.
    ===================================================================== */
 
-let PUNCH = null, PUNCH_RESULT = null;
+let PUNCH = null, PUNCH_RESULT = null, PUNCH_PEOPLE = {};
 function openPunchUpload() {
   PUNCH = null;
   openSheet(`<h3>Punch report</h3>
-    <p class="sheet-sub">Upload the <b>Daily Punch Report</b> (.xlsx) from the punching machine. Each marked day is checked against the punches;
-      a mark that does not fit turns <b style="color:#e00">bright red</b> in the site sheet, one that fits goes back to black.</p>
+    <p class="sheet-sub">Upload the <b>Daily Punch Report</b> or the <b>Muster Report</b> (.xlsx) from the punching machine. Each marked day is checked against the punches;
+      every mark that fits is <b style="color:#2e8b57">approved (green)</b>; one that does not fit — or a day not marked although they punched in — turns <b style="color:#7C5CC4">purple</b> with a note and waits for your check. After a correction, upload again.</p>
     <label class="btn btn-amber pick-file">${ic('folder')}Choose the report file<input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onchange="readPunchFile(this)"></label>
     <div id="punchInfo"></div>
     ${PUNCH_RESULT ? `<button class="btn btn-ghost" onclick="showPunchResult()">${ic('list')}See the last check (${PUNCH_RESULT.different} different)</button>` : ''}`);
@@ -1388,9 +1405,10 @@ function readPunchFile(input) {
     const wb = XLSX.read(buf, { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
     PUNCH = parsePunchRows(XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }), f.name);
-    const withPunch = PUNCH.rows.reduce((a, r) => a + r.d.filter(Boolean).length, 0);
+    const muster = PUNCH.rows.some(r => r.d.some(x => /^(FD|HD|A|P)$/.test(x)));
+    const withPunch = PUNCH.rows.reduce((a, r) => a + r.d.filter(x => x && x !== 'A' && x !== 'SKIP').length, 0);
     $('punchInfo').innerHTML = `<div class="banner banner-ok"><span class="bi">${ic('check')}</span><div><b>${esc(f.name)}</b><br>
-        ${PUNCH.rows.length} people · ${PUNCH.dates.length} days (${esc(PUNCH.dates[0])} to ${esc(PUNCH.dates[PUNCH.dates.length - 1])}) · ${withPunch} punched days</div></div>
+        ${muster ? 'Muster report (the machine\'s FD / HD / A per day; today is skipped) · ' : ''}${PUNCH.rows.length} people · ${PUNCH.dates.length} days (${esc(PUNCH.dates[0])} to ${esc(PUNCH.dates[PUNCH.dates.length - 1])}) · ${withPunch} ${muster ? 'present' : 'punched'} days</div></div>
       <button class="btn btn-primary" id="punchGo" onclick="sendPunch()">${ic('shield')}Check and mark differences red</button>`;
   }).catch(err => { $('punchInfo').innerHTML = ''; toast(String((err && err.message) || err || 'Could not read that file'), 'bad'); });
 }
@@ -1400,6 +1418,8 @@ function parsePunchRows(grid, fileName) {
   const h = grid.findIndex(r => r.some(c => /employee\s*id/i.test(String(c))));
   if (h < 0) throw new Error('No "Employee ID" column found. Is this the Daily Punch Report?');
   const head = grid[h], idCol = head.findIndex(c => /employee\s*id/i.test(String(c)));
+  const nameCol = head.findIndex(c => /employee\s*name|^\s*name\s*$/i.test(String(c))), depCol = head.findIndex(c => /department/i.test(String(c)));
+  const people = {};
   const dateCols = [];
   head.forEach((c, i) => {
     const m = String(c).match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
@@ -1411,12 +1431,19 @@ function parsePunchRows(grid, fileName) {
     const id = String(r[idCol] == null ? '' : r[idCol]).trim().replace(/\.0+$/, '');
     if (!id) return;
     rows.push({ id: id, d: dateCols.map(dc => punchOf(r[dc.i])) });
+    people[id] = { n: nameCol > -1 ? String(r[nameCol] || '').trim() : '', dep: depCol > -1 ? String(r[depCol] || '').trim() : '' };
   });
+  PUNCH_PEOPLE = people;
   return { file: fileName, dates: dateCols.map(d => d.iso), rows: rows };
 }
 
-/** "09:20 AM\n06:00 PM" → "560,1080,2" (first punch, last punch in minutes, how many). */
+/** "09:20 AM\n06:00 PM" → "560,1080,2" (first punch, last punch in minutes, how many).
+ *  A Muster Report cell is the machine's verdict: FD / HD / A / P are sent as they are,
+ *  WO (week off), H, L and "-" as SKIP (nothing to check that day). */
 function punchOf(cell) {
+  const code = String(cell == null ? '' : cell).trim().toUpperCase();
+  if (/^(FD|HD|A|P)$/.test(code)) return code;
+  if (/^(WO|W\/O|H|L|-|NA)$/.test(code)) return 'SKIP';
   const mins = [];
   String(cell == null ? '' : cell).replace(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/g, (all, h, m, ap) => {
     let hh = Number(h) % 24;
@@ -1425,8 +1452,11 @@ function punchOf(cell) {
     return all;
   });
   if (!mins.length) return '';
-  mins.sort((a, b) => a - b);
-  return mins[0] + ',' + mins[mins.length - 1] + ',' + mins.length;
+  // the machine lists punches in time order; a last punch earlier in the day than the
+  // first is the next morning (night shift: 09:00 PM … 02:00 AM is 5h, not 19h)
+  let first = mins[0], last = mins[mins.length - 1];
+  if (mins.length > 1 && last < first) last += 1440;
+  return first + ',' + last + ',' + mins.length;
 }
 
 function sendPunch() {
@@ -1436,25 +1466,40 @@ function sendPunch() {
     b.disabled = false; b.innerHTML = ic('shield') + 'Check and mark differences red';
     if (!res.ok) return toast(res.error, 'bad');
     PUNCH_RESULT = res;
-    toast(res.different ? res.different + ' marks differ — now red in the sheet' : 'Every mark fits the punches', res.different ? 'bad' : 'ok');
+    toast(res.matched + ' approved (green)' + (res.different ? ' · ' + res.different + ' differ (purple)' : ' · every mark fits'), res.different ? 'bad' : 'ok');
     showPunchResult();
-  }).catch(err => { b.disabled = false; b.innerHTML = ic('shield') + 'Check and mark differences red'; handleError(err); });
+  }).catch(err => { b.disabled = false; b.innerHTML = ic('shield') + 'Check and colour the sheet'; handleError(err); });
 }
 
-function showPunchResult() {
+/** The punch check result; kind = which tile's list: diff (purple), fit (green), unmarked, missing. */
+function showPunchResult(kind) {
   const r = PUNCH_RESULT;
   if (!r) return;
+  kind = kind || 'diff';
   const top = `<div class="kpi-grid four" style="margin-bottom:10px">
-      ${tile({ cls: 'k-blue', n: r.compared, lbl: 'Marks checked', icon: 'list', go: '' })}
-      ${tile({ cls: 'k-bad', n: r.different, lbl: 'Different (red)', icon: 'alert', go: '' })}
-      ${tile({ cls: 'k-amber', n: r.notMarked, lbl: 'Punched, not marked', icon: 'clock', go: '' })}
-      ${tile({ cls: 'k-faint', n: r.notOnAttendance, lbl: 'Not on attendance', icon: 'users', go: '' })}
+      ${tile({ cls: 'k-ok', n: r.matched, lbl: 'Fit — approved', icon: 'check', sel: kind === 'fit', go: "showPunchResult('fit')" })}
+      ${tile({ cls: 'k-violet', n: r.different, lbl: 'Different (purple)', icon: 'alert', sel: kind === 'diff', go: "showPunchResult('diff')" })}
+      ${tile({ cls: 'k-amber', n: r.notMarked, lbl: 'Punched, not marked (purple)', icon: 'clock', sel: kind === 'unmarked', go: "showPunchResult('unmarked')" })}
+      ${tile({ cls: 'k-faint', n: r.notOnAttendance, lbl: 'Not on attendance', icon: 'users', sel: kind === 'missing', go: "showPunchResult('missing')" })}
     </div>`;
-  const rows = r.list.slice().sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
-  openList('Punch check', esc(r.file) + ' · ' + esc(r.dateFrom) + ' to ' + esc(r.dateTo) + ' · these marks are now red in the sheet', rows,
-    x => `<div class="row tap" onclick="openEmployee('${js(x.s)}','${js(x.id)}',${Number(x.date.slice(0, 4))},${Number(x.date.slice(5, 7))})">${av(x.s, x.id, x.n)}
-      <div class="rmain"><b>${hl(x.n, LIST.q)}</b><small>${hl(x.id, LIST.q)} · ${esc(x.s)} · ${esc(new Date(x.date + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' }))}</small>
-        <div class="rtags"><span class="stamp ${statusClass(x.marked, 's-')}">Marked ${esc(x.marked)}</span><span class="stamp s-muted">${ic('clock')}${esc(x.punch)}</span></div></div></div>`, top);
+  const when = x => esc(new Date(x.date + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' }));
+  const byDate = list => (list || []).slice().sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
+  const dayRow = (x, tags) => `<div class="row tap" onclick="openEmployee('${js(x.s)}','${js(x.id)}',${Number(x.date.slice(0, 4))},${Number(x.date.slice(5, 7))})">${av(x.s, x.id, x.n)}
+      <div class="rmain"><b>${hl(x.n, LIST.q)}</b><small>${hl(x.id, LIST.q)} · ${esc(x.s)} · ${when(x)}</small>
+        <div class="rtags">${tags}</div></div></div>`;
+  const head = esc(r.file) + ' · ' + esc(r.dateFrom) + ' to ' + esc(r.dateTo) + ' · ';
+  if (kind === 'fit') return openList('Punch check — fit', head + 'approved (green) in the sheet', byDate(r.fit),
+    x => dayRow(x, `<span class="stamp ${statusClass(x.marked, 's-')}">${esc(x.marked)}</span><span class="stamp s-muted">${ic('clock')}${esc(x.punch)}</span>`), top);
+  if (kind === 'unmarked') return openList('Punch check — punched, not marked', head + 'they punched in but nothing is marked for that day — purple in the sheet, with a note', byDate(r.unmarked),
+    x => dayRow(x, `<span class="stamp s-wait">Not marked</span><span class="stamp s-muted">${ic('clock')}${esc(x.punch)}</span>`), top);
+  if (kind === 'missing') {
+    const rows = (r.missing || []).map(id => ({ id: id, n: (PUNCH_PEOPLE[id] || {}).n || id, sup: (PUNCH_PEOPLE[id] || {}).dep || '' }))
+      .sort((a, b) => a.n.localeCompare(b.n));
+    return openList('Punch check — not on attendance', head + 'in the report, but no one with this Employee ID is on the attendance. Nothing was done for them — add them in Employees (same ID) and upload again.', rows,
+      x => `<div class="row">${av('', x.id, x.n)}<div class="rmain"><b>${hl(x.n, LIST.q)}</b><small>ID ${hl(x.id, LIST.q)}${x.sup ? ' · ' + esc(x.sup) : ''}</small></div></div>`, top);
+  }
+  openList('Punch check — different', head + 'purple in the sheet, with a note on each cell', byDate(r.list),
+    x => dayRow(x, `<span class="stamp ${statusClass(x.marked, 's-')}">Marked ${esc(x.marked)}</span><span class="stamp s-muted">${ic('clock')}${esc(x.punch)}</span><span class="stamp s-mismatch">Fits: ${esc(x.fit)}</span>`), top);
 }
 
 /* =====================================================================
@@ -1503,7 +1548,7 @@ function renderStaff() {
       <div class="rmain"><b>${hl(e.name, STAFF_QUERY)}</b>
         <small>${hl(e.id, STAFF_QUERY)} · ${esc(e.site)}${e.designation ? ' · ' + hl(e.designation, STAFF_QUERY) : ''}</small>
         <div class="rtags"><span class="stamp ${e.active ? 's-full' : 's-muted'}">${e.active ? 'Active' : 'Switched off'}</span>
-          <span class="stamp ${e.supervisor ? 's-muted' : 's-wait'}">${e.supervisor ? hl(e.supervisor, STAFF_QUERY) : 'No supervisor'}</span></div></div>
+          <span class="stamp ${e.supervisor ? 's-muted' : 's-wait'}">${e.supervisor ? hl(e.supervisor, STAFF_QUERY) : 'No supervisor'}</span>${e.secondary ? `<span class="stamp s-half">Also at ${esc(e.secondary)}</span>` : ''}</div></div>
       <span class="go">›</span></div>`).join('') + (rows.length > 400 ? '<div class="listcount">Search to find the rest.</div>' : '');
 }
 
@@ -1518,9 +1563,15 @@ function supervisorOptions(site, selected) {
 function siteOptions(selected, list) {
   return (list || SESSION.scope).map(s => `<option ${s === selected ? 'selected' : ''}>${esc(s)}</option>`).join('');
 }
+/** Secondary site picker: any other site, or none. */
+function secondaryOptions(site, selected) {
+  return `<option value="" ${!selected ? 'selected' : ''}>None</option>` +
+    CFG.allSites.filter(s => s !== site).map(s => `<option ${s === selected ? 'selected' : ''}>${esc(s)}</option>`).join('');
+}
 function onEmpSiteChange(isNew) {
   const site = $('eSite').value;
   $('eSup').innerHTML = supervisorOptions(site, $('eSup').value);
+  $('eSec').innerHTML = secondaryOptions(site, $('eSec').value === site ? '' : $('eSec').value);
   const next = ((got('staff') || {}).nextIds || {})[site];
   if (isNew && $('eId').dataset.auto === '1' && next) $('eId').value = next;
 }
@@ -1536,6 +1587,8 @@ function openAddEmployee() {
     <label class="fld"><span>Employee ID</span><input id="eId" value="${esc(next)}" data-auto="1" oninput="this.dataset.auto='0'" placeholder="e.g. TNK-014"></label>
     <label class="fld"><span>Full name</span><input id="eName" placeholder="e.g. Ramesh Kumar"></label>
     <label class="fld"><span>Supervisor</span><select id="eSup">${supervisorOptions(site, '')}</select></label>
+    <label class="fld"><span>Second site <small style="text-transform:none">(optional)</small></span><select id="eSec">${secondaryOptions(site, '')}</select></label>
+    <p class="sheet-sub" style="margin-top:-6px">Every supervisor at the second site can mark them too (for when they stay there a while). Their attendance stays on the main site's sheet.</p>
     <label class="fld"><span>Designation <small style="text-transform:none">(optional)</small></span><input id="eDesig" placeholder="e.g. Loader operator"></label>
     <div class="fld"><span class="fld-l">Photo <small style="text-transform:none">(optional — camera or gallery)</small></span>
       <div class="ph-row"><div class="ph-mini" id="npPrev">${ic('camera')}</div>${photoPickers('np')}</div><div id="npSize" class="listcount"></div></div>
@@ -1546,7 +1599,7 @@ function saveNewEmployee() {
   const id = $('eId').value.trim(), name = $('eName').value.trim();
   if (!id || !name) return toast('ID and name are both needed', 'bad');
   $('eBtn').disabled = true;
-  call('addEmployee', SESSION.token, id, name, $('eSite').value, $('eSup').value, $('eDesig').value.trim()).then(res => {
+  call('addEmployee', SESSION.token, id, name, $('eSite').value, $('eSup').value, $('eDesig').value.trim(), $('eSec').value).then(res => {
     if (!res.ok) { $('eBtn').disabled = false; return toast(res.error, 'bad'); }
     const site = $('eSite').value;
     if (SHOT) savePhoto(site, id).then(ok => { if (!ok) toast('Added, but the photo did not save — tap their picture to try again', 'bad'); }).catch(handleError);
@@ -1565,6 +1618,8 @@ function openEditEmployee(i) {
     <label class="fld"><span>Full name</span><input id="eName" value="${esc(e.name)}"></label>
     <label class="fld"><span>Site</span><select id="eSite" onchange="onEmpSiteChange(false)">${siteOptions(e.site)}</select></label>
     <label class="fld"><span>Supervisor</span><select id="eSup">${supervisorOptions(e.site, e.supervisor)}</select></label>
+    <label class="fld"><span>Second site</span><select id="eSec">${secondaryOptions(e.site, e.secondary || '')}</select></label>
+    <p class="sheet-sub" style="margin-top:-6px">Every supervisor at the second site can mark them too (for when they stay there a while). Their attendance stays on the main site's sheet.</p>
     <label class="fld"><span>Designation</span><input id="eDesig" value="${esc(e.designation || '')}"></label>
     <label class="fld"><span>Status</span><select id="eActive">
       <option value="1" ${e.active ? 'selected' : ''}>Active</option><option value="0" ${!e.active ? 'selected' : ''}>Switched off</option></select></label>
@@ -1575,7 +1630,7 @@ function openEditEmployee(i) {
 
 function saveEditEmployee(row) {
   call('editEmployee', SESSION.token, row, $('eId').value.trim(), $('eName').value.trim(),
-       $('eSite').value, $('eSup').value, $('eDesig').value.trim(), $('eActive').value === '1').then(res => {
+       $('eSite').value, $('eSup').value, $('eDesig').value.trim(), $('eActive').value === '1', $('eSec').value).then(res => {
     if (!res.ok) return toast(res.error, 'bad');
     closeSheet(); toast('Saved', 'ok'); loadStaff(true); STORE.today && (STORE.today.at = 0);
   }).catch(handleError);
@@ -1635,12 +1690,336 @@ function renderUsers() {
 }
 
 /* =====================================================================
+   SALARY — the month's pay (made from the attendance tabs, Salary.gs)
+   and the advances & loans ledger. HR, Accounts and Admin.
+   ===================================================================== */
+
+const SAL = { tab: 'pay', ym: '', filter: 'all', q: '', advFilter: 'open', advQ: '', pick: null };
+const ADV_TYPES = { Advance: 'Cash advance', Petrol: 'Petrol', Loan: 'Loan', Deduction: 'Other deduction', Bonus: 'Bonus / arrears', Recovered: 'Recovered', 'Paid out': 'Paid out' };
+function inr(n) { return '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN'); }
+function dnum(n) { return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('en-IN'); }
+function ymPrev() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function ymLabel(ym) { const [y, m] = String(ym).split('-').map(Number); return y ? new Date(y, m - 1, 1).toLocaleString('en-IN', { month: 'short', year: 'numeric' }) : ''; }
+function salKey() { return 'sal:' + SAL.ym; }
+
+function loadSalary(force) {
+  if (!SAL.ym) { SAL.ym = ymPrev(); $('salMonth').value = SAL.ym; $('salMonth').max = ymNow(); }
+  paintSalTabs();
+  if (SAL.tab === 'adv') return loadAdvances(force);
+  const k = salKey(), d = got(k);
+  if (d) paintSalary(); else { $('salState').innerHTML = ''; $('salKpis').innerHTML = ''; $('salList').innerHTML = skeleton(4); }
+  if (!force && d && age(k) < 60000) return Promise.resolve();
+  return fetchStore(k, 'salaryHome', SESSION.token, SAL.ym).then(() => { if (salKey() === k) paintSalary(); }).catch(handleError);
+}
+function pickSalMonth() { SAL.ym = $('salMonth').value || ymPrev(); SAL.filter = 'all'; loadSalary(false); }
+function pickSalTab(t) { SAL.tab = t; loadSalary(false); }
+function paintSalTabs() {
+  document.querySelectorAll('#salSeg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.t === SAL.tab)));
+  $('salPay').classList.toggle('hidden', SAL.tab !== 'pay');
+  $('salAdv').classList.toggle('hidden', SAL.tab !== 'adv');
+  $('salMonth').closest('.fld').classList.toggle('hidden', SAL.tab !== 'pay');
+}
+function onSalSearch() {
+  const raw = $('salSearch').value || '';
+  $('salClear').classList.toggle('hidden', !raw);
+  debounce('sal', () => { SAL.q = raw.trim().toLowerCase(); paintSalList(); });
+}
+function clearSalSearch() { $('salSearch').value = ''; SAL.q = ''; $('salClear').classList.add('hidden'); paintSalList(); }
+
+function paintSalary() {
+  const d = got(salKey());
+  if (!d) return;
+  $('salSub').textContent = d.label + (d.state === 'locked' ? ' · locked' : d.state === 'draft' ? ' · draft' : ' · not made yet');
+  // state
+  let st = '';
+  if (d.state === 'none') st = d.started
+    ? `<div class="banner banner-warn"><span class="bi">${ic('calendar')}</span><div>${esc(d.label)} salary has not been made yet.${d.ended ? '' : ' The month is not over — making it now shows the pay so far.'}</div></div>`
+    : `<div class="banner banner-stop"><span class="bi">${ic('calendar')}</span><div>${esc(d.label)} has not started yet.</div></div>`;
+  else if (d.state === 'draft') st = `<div class="banner banner-warn"><span class="bi">${ic('edit')}</span><div>Draft · made by ${esc(d.by)}, ${esc(d.at)}.${d.ended ? ' Check it, then Accounts locks it.' : ' The month is not over yet.'}</div></div>`;
+  else st = `<div class="banner banner-ok"><span class="bi">${ic('lock')}</span><div>Locked by ${esc(d.lockedBy)}, ${esc(d.lockedAt)}. Recoveries are in the advances ledger.</div></div>`;
+  $('salState').innerHTML = st;
+  // totals
+  const T = d.totals;
+  $('salKpis').innerHTML = T ? `<div class="kpi-grid four">
+      ${tile({ cls: 'k-ok', n: inr(T.net), lbl: 'Net pay', sub: inr(T.bank) + ' bank · ' + inr(T.cash) + ' cash', icon: 'rupee', sel: false, go: "pickSalFilter('all')" })}
+      ${tile({ cls: 'k-blue', n: T.people, lbl: 'People paid', sub: T.held ? T.held + ' held' : 'nobody held', icon: 'users', sel: SAL.filter === 'held', go: "pickSalFilter('held')" })}
+      ${tile({ cls: 'k-amber', n: inr(T.gross), lbl: 'Gross', sub: dnum(T.payable) + ' payable days', icon: 'chart', go: "pickSalFilter('all')" })}
+      ${tile({ cls: 'k-bad', n: inr(T.ded), lbl: 'Recovered', sub: T.bonus ? '+ ' + inr(T.bonus) + ' bonus' : 'advances, petrol, loans', icon: 'down', sel: SAL.filter === 'ded', go: "pickSalFilter('ded')" })}
+    </div>` : '';
+  // actions
+  const a = [];
+  if (d.canMake) a.push(`<button class="btn ${d.state === 'none' ? 'btn-primary' : 'btn-ghost'}" id="salMake" onclick="makeSal()">${ic('refresh')}${d.state === 'none' ? 'Make ' + esc(d.label) + ' salary' : 'Make it again'}</button>`);
+  if (d.canLock) a.push(`<button class="btn btn-amber" onclick="askLockSal()">${ic('lock')}Lock ${esc(d.label)}</button>`);
+  if (d.canUnlock) a.push(`<button class="btn btn-danger" onclick="askUnlockSal()">${ic('undo')}Unlock</button>`);
+  if (d.state !== 'none' && d.sheetUrl && SESSION.role !== 'Accounts') a.push(`<a class="btn btn-ghost" target="_blank" href="${esc(d.sheetUrl)}">${ic('link')}Open "${esc(d.tab)}" tab</a>`);
+  $('salActions').innerHTML = a.join('');
+  // problems
+  const pr = (d.problems || []);
+  $('salProblems').innerHTML = pr.length ? `<div class="sect">To look at</div>` + pr.map((p, i) => `<div class="banner ${p.blocker ? 'banner-stop' : 'banner-warn'} ${p.n ? 'go' : ''}" ${p.n ? `onclick="openSalProblem(${i})"` : ''}>
+      <span class="bi">${ic(p.blocker ? 'alert' : 'clock')}</span><div>${esc(p.label)}${p.n ? ` · <b>${p.n}</b> ${p.n === 1 ? 'person' : 'people'}` : ''}</div></div>`).join('') : '';
+  // chips
+  const rows = d.rows || [];
+  const cnt = { all: rows.length, check: rows.filter(r => r.ck).length, held: rows.filter(r => r.held).length, bank: rows.filter(r => !r.held && r.mo === 'Bank').length,
+    cash: rows.filter(r => !r.held && r.mo !== 'Bank').length, ded: rows.filter(r => (r.ad + r.pe + r.lo + r.ot) > 0).length };
+  $('salChips').innerHTML = rows.length ? [['all', 'Everyone'], ['check', 'Has a note'], ['held', 'Held'], ['bank', 'Bank'], ['cash', 'Cash'], ['ded', 'Recovered']]
+    .map(c => `<button class="chip ${SAL.filter === c[0] ? 'active' : ''}" onclick="pickSalFilter('${c[0]}')">${c[1]}<span class="n">${fmt(cnt[c[0]])}</span></button>`).join('') : '';
+  paintSalList();
+  // by firm / by site
+  const tbl = (title, list) => !list || !list.length ? '' : `<div class="card"><h3>${title}</h3><div class="tbl-wrap"><table class="tbl rec sal-sum">
+      <thead><tr><th></th><th>People</th><th>Bank</th><th>Cash</th><th>Net</th></tr></thead>
+      <tbody>${list.map(o => `<tr><td><b>${esc(o.k)}</b></td><td class="n">${o.people}</td><td class="n">${inr(o.bank)}</td><td class="n">${inr(o.cash)}</td><td class="n"><b>${inr(o.net)}</b></td></tr>`).join('')}</tbody></table></div></div>`;
+  $('salFirms').innerHTML = rows.length ? tbl('By firm', d.byFirm) + tbl('By site', d.bySite) : '';
+}
+function pickSalFilter(f) { SAL.filter = SAL.filter === f && f !== 'all' ? 'all' : f; paintSalary(); }
+function salRows() {
+  const d = got(salKey());
+  if (!d || !d.rows) return [];
+  const f = SAL.filter;
+  let rows = d.rows.filter(r => f === 'all' || (f === 'check' && r.ck) || (f === 'held' && r.held) || (f === 'bank' && !r.held && r.mo === 'Bank') ||
+    (f === 'cash' && !r.held && r.mo !== 'Bank') || (f === 'ded' && (r.ad + r.pe + r.lo + r.ot) > 0));
+  return rank(rows, SAL.q, r => r.n, r => r.id, r => r.s + ' ' + r.d + ' ' + r.f);
+}
+function salDays(r) {
+  const parts = [dnum(r.p)];
+  if (r.su) parts.push(r.su + ' Sun');
+  if (r.fe) parts.push(r.fe + ' fest');
+  if (r.pa) parts.push(r.pa + ' paid abs');
+  return parts.join(' + ') + (parts.length > 1 ? ' = ' + dnum(r.pd) : '') + ' day' + (r.pd === 1 ? '' : 's');
+}
+function salRowHtml(r, inSheet) {
+  const q = inSheet ? LIST.q : SAL.q, i = (got(salKey()).rows || []).indexOf(r);
+  const ded = r.ad + r.pe + r.lo + r.ot;
+  return `<div class="row tap sal-row ${r.held ? 'is-off' : ''}" onclick="${inSheet ? 'closeSheet();' : ''}openSalRow(${i})">
+    <div class="emp-av" data-pid="${esc(r.id)}">${esc(initials(r.n))}</div>
+    <div class="rmain"><b>${hl(r.n, q)}</b>
+      <small>${hl(r.id, q)} · ${hl(r.s, q)}${r.d ? ' · ' + hl(r.d, q) : ''}</small>
+      <small>${r.held ? esc(r.ck.split(' · ')[0]) : esc(salDays(r)) + ' · ' + esc(r.pt) + ' ' + inr(r.b)}</small>
+      <div class="rtags">${r.mo ? `<span class="stamp ${r.mo === 'Bank' ? 's-ink' : 's-half'}">${esc(r.mo)}</span>` : ''}${r.f ? `<span class="stamp s-muted">${hl(r.f, q)}</span>` : ''}${ded ? `<span class="stamp s-absent">− ${inr(ded)}</span>` : ''}${r.bo ? `<span class="stamp s-full">+ ${inr(r.bo)}</span>` : ''}${r.ck && !r.held ? `<span class="stamp s-wait">${ic('alert')}note</span>` : ''}</div></div>
+    <div class="sal-amt"><b class="num">${r.held ? '—' : inr(r.net)}</b><small>${r.held ? 'held' : 'net'}</small></div></div>`;
+}
+function paintSalList() {
+  const d = got(salKey());
+  if (!d) return;
+  if (d.state === 'none') { $('salList').innerHTML = ''; $('salCount').textContent = ''; return; }
+  const rows = salRows(), all = (d.rows || []).length;
+  $('salCount').textContent = (rows.length === all ? all + ' people' : 'Showing ' + rows.length + ' of ' + all) + ' · tap anyone for the working';
+  $('salList').innerHTML = rows.length ? rows.slice(0, 400).map(salRowHtml).join('') + (rows.length > 400 ? '<div class="listcount">Search to find the rest.</div>' : '')
+    : empty('search', 'Nobody here', SAL.q ? 'No name or ID like “' + esc(SAL.q) + '”.' : '');
+}
+function openSalProblem(i) {
+  const d = got(salKey()), p = d.problems[i], ids = new Set(p.ids);
+  openList(p.label, d.label + ' · ' + p.n + (p.n === 1 ? ' person' : ' people'), d.rows.filter(r => ids.has(r.id)), r => salRowHtml(r, true));
+}
+function openSalRow(i) {
+  const d = got(salKey()), r = d.rows[i];
+  if (!r) return;
+  const line = (k, v, cls) => `<tr class="${cls || ''}"><td>${k}</td><td class="n">${v}</td></tr>`;
+  openSheet(`<h3>${esc(r.n)}</h3><p class="sheet-sub">${esc(r.id)} · ${esc(r.s)}${r.d ? ' · ' + esc(r.d) : ''} · ${esc(d.label)}</p>
+    ${r.ck ? `<div class="banner ${r.held ? 'banner-stop' : 'banner-warn'}"><span class="bi">${ic('alert')}</span><div>${esc(r.ck)}</div></div>` : ''}
+    <div class="tbl-wrap"><table class="tbl sal-break">
+      <tbody>
+        <tr class="grp"><td colspan="2">Days</td></tr>
+        ${line('Full days', r.fd)}${line('Half days', r.hd)}${line('Absent', r.a)}
+        ${line('Present (full + ½ half)', dnum(r.p), 'b')}${line('Paid Sundays', r.su)}${line('Festival days', r.fe)}${line('Paid absents', r.pa)}
+        ${line('Payable days', dnum(r.pd), 'tot')}
+        <tr class="grp"><td colspan="2">Pay</td></tr>
+        ${line(esc(r.pt || 'Pay') + ' basic', inr(r.b))}${line('Rate per day', '₹' + dnum(r.r))}${line('Gross', inr(r.g), 'b')}
+        ${r.bo ? line('Bonus / arrears', '+ ' + inr(r.bo)) : ''}${r.ad ? line('Cash advance', '− ' + inr(r.ad)) : ''}${r.pe ? line('Petrol', '− ' + inr(r.pe)) : ''}
+        ${r.lo ? line('Loan EMI', '− ' + inr(r.lo)) : ''}${r.ot ? line('Other deduction', '− ' + inr(r.ot)) : ''}
+        ${line('Net pay', r.held ? 'held' : inr(r.net), 'tot')}
+        <tr class="grp"><td colspan="2">Paid by</td></tr>
+        ${line('Firm', esc(r.f || '—'))}${line('Bank / Cash', esc(r.mo || '—'))}
+      </tbody></table></div>
+    <p class="sheet-sub" style="margin-top:12px">${esc(r.how)}</p>
+    <button class="btn btn-ghost" onclick="closeSheet();showPersonAdvances('${js(r.id)}')">${ic('rupee')}Advances &amp; loans of ${esc(r.n.split(' ')[0])}</button>`);
+}
+function makeSal() {
+  const b = $('salMake'); if (b) { b.disabled = true; b.innerHTML = ic('refresh') + 'Working it out… (about a minute)'; }
+  call('makeSalary', SESSION.token, SAL.ym).then(res => {
+    if (!res.ok) { toast(res.error, 'bad'); paintSalary(); return; }
+    put('sal:' + res.ym, res); paintSalary();
+    toast(res.label + ' made · net ' + inr(res.totals.net), 'ok');
+  }).catch(err => { handleError(err); paintSalary(); });
+}
+function askLockSal() {
+  const d = got(salKey());
+  openSheet(`<h3>Lock ${esc(d.label)}?</h3>
+    <p class="sheet-sub">Net pay ${inr(d.totals.net)} for ${d.totals.people} people. Locking freezes the "${esc(d.tab)}" tab and writes every recovery into the advances ledger, so it is taken off what they still owe. Only an Admin can undo it.</p>
+    <button class="btn btn-amber" id="salLockGo" onclick="lockSal()">${ic('lock')}Lock ${esc(d.label)}</button>
+    <button class="btn btn-ghost" onclick="closeSheet()">Not yet</button>`);
+}
+function lockSal() {
+  const b = $('salLockGo'); b.disabled = true; b.innerHTML = ic('lock') + 'Locking…';
+  call('lockSalary', SESSION.token, SAL.ym).then(res => {
+    closeSheet();
+    if (!res.ok) { toast(res.error, 'bad'); if (res.changed) loadSalary(true); return; }
+    put('sal:' + res.ym, res); delete STORE.adv; paintSalary(); toast(res.label + ' is locked', 'ok');
+  }).catch(err => { closeSheet(); handleError(err); });
+}
+function askUnlockSal() {
+  const d = got(salKey());
+  openSheet(`<h3>Unlock ${esc(d.label)}?</h3>
+    <p class="sheet-sub">The recoveries written when it was locked are taken out of the ledger again, and the tab can be made again.</p>
+    <button class="btn btn-danger" id="salUnlockGo" onclick="unlockSal()">${ic('undo')}Unlock ${esc(d.label)}</button>
+    <button class="btn btn-ghost" onclick="closeSheet()">Keep it locked</button>`);
+}
+function unlockSal() {
+  const b = $('salUnlockGo'); b.disabled = true;
+  call('unlockSalary', SESSION.token, SAL.ym).then(res => {
+    closeSheet();
+    if (!res.ok) { toast(res.error, 'bad'); return; }
+    put('sal:' + res.ym, res); delete STORE.adv; paintSalary(); toast(res.label + ' unlocked', 'ok');
+  }).catch(err => { closeSheet(); handleError(err); });
+}
+
+/* ----- advances & loans ----- */
+
+function loadAdvances(force) {
+  const d = got('adv');
+  if (d) paintAdvances(); else $('advList').innerHTML = skeleton(4);
+  if (!force && d && age('adv') < 60000) return Promise.resolve();
+  return fetchStore('adv', 'advancesData', SESSION.token).then(paintAdvances).catch(handleError);
+}
+function onAdvSearch() {
+  const raw = $('advSearch').value || '';
+  $('advClear').classList.toggle('hidden', !raw);
+  debounce('adv', () => { SAL.advQ = raw.trim().toLowerCase(); paintAdvList(); });
+}
+function clearAdvSearch() { $('advSearch').value = ''; SAL.advQ = ''; $('advClear').classList.add('hidden'); paintAdvList(); }
+function showPersonAdvances(id) {
+  SAL.tab = 'adv'; SAL.advFilter = 'all'; $('advSearch').value = id; SAL.advQ = String(id).toLowerCase(); $('advClear').classList.remove('hidden');
+  loadSalary(false);
+}
+function advGiven() { const d = got('adv'); return d ? d.entries.filter(e => !e.auto) : []; }
+function paintAdvances() {
+  const d = got('adv');
+  if (!d) return;
+  const given = advGiven(), open = given.filter(e => e.due > 0 && e.type !== 'Bonus');
+  const sum = (list, f) => list.reduce((s, e) => s + (f ? (f(e) ? e.due : 0) : e.due), 0);
+  const people = new Set(open.map(e => e.id)).size;
+  $('advKpis').innerHTML = `<div class="kpi-grid four">
+    ${tile({ cls: 'k-bad', n: inr(sum(open)), lbl: 'Still due', sub: people + (people === 1 ? ' person' : ' people'), icon: 'rupee', sel: SAL.advFilter === 'open', go: "pickAdvFilter('open')" })}
+    ${tile({ cls: 'k-amber', n: inr(sum(open, e => e.type === 'Advance' || e.type === 'Petrol')), lbl: 'Advances & petrol', sub: 'cash given', icon: 'down', sel: SAL.advFilter === 'adv', go: "pickAdvFilter('adv')" })}
+    ${tile({ cls: 'k-violet', n: inr(sum(open, e => e.type === 'Loan')), lbl: 'Loans', sub: open.filter(e => e.type === 'Loan').length + ' running', icon: 'calendar', sel: SAL.advFilter === 'loan', go: "pickAdvFilter('loan')" })}
+    ${tile({ cls: 'k-blue', n: given.length, lbl: 'Entries', sub: 'all time', icon: 'list', sel: SAL.advFilter === 'all', go: "pickAdvFilter('all')" })}
+  </div>`;
+  $('advChips').innerHTML = [['open', 'Still due'], ['adv', 'Advances & petrol'], ['loan', 'Loans'], ['all', 'Everything']]
+    .map(c => `<button class="chip ${SAL.advFilter === c[0] ? 'active' : ''}" onclick="pickAdvFilter('${c[0]}')">${c[1]}</button>`).join('');
+  paintAdvList();
+}
+function pickAdvFilter(f) { SAL.advFilter = f; paintAdvances(); }
+function paintAdvList() {
+  const d = got('adv');
+  if (!d) return;
+  const f = SAL.advFilter;
+  let rows = advGiven().filter(e => f === 'all' || (e.due > 0 && (f === 'open' || (f === 'adv' && (e.type === 'Advance' || e.type === 'Petrol')) || (f === 'loan' && e.type === 'Loan'))));
+  rows = rows.slice().reverse();
+  rows = rank(rows, SAL.advQ, e => e.n, e => e.id, e => e.no + ' ' + e.type + ' ' + e.note);
+  $('advCount').textContent = rows.length + (rows.length === 1 ? ' entry' : ' entries') + ' · newest first';
+  $('advList').innerHTML = rows.length ? rows.slice(0, 300).map(e => {
+    const plan = e.type === 'Bonus' ? 'paid with ' + ymLabel(e.from) + ' salary' : e.months > 1 ? inr(Math.ceil(e.amt / e.months)) + ' a month × ' + e.months + ' from ' + ymLabel(e.from) : 'all from ' + ymLabel(e.from) + ' salary';
+    return `<div class="row tap sal-row" onclick="openAdvEntry('${js(e.no)}')">
+      <div class="emp-av" data-pid="${esc(e.id)}">${esc(initials(e.n))}</div>
+      <div class="rmain"><b>${hl(e.n, SAL.advQ)}</b><small>${hl(e.id, SAL.advQ)} · ${esc(e.s)} · ${hl(e.no, SAL.advQ)}</small>
+        <small>${esc(ADV_TYPES[e.type] || e.type)} ${inr(e.amt)} · ${esc(plan)}</small></div>
+      <div class="sal-amt"><b class="num">${e.due > 0 ? inr(e.due) : '✓'}</b><small>${e.type === 'Bonus' ? (e.due > 0 ? 'to pay' : 'paid') : e.due > 0 ? 'still due' : 'cleared'}</small></div></div>`;
+  }).join('') : empty('rupee', f === 'open' ? 'Nothing due' : 'Nothing here', f === 'open' ? 'No advance or loan is waiting to be recovered.' : '');
+}
+function openAdvEntry(no) {
+  const d = got('adv'), e = d.entries.filter(x => x.no === no && !x.auto)[0];
+  if (!e) return;
+  const hist = d.entries.filter(x => x.auto && x.against === no);
+  openSheet(`<h3>${esc(ADV_TYPES[e.type] || e.type)} · ${inr(e.amt)}</h3>
+    <p class="sheet-sub">${esc(e.n)} · ${esc(e.id)} · ${esc(e.s)} · ${esc(e.no)}</p>
+    <div class="tbl-wrap"><table class="tbl sal-break"><tbody>
+      <tr><td>Given on</td><td class="n">${esc(e.date ? e.date.split('-').reverse().join('/') : '—')}</td></tr>
+      <tr><td>Recover</td><td class="n">${e.type === 'Bonus' ? 'added to ' + esc(ymLabel(e.from)) + ' salary' : e.months > 1 ? inr(Math.ceil(e.amt / e.months)) + ' a month × ' + e.months : 'all from one salary'}</td></tr>
+      <tr><td>From salary of</td><td class="n">${esc(ymLabel(e.from))}</td></tr>
+      ${hist.map(h => `<tr><td>${esc(h.type)} · ${esc(ymLabel(h.from))}</td><td class="n">${inr(h.amt)}</td></tr>`).join('')}
+      <tr class="tot"><td>${e.type === 'Bonus' ? 'Still to pay' : 'Still due'}</td><td class="n">${inr(e.due)}</td></tr>
+    </tbody></table></div>
+    ${e.note ? `<p class="sheet-sub" style="margin-top:10px">${esc(e.note)}</p>` : ''}
+    <p class="sheet-sub">Entered by ${esc(e.by)}.</p>
+    ${hist.length ? '<p class="sheet-sub">Something has been recovered against it, so it stays. To correct it, add an "Other deduction" or a "Bonus".</p>'
+      : `<button class="btn btn-danger" onclick="deleteAdv('${js(e.no)}')">${ic('x')}Delete — typed by mistake</button>`}`);
+}
+function deleteAdv(no) {
+  call('deleteAdvance', SESSION.token, no).then(res => {
+    if (!res.ok) { toast(res.error, 'bad'); return; }
+    put('adv', res); closeSheet(); paintAdvances(); toast(no + ' deleted', 'ok');
+  }).catch(handleError);
+}
+function openGiveAdvance() {
+  const d = got('adv');
+  if (!d) { loadAdvances(true).then(openGiveAdvance); return; }
+  SAL.pick = null;
+  const today = new Date(), iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  openSheet(`<h3>Give advance / loan</h3><p class="sheet-sub">It is taken back from salary by itself. A bonus is added to the salary instead.</p>
+    <label class="fld"><span>Employee</span><input id="advWho" type="search" autocomplete="off" placeholder="Type a name or ID" oninput="advFindPerson()"></label>
+    <div id="advWhoList"></div>
+    <div class="filters">
+      <label class="fld"><span>Type</span><select id="advType" onchange="advFormPaint()">${d.types.map(t => `<option value="${esc(t)}">${esc(ADV_TYPES[t] || t)}</option>`).join('')}</select></label>
+      <label class="fld"><span>Amount ₹</span><input id="advAmt" type="number" inputmode="numeric" min="1" step="1" placeholder="0"></label>
+    </div>
+    <div class="filters">
+      <label class="fld"><span>Given on</span><input id="advDate" type="date" value="${iso}" max="${iso}"></label>
+      <label class="fld"><span id="advFromLbl">Take back from salary of</span><input id="advFrom" type="month" value="${ymNow()}"></label>
+    </div>
+    <div class="filters" id="advPlanRow">
+      <label class="fld"><span>Take back</span><select id="advPlan" onchange="advFormPaint()"><option value="1">All from one salary</option><option value="split">Split over months</option></select></label>
+      <label class="fld hidden" id="advMonthsFld"><span>Number of months</span><input id="advMonths" type="number" min="2" max="60" step="1" value="3" oninput="advFormPaint()"></label>
+    </div>
+    <div id="advPlanText" class="listcount"></div>
+    <label class="fld"><span>Note</span><input id="advNote" maxlength="300" placeholder="Optional — what it is for"></label>
+    <button class="btn btn-primary" id="advSave" onclick="saveAdvance()">${ic('check')}Save</button>`);
+  advFormPaint();
+  setTimeout(() => $('advWho') && $('advWho').focus(), 50);
+}
+function advFindPerson() {
+  const d = got('adv'), q = ($('advWho').value || '').trim().toLowerCase();
+  SAL.pick = null;
+  const hits = q ? rank(d.people, q, p => p.n, p => p.id, p => p.s).slice(0, 6) : [];
+  $('advWhoList').innerHTML = hits.map(p => `<div class="row tap" onclick="advPickPerson('${js(p.id)}')">
+    <div class="emp-av" data-pid="${esc(p.id)}">${esc(initials(p.n))}</div><div class="rmain"><b>${hl(p.n, q)}</b><small>${hl(p.id, q)} · ${esc(p.s)}</small></div></div>`).join('') ||
+    (q ? '<div class="listcount">Nobody active matches.</div>' : '');
+}
+function advPickPerson(id) {
+  const d = got('adv'), p = d.people.filter(x => x.id === id)[0];
+  SAL.pick = p;
+  $('advWho').value = p.n + ' · ' + p.id + ' · ' + p.s;
+  const due = d.entries.filter(e => !e.auto && e.id === id && e.due > 0 && e.type !== 'Bonus').reduce((s, e) => s + e.due, 0);
+  $('advWhoList').innerHTML = due ? `<div class="banner banner-warn"><span class="bi">${ic('alert')}</span><div>${esc(p.n)} already owes ${inr(due)}.</div></div>` : '';
+}
+function advFormPaint() {
+  const type = $('advType').value, bonus = type === 'Bonus', split = $('advPlan').value === 'split';
+  $('advPlanRow').classList.toggle('hidden', bonus);
+  $('advMonthsFld').classList.toggle('hidden', !split || bonus);
+  $('advFromLbl').textContent = bonus ? 'Pay with salary of' : 'Take back from salary of';
+  const amt = Number($('advAmt').value) || 0, n = Math.max(2, Number($('advMonths').value) || 2);
+  $('advPlanText').textContent = bonus ? 'Added to that month\'s salary.' : split && amt ? inr(Math.ceil(amt / n)) + ' a month for ' + n + ' months.' : '';
+}
+function saveAdvance() {
+  if (!SAL.pick) { toast('Pick the employee from the list.', 'bad'); return; }
+  const bonus = $('advType').value === 'Bonus', split = $('advPlan').value === 'split';
+  const o = { id: SAL.pick.id, type: $('advType').value, amount: $('advAmt').value, date: $('advDate').value, from: $('advFrom').value,
+              months: bonus || !split ? 1 : $('advMonths').value, note: $('advNote').value };
+  const b = $('advSave'); b.disabled = true;
+  call('addAdvance', SESSION.token, o).then(res => {
+    b.disabled = false;
+    if (!res.ok) { toast(res.error, 'bad'); return; }
+    put('adv', res); closeSheet(); SAL.advFilter = 'open'; paintAdvances();
+    toast((ADV_TYPES[o.type] || o.type) + ' of ' + inr(o.amount) + ' saved for ' + SAL.pick.n, 'ok');
+  }).catch(err => { b.disabled = false; handleError(err); });
+}
+
+/* =====================================================================
    MORE — links + site rules
    ===================================================================== */
 
 function loadMore(force) {
   $('moreLinks').innerHTML = [
-    ['__punch', 'clock', 'Punch report', 'Upload the punching machine report — wrong marks turn red in the sheet'],
+    ['__punch', 'clock', 'Punch report', 'Upload the punching machine report — marks that fit are approved (green), the rest turn purple'],
+    ['salary', 'rupee', 'Salary', 'Make and lock the month\'s salary · advances & loans'],
     ['users', 'key', 'App users', 'Everyone with Attendance in GGM Portal'],
     ['staff', 'users', 'Employees', 'The roll for every site']
   ].map(l => `<div class="row tap" onclick="${l[0] === '__punch' ? 'openPunchUpload()' : "go('" + l[0] + "')"}">
@@ -1678,11 +2057,15 @@ function openSiteSettings(i) {
       <label class="fld"><span>Half day = at least (hours)</span><input id="stHd" type="number" min="0.5" max="23" step="0.5" value="${s.hdHours || 4}"></label>
     </div>
     <p class="sheet-sub" style="margin-top:-4px">Used when the punch report is checked: first to last punch of the day.</p>
+    <label class="fld"><span>At closing time</span><select id="stAuto">
+      <option value="1" ${s.autoAbsent !== false ? 'selected' : ''}>Mark everyone still not marked as Absent</option>
+      <option value="0" ${s.autoAbsent === false ? 'selected' : ''}>Leave them unmarked</option></select></label>
+    <p class="sheet-sub" style="margin-top:-4px">Absent is waiting for HR (light red) with a note. This happens every day, also on a day when nobody at the site was marked. Set this to "Leave them unmarked" to stop it for a site.</p>
     <button class="btn btn-primary" onclick="saveSiteSettings(${s.row})">Save rules</button>`);
 }
 function saveSiteSettings(row) {
   call('updateSettings', SESSION.token, row, $('stTime').value, Number($('stRef').value), $('stLock').value === '1', $('stRedo').value === '1',
-       Number($('stFd').value), Number($('stHd').value)).then(res => {
+       Number($('stFd').value), Number($('stHd').value), $('stAuto').value === '1').then(res => {
     if (!res.ok) return toast(res.error, 'bad');
     closeSheet(); toast('Rules saved', 'ok');
     call('getClientConfig', SESSION.token).then(cfg => { CFG = cfg; startPolling(); });

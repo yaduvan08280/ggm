@@ -9,7 +9,8 @@ function getSiteSetting_(site) {
     lockLogin: s.row ? s.lockLogin : DEFAULT_LOCK_LOGIN,
     allowResubmit: s.row ? s.allowResubmit : DEFAULT_ALLOW_RESUBMIT,
     fdHours: s.fdHours || DEFAULT_FD_HOURS,
-    hdHours: s.hdHours || DEFAULT_HD_HOURS
+    hdHours: s.hdHours || DEFAULT_HD_HOURS,
+    autoAbsent: s.row ? s.autoAbsent !== false : true
   };
 }
 
@@ -42,7 +43,7 @@ function isSubmissionWindowOpen_(site) {
 
 function normRole_(r) {
   var s = String(r || '').trim().toLowerCase();
-  return s === 'supervisor' ? 'Supervisor' : s === 'hr' ? 'HR' : s === 'admin' ? 'Admin' : '';
+  return s === 'supervisor' ? 'Supervisor' : s === 'hr' ? 'HR' : s === 'admin' ? 'Admin' : s === 'accounts' ? 'Accounts' : '';
 }
 
 /** Portal username / phone + password. Returns { ok, token, role, name, site, scope, ... } */
@@ -205,6 +206,7 @@ function firstScreen_(u) {
   try {
     if (u.role === 'Supervisor') return { view: 'mark', mark: supervisorData_(u) };
     if (u.role === 'HR') return { view: 'today', today: todayData_(u) };
+    if (u.role === 'Accounts') return { view: 'salary' };   // salary and advances only (17 Nov 2026)
     return { view: 'overview', today: todayData_(u), overview: overviewData_(u) };
   } catch (e) {
     return { error: String(e.message || e) };

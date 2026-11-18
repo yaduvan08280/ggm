@@ -34,7 +34,8 @@ const CacheService = { getScriptCache: () => ({
   getAll: ks => { const o = {}; ks.forEach(k => { if (k in cacheMap) o[k] = cacheMap[k]; }); return o; },
   putAll: o => Object.assign(cacheMap, o), removeAll: ks => ks.forEach(k => delete cacheMap[k]) }) };
 const props = { PORTAL_KEY: PEPPER };
-const PropertiesService = { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }),
+const PropertiesService = { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; }, deleteProperty: k => { delete props[k]; },
+    getProperties: () => Object.assign({}, props) }),
   getDocumentProperties: () => ({ getProperty: k => props['D_' + k] || null, setProperty: (k, v) => { props['D_' + k] = v; }, deleteProperty: k => { delete props['D_' + k]; } }) };
 
 /* ---------- a fake spreadsheet: values + backgrounds per cell ---------- */
@@ -43,7 +44,7 @@ function chain(target) {   // unknown formatting calls just return the range
   return new Proxy(target, { get: (o, k) => k in o ? o[k] : (typeof k === 'string' ? () => chain(o) : undefined) });
 }
 function Sheet(book, name) {
-  const s = { v: [], bg: [], fc: [], maxRows: 1000, maxCols: 26 };
+  const s = { v: [], bg: [], fc: [], nt: [], maxRows: 1000, maxCols: 26 };
   const at = (g, r, c, dflt) => ((g[r - 1] || [])[c - 1] === undefined ? dflt : g[r - 1][c - 1]);
   const set = (g, r, c, x) => { while (g.length < r) g.push([]); g[r - 1][c - 1] = x; };
   const sh = {
@@ -70,6 +71,9 @@ function Sheet(book, name) {
         setValue: x => { for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) set(s.v, r + i, c + j, x); return chain(R); },
         setBackgrounds: g => { g.forEach((row, i) => row.forEach((x, j) => set(s.bg, r + i, c + j, x))); return chain(R); },
         setBackground: x => { for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) set(s.bg, r + i, c + j, x === null ? '#ffffff' : x); return chain(R); },
+        getNotes: () => grid(s.nt, ''), getNote: () => at(s.nt, r, c, ''),
+        setNotes: g => { g.forEach((row, i) => row.forEach((x, j) => set(s.nt, r + i, c + j, x))); return chain(R); },
+        setNote: x => { set(s.nt, r, c, x); return chain(R); },
         insertCheckboxes: () => chain(R), clearContent: () => { R.setValue(''); return chain(R); }
       };
       return chain(R);
@@ -77,7 +81,7 @@ function Sheet(book, name) {
   };
   return sh;
 }
-const book = { tabs: {}, getSheetByName(n) { return this.tabs[n] || null; }, insertSheet(n) { return (this.tabs[n] = Sheet(this, n)); },
+const book = { tabs: {}, getSheetByName(n) { return this.tabs[n] || null; }, insertSheet(n) { return (this.tabs[n] = chain(Sheet(this, n))); },
   getSheets() { return Object.values(this.tabs); }, getId: () => 'SHEET1' };
 const fill = (name, rows) => { const sh = book.insertSheet(name); rows.forEach((r, i) => r.forEach((x, j) => sh.getRange(i + 1, j + 1).setValue(x))); return sh; };
 
@@ -101,8 +105,8 @@ function portalRow(username, name, role, site, pw) {
 /* ---------- the app ---------- */
 const app = vm.createContext({ Utilities, CacheService, PropertiesService, SpreadsheetApp, LockService, Session,
   HtmlService: { createHtmlOutput: h => ({ getContent: () => h }) }, ContentService: { createTextOutput: s => ({ s, setMimeType() { return this; } }), MimeType: { JSON: 'json' } },
-  ScriptApp: { getProjectTriggers: () => [] }, Logger: { log() {} }, console, JSON, Math, Date, String, Number, Object, Array, Intl });
-['Config', 'Code', 'Fast', 'Auth', 'Attendance', 'Adminops', 'Sheetsetup', 'Triggers', 'Migration', 'GgmLogin', 'PortalApp', 'Photos', 'Punch']
+  ScriptApp: { getProjectTriggers: () => [], newTrigger: () => ({ forSpreadsheet: () => ({ onChange: () => ({ create() {} }) }) }) }, Logger: { log() {} }, console, JSON, Math, Date, String, Number, Object, Array, Intl });
+['Config', 'Code', 'Fast', 'Auth', 'Attendance', 'Adminops', 'Sheetsetup', 'Triggers', 'Migration', 'GgmLogin', 'PortalApp', 'Photos', 'Punch', 'Salary']
   .forEach(f => vm.runInContext(fs.readFileSync(path.join(APPDIR, f + '.js'), 'utf8'), app, { filename: f + '.js' }));
 const A = c => vm.runInContext(c, app);
 const newRequest = () => A(`MEMO_ = {}; GGM_MEMO_ = {};`);   // each server call starts with empty per-request memory
@@ -152,6 +156,12 @@ t('the mark shows at once (cached copy patched, not dropped)', after.employees.f
 newRequest(); READS = 0;
 A(`getSupervisorEmployees('${ST}')`);
 t('a poll reads nothing from the sheet (Employees, Settings, today column all cached)', READS === 0);
+t('"Marked by me": the person this supervisor marked is flagged, the others are not', after.employees.find(e => e.id === 'TNK-001').byMe === true && after.employees.filter(e => e.byMe).length === 1);
+Object.keys(props).filter(k => /^ATT_BY_/.test(k)).forEach(k => delete props[k]);
+newRequest();
+t('…if that list is lost it is rebuilt from today\'s AuditLog', A(`getSupervisorEmployees('${ST}')`).employees.find(e => e.id === 'TNK-001').byMe === true);
+newRequest();
+t('…another supervisor at the site does not see them as theirs', A(`markedByMe_('someone.else')`)['TNK-001'] === undefined);
 
 /* ---------- 3. supervisor adds a worker ---------- */
 newRequest();
@@ -233,7 +243,7 @@ t('data put in the page cannot close its script tag', json.indexOf('<') === -1 &
 /* ---------- 6. hub requests ---------- */
 newRequest();
 const meta = A(`GGM_APP.meta()`);
-t('hub dropdowns: roles, sites, Supervisor needs a site', meta.roles.join() === 'Supervisor,HR,Admin' && meta.sites.length === 5 && meta.siteRoles.join() === 'Supervisor');
+t('hub dropdowns: roles, sites, Supervisor needs a site', meta.roles.join() === 'Supervisor,HR,Accounts,Admin' && meta.sites.length === 5 && meta.siteRoles.join() === 'Supervisor');
 newRequest();
 const badges = A(`GGM_APP.counts([{ u: 'tonk.super', r: 'Supervisor', s: 'Tonk' }, { u: 'priya', r: 'HR', s: '' }, { u: 'nobody', r: '', s: '' }])`);
 t('badges: supervisor = own workers still to mark; HR = records waiting for a check', badges['tonk.super'] === 2 && badges.priya === 0 && badges.nobody === 0);
@@ -245,6 +255,7 @@ t('GgmLogin.js copy in employee_attendance = master', fs.readFileSync(path.join(
 newRequest();
 const AT = A(`login('admin.a', 'admin123')`).token;
 newRequest();
+props[A(`"ATT_BACKFILL2_" + BACKFILL_FROM`)] = "done";   // the one-off fill has its own test (6e3)
 A(`warmCaches()`);
 newRequest(); READS = 0;
 const ov = A(`getAdminOverview('${AT}')`);
@@ -287,6 +298,47 @@ t('a name that is not a portal supervisor counts as unassigned, so nobody disapp
 const appCode = fs.readdirSync(APPDIR).filter(f => /\.(js|html)$/.test(f)).map(f => fs.readFileSync(path.join(APPDIR, f), 'utf8')).join('\n');
 t('nothing reads or builds the old Users tab', !/SHEET_USERS|getSheetByName\('Users'\)|insertSheet\('Users'\)/.test(appCode) && !book.tabs.Users);
 t('the page has no app passwords or account forms left', !/changeMyPassword|addUser|updateUser|removeUser|resetUserPassword|openPassword/.test(appCode));
+
+/* ---------- 6b3. a second site: its supervisors can mark the person too ---------- */
+const dropEmp = () => Object.keys(cacheMap).filter(x => /^ATT_EMP|^ATT_DAY_|^SUPERVISORS/.test(x)).forEach(x => delete cacheMap[x]);
+newRequest();
+t('second site must differ from the main site', /different from the main site/.test(A(`addEmployee('${HRT}', 'TNK-050', 'Visiting Vijay', 'Tonk', '', '', 'Tonk')`).error));
+newRequest();
+t('a made-up second site is refused', /Pick a second site/.test(A(`addEmployee('${HRT}', 'TNK-050', 'Visiting Vijay', 'Tonk', '', '', 'Mars')`).error));
+newRequest();
+const addV = A(`addEmployee('${HRT}', 'TNK-050', 'Visiting Vijay', 'Tonk', '', 'Driver', 'Newai')`);
+const empTab = book.tabs.Employees._s.v;
+t('HR adds a Tonk worker with Newai as second site (Employees column G)', addV.ok && empTab.some(r => r[0] === 'TNK-050' && r[2] === 'Tonk' && r[6] === 'Newai'));
+dropEmp(); newRequest();
+const nsList = A(`getSupervisorEmployees('${ns.token}')`).employees;
+const vis = nsList.find(e => e.id === 'TNK-050');
+t('the Newai supervisor sees the visitor, marked as staying from Tonk', vis && vis.home === 'Tonk' && !vis.status && nsList.filter(e => !e.home).length === 2);
+newRequest();
+t('the Tonk supervisor still has them too (no supervisor = every Tonk supervisor)', A(`getSupervisorEmployees('${ST}')`).employees.some(e => e.id === 'TNK-050' && e.unassigned && !e.home));
+newRequest();
+const badgeN = A(`GGM_APP.counts([{ u: 'newsup', r: 'Supervisor', s: 'Newai' }])`).newsup;
+t('the Newai supervisor\'s badge counts the visitor', badgeN === 3);
+newRequest();
+t('the Newai supervisor marks them', A(`submitAttendance('${ns.token}', 'TNK-050', 'Half Day')`).ok);
+const tq = A(`todayParts_()`), dcol = A(`dayCol_(${tq.year}, ${tq.month}, ${tq.day})`);
+const cellOf = (site, id) => { const tb = book.tabs[site + '_' + tq.year]._s.v; const r = tb.find(x => x[0] === id); return r ? r[dcol - 1] : undefined; };
+t('…the mark is saved once, on the main site\'s (Tonk) sheet', cellOf('Tonk', 'TNK-050') === 'HD' && cellOf('Newai', 'TNK-050') === undefined);
+newRequest();
+const tonkView = A(`getSupervisorEmployees('${ST}')`).employees.find(e => e.id === 'TNK-050');
+t('…and the Tonk supervisor sees it marked (no second mark)', tonkView && tonkView.status === 'Half Day' && tonkView.locked);
+newRequest();
+t('a Tonk worker without a second site cannot be marked from Newai', /another supervisor/.test(A(`submitAttendance('${ns.token}', 'TNK-003', 'Full Day')`).error));
+const vRow = empTab.find(r => r[0] === 'TNK-050'); vRow[5] = false; dropEmp(); newRequest();
+t('switched off: no longer on the second site\'s list', !A(`getSupervisorEmployees('${ns.token}')`).employees.some(e => e.id === 'TNK-050'));
+vRow[5] = true; vRow[6] = 'newai'; dropEmp(); newRequest();
+t('a second site typed by hand in the sheet works whatever the case', A(`getSupervisorEmployees('${ns.token}')`).employees.some(e => e.id === 'TNK-050' && e.home === 'Tonk'));
+// take the test worker away again (later checks use a fixed Tonk roster)
+empTab.splice(empTab.indexOf(vRow), 1);
+{ const tk = book.tabs['Tonk_' + tq.year]._s; const i = tk.v.findIndex(r => r[0] === 'TNK-050'); if (i > -1) { tk.v.splice(i, 1); tk.bg.splice(i, 1); } }
+Object.keys(cacheMap).filter(x => /^ATT_EMP|^ATT_DAY_|^ATT_REC_|^ATT_OVERVIEW|^ROSTER_|^SUPERVISORS/.test(x)).forEach(x => delete cacheMap[x]);
+const pg = fs.readFileSync(path.join(APPDIR, 'Scripts.html'), 'utf8');
+t('page: Second site picker on add + edit, "Staying here from" tag, staff list shows "Also at"',
+  (pg.match(/id="eSec"/g) || []).length === 2 && /Staying here from/.test(pg) && /Also at \$\{esc\(e\.secondary\)\}/.test(pg) && /\$\('eSec'\)\.value\)\.then/.test(pg));
 
 /* ---------- 6c. the Record tab ---------- */
 newRequest();
@@ -338,7 +390,7 @@ newRequest();
 A(`setEmployeePhoto('${HRT}', 'Tonk', 'TNK-002', '${JPG}', '${JPG}')`);
 t('changing a photo replaces it (one row per person)', book.tabs['Employee Photos']._s.v.filter(r => r[0] === 'TNK-002').length === 1);
 
-/* ---------- 6g. punch report: marks that do not fit the punches turn red ---------- */
+/* ---------- 6g. punch report: fits = approved (green), does not fit = purple ---------- */
 {
   const yr = new Date().getFullYear(), d0 = new Date();
   const iso = dt => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
@@ -347,28 +399,300 @@ t('changing a photo replaces it (one row per person)', book.tabs['Employee Photo
   newRequest(); A(`hrSetAttendance('${HRT}', 'Tonk', 'TNK-002', 'Half Day')`);
   const payload = { file: 'daily_punch_report.xlsx', dates: [today, tomorrow], rows: [
     { id: 'TNK-001', d: ['540,1100,2', '540,1100,2'] },   // 9:00 → 18:20 = 9h20: Full day fits
-    { id: 'TNK-002', d: ['540,1100,2', ''] },             // marked Half day but 9h20 → red
+    { id: 'TNK-002', d: ['540,1100,2', ''] },             // marked Half day but 9h20 → purple
     { id: 'TNK-003', d: ['', ''] },                       // marked Absent, no punch: fits
     { id: 'TNK-005', d: ['600,900,2', ''] },              // punched, not marked: counted, untouched
     { id: '99999', d: ['540,1100,2', ''] }                // not on the attendance
   ] };
-  newRequest();
-  const pr = A(`uploadPunchReport('${HRT}', ${JSON.stringify(payload)})`);
   const tab = book.tabs['Tonk_' + yr]._s, col = A(`dayCol_(${yr}, ${d0.getMonth() + 1}, ${d0.getDate()})`);
   const rowOf = id => tab.v.findIndex(r => r[0] === id);
   const font = id => (tab.fc[rowOf(id)] || [])[col - 1] || '#000000';
-  t('punch check: the mark that does not fit turns red, the ones that fit stay black', pr.ok && font('TNK-002') === '#ff0000' && font('TNK-001') === '#000000' && font('TNK-003') === '#000000');
+  const bg = id => String((tab.bg[rowOf(id)] || [])[col - 1] || '#ffffff').toLowerCase();
+  (tab.fc[rowOf('TNK-001')] = tab.fc[rowOf('TNK-001')] || [])[col - 1] = '#ff0000';   // red text from the old way
+  tab.bg[rowOf('TNK-003')][col - 1] = '#f4c7c3';   // TNK-003 waiting for HR (light red) before the upload
+  newRequest();
+  const pr = A(`uploadPunchReport('${HRT}', ${JSON.stringify(payload)})`);
+  t('punch upload: marks that fit are approved (green), the one that does not is purple', pr.ok && bg('TNK-002') === '#b4a7d6' && bg('TNK-001') === '#b7e1cd' && bg('TNK-003') === '#b7e1cd' && pr.matched === 2);
+  newRequest();
+  t('…Today shows the fitting ones as approved by HR', A(`getTodayRows('${HRT}', 'Tonk')`).rows.find(r => r.id === 'TNK-003').ap === 'Approved');
+  t('…a day not marked although they punched in is purple too, with a note', bg('TNK-005') === '#b4a7d6' && /Marked: nothing/.test(String((tab.nt[rowOf('TNK-005')] || [])[col - 1] || '')) && /Punches: 10:00 AM–3:00 PM \(5h00\)/.test(String((tab.nt[rowOf('TNK-005')] || [])[col - 1] || '')));
+  t('…and old red text goes back to black', font('TNK-001') === '#000000' && font('TNK-002') === '#000000');
+  const noteOf = id => String((tab.nt[rowOf(id)] || [])[col - 1] || '');
+  t('…the purple cell gets a note with what the report says', /^Punch report \(daily_punch_report\.xlsx, .*hr1\)/.test(noteOf('TNK-002')) && /Punches: 9:00 AM–6:20 PM \(9h20\)/.test(noteOf('TNK-002')) && /Marked: Half Day/.test(noteOf('TNK-002')) && /Punches fit: Full Day/.test(noteOf('TNK-002')) && !noteOf('TNK-001'));
+  t('…every tile has its list: fit, punched-not-marked, not on attendance', pr.fit.length === 2 && pr.fit.every(x => x.punch && x.marked) &&
+    pr.unmarked.length === 1 && pr.unmarked[0].id === 'TNK-005' && pr.missing.join() === '99999');
+  newRequest();
+  t('…purple is waiting for HR again: Today shows it as "Mismatch"', A(`getTodayRows('${HRT}', 'Tonk')`).rows.find(r => r.id === 'TNK-002').ap === 'Mismatch');
+  newRequest();
+  const va = A(`verifyAllPending('${HRT}', 'Tonk')`);
+  t('…"Approve all" leaves it purple and says how many are left', va.ok && va.left === 1 && bg('TNK-002') === '#b4a7d6');
+  tab.v[rowOf('TNK-002')][col - 1] = 'FD';     // corrected by hand in the sheet
+  newRequest(); A(`uploadPunchReport('${HRT}', ${JSON.stringify(payload)})`);
+  t('…once it fits, uploading again approves it (green) and takes our note off', bg('TNK-002') === '#b7e1cd' && !noteOf('TNK-002'));
   t('…counts: checked, different, punched-but-not-marked, not on attendance; tomorrow is never touched',
     pr.compared === 3 && pr.different === 1 && pr.notMarked === 1 && pr.notOnAttendance === 1 && pr.list[0].id === 'TNK-002' && /9h20/.test(pr.list[0].punch));
-  newRequest(); A(`hrSetAttendance('${HRT}', 'Tonk', 'TNK-002', 'Full Day')`);
-  newRequest(); A(`uploadPunchReport('${HRT}', ${JSON.stringify(payload)})`);
-  t('…uploading again after a correction turns it back to black', font('TNK-002') === '#000000');
   const exp = (p, fd, hd) => A(`punchExpect_('${p}', { fdHours: ${fd}, hdHours: ${hd} }).fit.join('|')`);
+  t('muster codes: FD = Full, HD = Half, A = Absent, P = present', exp('FD', 7, 4) === 'Full Day' && exp('HD', 7, 4) === 'Half Day' && exp('A', 7, 4) === 'Absent' && exp('P', 7, 4) === 'Full Day|Half Day');
+  {
+    // a Muster Report: yesterday FD/A/WO; today's column is skipped (still changing)
+    const y = new Date(d0.getTime() - 864e5), ycol = A(`dayCol_(${y.getFullYear()}, ${y.getMonth() + 1}, ${y.getDate()})`);
+    if (y.getFullYear() === yr) {
+      const set = (id, code, bgc) => { tab.v[rowOf(id)][ycol - 1] = code; (tab.bg[rowOf(id)] = tab.bg[rowOf(id)] || [])[ycol - 1] = bgc; };
+      set('TNK-001', 'FD', '#f4c7c3'); set('TNK-002', 'FD', '#f4c7c3'); set('TNK-003', 'HD', '#f4c7c3');
+      const ybg = id => String(tab.bg[rowOf(id)][ycol - 1]).toLowerCase();
+      const tBefore = bg('TNK-001');
+      const mp = { file: 'muster_report.xlsx', dates: [iso(y), today], rows: [
+        { id: 'TNK-001', d: ['FD', 'A'] }, { id: 'TNK-002', d: ['A', 'A'] }, { id: 'TNK-003', d: ['SKIP', 'A'] }, { id: 'TNK-005', d: ['FD', 'FD'] }] };
+      newRequest();
+      const mr = A(`uploadPunchReport('${HRT}', ${JSON.stringify(mp)})`);
+      t('muster report: same verdict = green, different = purple, WO / "-" left alone', mr.ok && ybg('TNK-001') === '#b7e1cd' && ybg('TNK-002') === '#b4a7d6' && ybg('TNK-003') === '#f4c7c3');
+      t('…today\'s column of a muster report is not touched', bg('TNK-001') === tBefore && mr.skipped >= 4);
+      t('…absent people are not counted as "punched, not marked"; a present one is', mr.notMarked === 1);
+    }
+  }
   t('rules: no punch = Absent, one punch = present, ≥7h Full, ≥4h Half, less = Half or Absent',
     exp('', 7, 4) === 'Absent' && exp('540,540,1', 7, 4) === 'Full Day|Half Day' && exp('540,960,2', 7, 4) === 'Full Day' &&
     exp('540,840,2', 7, 4) === 'Half Day' && exp('540,700,2', 7, 4) === 'Half Day|Absent');
+  {
+    // 17 Nov 2026: purple cells auto-marked Absent kept only "Auto-marked Absent: …" and never got the punch note
+    const r3 = rowOf('TNK-003'), auto = 'Auto-marked Absent: not marked by 20:00 on 16/11/2026';
+    tab.v[r3][col - 1] = 'A'; tab.bg[r3][col - 1] = '#f4c7c3'; (tab.nt[r3] = tab.nt[r3] || [])[col - 1] = auto;
+    const one = p => ({ file: 'daily_punch_report.xlsx', dates: [today], rows: [{ id: 'TNK-003', d: [p] }] });
+    newRequest(); A(`uploadPunchReport('${HRT}', ${JSON.stringify(one('540,1100,2'))})`);
+    const n1 = noteOf('TNK-003');
+    t('punch note also goes on a cell that already has a note (auto Absent), which is kept below it',
+      bg('TNK-003') === '#b4a7d6' && /^Punch report \(/.test(n1) && /Marked: Absent/.test(n1) && /Punches fit: Full Day/.test(n1) && n1.endsWith('\n- - -\n' + auto));
+    newRequest(); A(`uploadPunchReport('${HRT}', ${JSON.stringify(one('540,1100,2'))})`);
+    t('…uploading again replaces our part, not stacking a second one', (noteOf('TNK-003').match(/Punch report/g) || []).length === 1 && noteOf('TNK-003').endsWith(auto));
+    newRequest(); A(`uploadPunchReport('${HRT}', ${JSON.stringify(one(''))})`);
+    t('…once it fits, only our part comes off; the earlier note stays', bg('TNK-003') === '#b7e1cd' && noteOf('TNK-003') === auto);
+  }
   newRequest();
   t('a supervisor cannot upload the punch report', throws(() => A(`uploadPunchReport('${ST}', ${JSON.stringify(payload)})`), /Not authorised/));
+}
+
+/* ---------- 6e2. auto Absent at closing time ---------- */
+{
+  const yr = new Date().getFullYear(), d0 = new Date(), col = A(`dayCol_(${yr}, ${d0.getMonth() + 1}, ${d0.getDate()})`);
+  const tonkT = book.tabs['Tonk_' + yr]._s, newaiT = book.tabs['Newai_' + yr]._s;
+  const cell = (tb, id) => { const i = tb.v.findIndex(r => r[0] === id); return { v: tb.v[i][col - 1], bg: String((tb.bg[i] || [])[col - 1] || '').toLowerCase(), nt: String((tb.nt[i] || [])[col - 1] || '') }; };
+  const setv = tb => tb.v.slice(2).filter(r => r[0]).forEach(r => { r[col - 1] = ''; });
+  const st = book.tabs.Settings._s.v;
+  const closeAll = () => { st[1][1] = '00:00'; st[2][1] = '00:00'; Object.keys(cacheMap).filter(x => /^ATT_SETTINGS|^ATT_DAY_/.test(x)).forEach(x => delete cacheMap[x]); };
+  // Tonk: TNK-001 marked today, the rest not; Newai: nobody marked today
+  setv(tonkT); setv(newaiT);
+  tonkT.v[tonkT.v.findIndex(r => r[0] === 'TNK-001')][col - 1] = 'FD';
+  Object.keys(props).filter(k => /^ATT_AUTOABS/.test(k)).forEach(k => delete props[k]);
+  newRequest();
+  A(`autoAbsent_()`);
+  t('auto Absent: nothing happens while marking is still open', !cell(tonkT, 'TNK-002').v);
+  closeAll(); newRequest();
+  const done = A(`autoAbsent_()`);
+  const c2 = cell(tonkT, 'TNK-002');
+  t('after closing time everyone not marked is Absent, waiting for HR, with a note', c2.v === 'A' && c2.bg === '#f4c7c3' && /^Auto-marked Absent: not marked by 00:00/.test(c2.nt) && cell(tonkT, 'TNK-001').v === 'FD');
+  t('…switched-off people are left alone', !cell(tonkT, 'TNK-004').v);
+  t('…a site where nobody was marked is marked Absent too (no holidays)', cell(newaiT, 'NW-01').v === 'A' && cell(newaiT, 'NW-01').bg === '#f4c7c3' && done.join().indexOf('Newai') > -1);
+  tonkT.v[tonkT.v.findIndex(r => r[0] === 'TNK-003')][col - 1] = '';
+  newRequest(); A(`autoAbsent_()`);
+  t('…only once a day', !cell(tonkT, 'TNK-003').v);
+  newRequest(); A(`hrSetAttendance('${HRT}', 'Tonk', 'TNK-002', 'Full Day')`);
+  t('HR changing an auto Absent takes the note off', cell(tonkT, 'TNK-002').v === 'FD' && !cell(tonkT, 'TNK-002').nt);
+  // switched off for the site
+  Object.keys(props).filter(k => /^ATT_AUTOABS/.test(k)).forEach(k => delete props[k]);
+  st[1][7] = false; Object.keys(cacheMap).filter(x => /^ATT_SETTINGS/.test(x)).forEach(x => delete cacheMap[x]);
+  newRequest(); A(`autoAbsent_()`);
+  t('rule switched off for a site (Site rules): nobody is marked', !cell(tonkT, 'TNK-003').v);
+  newRequest();
+  t('Site rules show the switch', A(`getSettings('${HRT}')`).find(x => x.site === 'Tonk').autoAbsent === false);
+  st[1][7] = ''; st[1][1] = '23:59'; st[2][1] = '23:59';
+  Object.keys(cacheMap).filter(x => /^ATT_SETTINGS|^ATT_DAY_|^ATT_REC_/.test(x)).forEach(x => delete cacheMap[x]);
+}
+
+/* ---------- 6e3. one-off: past empty days -> Absent ---------- */
+{
+  const now = new Date(), ago = k => new Date(now.getTime() - k * 864e5);
+  if (ago(3).getFullYear() === now.getFullYear()) {
+    const yr = now.getFullYear(), colOf = d => A(`dayCol_(${yr}, ${d.getMonth() + 1}, ${d.getDate()})`);
+    const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const tb = book.tabs['Tonk_' + yr]._s, c3 = colOf(ago(3)), c2 = colOf(ago(2)), c1 = colOf(ago(1)), c0 = colOf(now);
+    const ri = id => tb.v.findIndex(r => r[0] === id);
+    const put = (id, col, v, bgc, nt) => { const i = ri(id); tb.v[i][col - 1] = v; (tb.bg[i] = tb.bg[i] || [])[col - 1] = bgc || '#ffffff'; (tb.nt[i] = tb.nt[i] || [])[col - 1] = nt || ''; };
+    const get = (id, col) => { const i = ri(id); return { v: tb.v[i][col - 1], bg: String((tb.bg[i] || [])[col - 1] || '').toLowerCase(), nt: String((tb.nt[i] || [])[col - 1] || '') }; };
+    ['TNK-001', 'TNK-002', 'TNK-003', 'TNK-005'].forEach(id => [c3, c2, c1, c0].forEach(col => put(id, col, '')));
+    put('TNK-001', c2, 'FD', '#b7e1cd');
+    put('TNK-003', c2, '', '#b4a7d6', 'Punch report (x.xlsx, hr1)\nPunches: 9:00 AM–6:00 PM (9h00)\nMarked: nothing\nPunches fit: Full Day');
+    put('TNK-001', c1, 'HD', '#f4c7c3'); put('TNK-002', c1, 'A', '#b7e1cd');
+    const tnk4 = get('TNK-004', c2).v;
+    newRequest();
+    const res = A(`backfillAbsent_('${isoOf(ago(3))}')`);
+    const e2 = get('TNK-002', c2), e3 = get('TNK-003', c2);
+    t('fill past empty days: an empty day becomes Absent, waiting for HR, with a note', e2.v === 'A' && e2.bg === '#f4c7c3' && /^Auto-marked Absent: day left empty/.test(e2.nt) && get('TNK-005', c1).v === 'A');
+    t('…an empty purple day (punched) gets A, stays purple, note says "Marked: Absent"', e3.v === 'A' && e3.bg === '#b4a7d6' && /Marked: Absent/.test(e3.nt) && /Punches: 9:00 AM/.test(e3.nt));
+    t('…marks already there are kept', get('TNK-001', c2).v === 'FD' && get('TNK-001', c2).bg === '#b7e1cd' && get('TNK-002', c1).v === 'A' && get('TNK-002', c1).bg === '#b7e1cd');
+    t('…a day nobody was marked is filled too (no holidays), and today is not touched', get('TNK-002', c3).v === 'A' && get('TNK-005', c3).v === 'A' && !get('TNK-002', c0).v && res.length > 0);
+    t('…switched-off people are left alone', !get('TNK-004', c2).v && !tnk4);
+  }
+}
+
+/* ---------- 6e4. a hand edit in the sheet shows at once ---------- */
+{
+  const yr = new Date().getFullYear(), m = new Date().getMonth() + 1;
+  newRequest(); A(`dayRows_('Tonk')`); A(`siteMonthRows_('Tonk', ${yr}, ${m})`); A(`employeesAll_()`); A(`getSiteSetting_('Tonk')`);
+  const before = Object.keys(cacheMap).filter(k => /^ATT_(DAY_Tonk|REC_Tonk|EMP$|SETTINGS$)/.test(k)).length;
+  newRequest(); A(`sheetChanged({ changeType: 'EDIT' })`);
+  const after = Object.keys(cacheMap).filter(k => /^ATT_(DAY_Tonk|REC_Tonk|EMP$|SETTINGS$)/.test(k)).length;
+  t('a hand edit in the sheet drops the saved copies (day, month, employees, settings) at once', before >= 4 && after === 0);
+  const tb = book.tabs['Tonk_' + yr]._s, col = A(`dayCol_(${yr}, ${m}, ${new Date().getDate()})`), i = tb.v.findIndex(r => r[0] === 'TNK-005');
+  newRequest(); A(`dayRows_('Tonk')`);
+  tb.v[i][col - 1] = 'HD';
+  newRequest(); A(`sheetChanged({ changeType: 'EDIT' })`);
+  newRequest();
+  t('…and the next read shows the new mark', A(`dayRows_('Tonk')`).find(r => r.id === 'TNK-005').status === 'Half Day');
+}
+
+/* ---------- 6h. salary (17 Nov 2026): setup tabs, the month's pay, advances & loans, lock ---------- */
+{
+  const now = new Date(), yr = now.getFullYear();
+  const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1), Y = lm.getFullYear(), M = lm.getMonth() + 1;
+  const ym = Y + '-' + String(M).padStart(2, '0'), curYm = yr + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const D = new Date(Y, M, 0).getDate();
+  if (Y === yr) {
+    book.tabs['Portal Users ATTENDANCE'].appendRow(portalRow('umesh', 'Umesh Ji', 'Accounts', '', 'acc12345'));
+    delete cacheMap['ggm_tab_ATTENDANCE'];
+    newRequest();
+    const acc = A(`loginAndLoad('umesh', 'acc12345')`);
+    t('salary: the new Accounts role signs in and lands on Salary', acc.ok && acc.session.role === 'Accounts' && acc.first.view === 'salary');
+    const AT = acc.session.token;
+    newRequest();
+    t('…Accounts does not see attendance screens', throws(() => A(`getTodayRows('${AT}', 'ALL')`), /Not authorised/));
+    t('…the portal offers Accounts as a role', A(`GGM_APP.meta().roles.join()`) === 'Supervisor,HR,Accounts,Admin');
+    const hrT = A(`login('hr1', 'hr123456')`).token, adT = A(`login('admin.a', 'admin123')`).token, supT = A(`login('tonk.super', 'super123')`).token;
+
+    newRequest(); A(`salSetupOnce_()`);
+    const su = book.tabs['Salary Setup']._s, rules = book.tabs['Salary Rules']._s, hol = book.tabs['Holidays']._s, led = book.tabs['Advances & Loans']._s;
+    t('salary tabs are made once: Setup, Rules, Holidays, Firms, Advances & Loans', ['Salary Setup', 'Salary Rules', 'Holidays', 'Firms', 'Advances & Loans'].every(n => book.tabs[n]) &&
+      book.tabs['Firms']._s.v[3][0] === 'NAKUL GOYAL HUF' && book.tabs['Firms']._s.v[13][0] === 'GMPL');
+    const sRow = id => su.v.findIndex(r => r[0] === id);
+    t('…Setup has a row for every Employee ID with name, site and active filled in', sRow('TNK-001') >= 3 && su.v[sRow('TNK-001')][1] === 'Ramesh Kumar' && su.v[sRow('TNK-001')][2] === 'Tonk' && su.v[sRow('TNK-004')][4] === 'No');
+    t('…the group rules are seeded (Ladies ₹350 a day, Jaipur Sundays paid)', rules.v.some(r => r[1] === 'Ladies' && r[3] === 350) && rules.v.some(r => r[0] === 'Jaipur' && r[5] === 'Yes'));
+
+    // pay rules: TNK-001 monthly D×1000 (₹1000 a day), TNK-002 daily 500 + 2 paid absents + Sundays, TNK-003 nothing (held),
+    // NW-01 from a site rule (daily 400), NW-02 fixed 9000
+    const setSu = (id, vals) => vals.forEach((v, j) => { if (v !== undefined) su.v[sRow(id)][5 + j] = v; });
+    setSu('TNK-001', ['Monthly', D * 1000, '', '', '', 'NAKUL GOYAL HUF', 'Bank', 'RAMESH KUMAR', '1234567890', 'SBIN0000001']);
+    setSu('TNK-002', ['Daily', 500, 2, 'Yes', '', 'GMPL', 'Cash']);
+    setSu('NW-02', ['Fixed', 9000, '', '', '', '', 'Cash']);
+    rules.v.push(['Newai', '', 'Daily', 400, '', '', '', 'Cash', 'test']);
+    hol.v.push([new Date(Y, M - 1, 5), 'Test festival', '', '', '', '']);
+    hol.v.push([new Date(Y, M - 1, 6), 'Newai only', 'Newai', '', '', '']);
+    // attendance last month
+    A(`ensureYearSheet_(ss_(), 'Newai', ${yr})`);
+    const tabOf = s => book.tabs[s + '_' + yr]._s, c0 = A(`dayCol_(${Y}, ${M}, 1)`);
+    const mark = (site, id, from, to, code, bg) => { const tb = tabOf(site), r = tb.v.findIndex(x => x[0] === id); for (let d = from; d <= to; d++) { tb.v[r][c0 + d - 2] = code; (tb.bg[r] = tb.bg[r] || [])[c0 + d - 2] = bg || '#b7e1cd'; } };
+    for (let d = 1; d <= D; d++) ['TNK-001', 'TNK-002', 'TNK-003', 'TNK-005'].forEach(id => mark('Tonk', id, d, d, '', '#ffffff'));
+    mark('Tonk', 'TNK-001', 1, 10, 'FD'); mark('Tonk', 'TNK-001', 11, 12, 'HD'); mark('Tonk', 'TNK-001', 13, D, 'A');
+    mark('Tonk', 'TNK-002', 1, 4, 'FD'); mark('Tonk', 'TNK-002', 5, D, 'A', '#f4c7c3');
+    mark('Tonk', 'TNK-003', 1, D, 'FD');
+    mark('Newai', 'NW-01', 1, 3, 'FD'); mark('Newai', 'NW-01', 4, D, 'A');
+    mark('Newai', 'NW-02', 1, 1, 'FD'); mark('Newai', 'NW-02', 2, D, 'A');
+
+    // advances: given in the app by Accounts and HR
+    newRequest();
+    let ad = A(`addAdvance('${AT}', { id: 'TNK-001', type: 'Advance', amount: 3000, date: '${ym}-03', months: 1, from: '${ym}', note: 'festival' })`);
+    t('advance: Accounts gives a cash advance in the app; it goes into the ledger with "still due"', ad.ok && ad.added && ad.entries.length === 1 && ad.entries[0].no === 'A-0001' && ad.entries[0].due === 3000 && led.v[3][5] === 'Advance' && led.v[3][8] === lm.toLocaleString('en-GB', { month: 'short' }).slice(0, 3) + ' ' + Y);
+    newRequest(); ad = A(`addAdvance('${hrT}', { id: 'TNK-002', type: 'Loan', amount: 5000, date: '${ym}-02', months: 2, from: '${ym}' })`);
+    newRequest(); ad = A(`addAdvance('${hrT}', { id: 'NW-02', type: 'Bonus', amount: 700, date: '${ym}-20', months: 1, from: '${ym}' })`);
+    newRequest(); const ad4 = A(`addAdvance('${hrT}', { id: 'TNK-005', type: 'Petrol', amount: 400, date: '${ym}-20', months: 1, from: '${curYm}' })`);
+    t('…HR can enter too: a loan split over 2 months, a bonus, a petrol advance', ad.ok && ad4.ok && ad4.entries.length === 4);
+    newRequest();
+    t('…bad entries are refused (no amount, unknown ID, half rupees, no type)',
+      !A(`addAdvance('${AT}', { id: 'TNK-001', type: 'Advance', amount: 0, from: '${ym}' })`).ok && !A(`addAdvance('${AT}', { id: 'XX-9', type: 'Advance', amount: 10, from: '${ym}' })`).ok &&
+      !A(`addAdvance('${AT}', { id: 'TNK-001', type: 'Advance', amount: 10.5, from: '${ym}' })`).ok && !A(`addAdvance('${AT}', { id: 'TNK-001', type: 'Gift', amount: 10, from: '${ym}' })`).ok);
+    t('…a supervisor cannot see or give advances', throws(() => A(`advancesData('${supT}')`), /Not authorised/));
+
+    // make last month
+    newRequest();
+    const mk = A(`makeSalary('${AT}', '${ym}')`);
+    const row = id => mk.rows.filter(r => r.id === id)[0];
+    const sundays = Array.from({ length: D }, (_, i) => new Date(Y, M - 1, i + 1).getDay() === 0 ? i + 1 : 0).filter(Boolean);
+    const r1 = row('TNK-001'), r2 = row('TNK-002'), r3 = row('TNK-003'), n1 = row('NW-01'), n2 = row('NW-02');
+    t('make: present = full + ½ half, + festival → payable; monthly = basic ÷ days in month × payable (no rounding)',
+      mk.ok && r1.p === 11 && r1.fe === 1 && r1.su === 0 && r1.pa === 0 && r1.pd === 12 && r1.g === 12000 && r1.r === 1000);
+    t('…the advance is recovered in full from that salary: net = gross − advance', r1.ad === 3000 && r1.net === 9000 && r1.f === 'NAKUL GOYAL HUF' && r1.mo === 'Bank');
+    const fe2 = sundays.indexOf(5) > -1 ? 0 : 1, pd2 = 4 + sundays.length + fe2 + 2;
+    t('…daily pay: (present + paid Sundays + festival + 2 paid absents) × rate; a festival on a paid Sunday counts once',
+      r2.su === sundays.length && r2.fe === fe2 && r2.pa === 2 && r2.pd === pd2 && r2.g === 500 * pd2);
+    t('…a loan over 2 months takes half this month', r2.lo === 2500 && r2.net === 500 * pd2 - 2500);
+    t('…no basic pay anywhere → held at ₹0, listed under problems', r3.held && r3.net === 0 && mk.problems.some(p => p.k === 'noBasic' && p.ids.indexOf('TNK-003') > -1));
+    t('…a site rule gives the pay type and rate (Newai daily ₹400) and a Newai-only holiday', n1.pt === 'Daily' && n1.b === 400 && n1.fe === 2 && n1.pd === 5 && n1.g === 2000);
+    t('…fixed pay is the basic whatever the days, plus the bonus', n2.g === 9000 && n2.bo === 700 && n2.net === 9700);
+    t('…switched-off people with no days are left out; HR-unapproved days are noted', !row('TNK-004') && mk.problems.some(p => p.k === 'pending' && p.ids.indexOf('TNK-002') > -1));
+    t('…totals add up (held rows not counted)', mk.totals.people === mk.rows.filter(r => !r.held).length && mk.totals.net === mk.rows.reduce((s, r) => s + r.net, 0) &&
+      mk.totals.bank === r1.net && mk.byFirm.some(f => f.k === 'GMPL' && f.cash === r2.net));
+    const tab = book.tabs['Salary ' + lm.toLocaleString('en-GB', { month: 'short' }).slice(0, 3) + ' ' + Y];
+    t('…the month gets its own tab: header row, one row each, a TOTAL row', !!tab && tab._s.v[4][0] === 'Emp ID' && tab._s.v[4][21] === 'Net pay ₹' &&
+      tab._s.v.some(r => r[0] === 'TOTAL') && /DRAFT/.test(tab._s.v[0][5]));
+    t('…the "How it was worked out" column explains each person', /Present 11 \(10 full \+ 2 half\) \+ festivals 1 = 12 days/.test(r1.how) && /net ₹9,000/.test(r1.how));
+    newRequest();
+    const home = A(`salaryHome('${AT}', '${ym}')`);
+    t('…reading it back: draft, every row, Accounts may lock (the month is over)', home.state === 'draft' && home.rows.length === mk.rows.length && home.canLock && home.rows.filter(r => r.id === 'TNK-001')[0].net === 9000);
+    newRequest();
+    t('…HR may make it but not lock it; a supervisor may not even look', A(`salaryHome('${hrT}', '${ym}')`).canLock === false && throws(() => A(`lockSalary('${hrT}', '${ym}')`), /Not authorised/) &&
+      throws(() => A(`salaryHome('${supT}', '${ym}')`), /Not authorised/));
+
+    // lock: purple blocks, changes force a re-check, then recoveries go into the ledger
+    const tb = tabOf('Tonk'), rr = tb.v.findIndex(x => x[0] === 'TNK-001');
+    tb.bg[rr][c0 + 12] = '#b4a7d6';
+    newRequest();
+    const l1 = A(`lockSalary('${AT}', '${ym}')`);
+    t('lock: refused while a day is purple (punches don\'t match)', !l1.ok && /purple/.test(l1.error));
+    tb.bg[rr][c0 + 12] = '#b7e1cd';
+    tb.v[rr][c0 + 12] = 'FD';   // HR corrected day 13 → pay changes
+    newRequest();
+    const l2 = A(`lockSalary('${AT}', '${ym}')`);
+    t('…refused when attendance changed since it was made — made again for a fresh look', !l2.ok && l2.changed && /made again/.test(l2.error));
+    newRequest();
+    const l3 = A(`lockSalary('${AT}', '${ym}')`);
+    const recs = led.v.filter(r => r[5] === 'Recovered' || r[5] === 'Paid out');
+    t('…then it locks: recoveries and the paid bonus are written into the ledger against their entries', l3.ok && l3.state === 'locked' && recs.length === 3 &&
+      recs.some(r => r[10] === 'A-0001' && r[6] === 3000) && recs.some(r => r[10] === 'A-0002' && r[6] === 2500) && recs.some(r => r[5] === 'Paid out' && r[6] === 700));
+    newRequest();
+    const adv2 = A(`advancesData('${AT}')`), e = no => adv2.entries.filter(x => x.no === no)[0];
+    t('…still due: advance cleared, loan half left, bonus paid', e('A-0001').due === 0 && e('A-0002').due === 2500 && e('A-0003').due === 0 && led.v[4][9] === 2500);
+    newRequest();
+    t('…a locked month cannot be made again, nor have new advances start in it',
+      !A(`makeSalary('${AT}', '${ym}')`).ok && /locked/.test(A(`addAdvance('${AT}', { id: 'TNK-001', type: 'Advance', amount: 100, from: '${ym}' })`).error));
+    newRequest();
+    t('…an entry with recoveries cannot be deleted; a fresh one can', !A(`deleteAdvance('${AT}', 'A-0001')`).ok && A(`deleteAdvance('${hrT}', 'A-0004')`).ok);
+
+    // this month: the second loan instalment
+    newRequest();
+    const cur = A(`makeSalary('${hrT}', '${curYm}')`), c2 = cur.rows.filter(r => r.id === 'TNK-002')[0];
+    t('next month: the loan\'s second half is due (never more than the salary)', cur.ok && c2.lo === Math.min(2500, c2.g) && !cur.canLock);
+    newRequest();
+    t('unlock: only an Admin, and only the newest locked month', throws(() => A(`unlockSalary('${AT}', '${ym}')`), /Not authorised/) && A(`unlockSalary('${adT}', '${ym}')`).ok);
+    t('…the recoveries of that month come out of the ledger again', !led.v.some(r => r[5] === 'Recovered' || r[5] === 'Paid out') && A(`advancesData('${AT}')`).entries.filter(x => x.no === 'A-0001')[0].due === 3000);
+
+    // one ID for two different people → held
+    book.tabs['Employees'].appendRow(['TNK-001', 'Someone Else', 'Newai', '', '', true]);
+    A(`dropEmployees_()`);
+    newRequest();
+    const two = A(`makeSalary('${AT}', '${ym}')`), tr = two.rows.filter(r => r.id === 'TNK-001')[0];
+    t('an ID used by two different people is held, not paid', tr.held && /two different people/.test(tr.ck) && two.problems.some(p => p.k === 'two'));
+    book.tabs['Employees']._s.v.pop(); A(`dropEmployees_()`);
+
+    // one-time import from the old salary workbook (here: tabs with the old names in the same fake book)
+    fill('MASTER SHEET', [['EMP. CODE'], ['NW-01', '0', 'NEWAI', 'Apr-25', '', 'Allow', 'Kamla', '', '', '', 'KAMLA DEVI', 'BANK', '001234567890123456', 'SBIN0000002', 'BIJENDER KUMAR GOYAL HUF', '15,000'],
+      ['TNK-001', '0', 'TONK', '', '', 'Allow', 'x', '', '', '', 'X', 'BANK', '1', '1', 'GMPL', '99999']]);
+    fill('LABOUR SHEET', [[], [], [], [], ['TNK-005', 'TONK', '1', 'x', 'Ladies Labour', 'Ladies', 'CASH', '350', 'PD']]);
+    newRequest();
+    const imp = A(`salImportOld_(ss_(), ss_())`), sv = id => su.v[sRow(id)];
+    t('import from the old sheet: empty rows get pay, firm (spelling fixed), Bank and the account no. as text',
+      imp === 2 && sv('NW-01')[5] === 'Monthly' && sv('NW-01')[6] === 15000 && sv('NW-01')[10] === 'BIJENDRA KUMAR GOYAL HUF' && sv('NW-01')[11] === 'Bank' &&
+      sv('NW-01')[13] === '001234567890123456' && /paid absents by slab/.test(sv('NW-01')[15]));
+    t('…labour gets its daily rate when no group rule gives it; rows already filled are never overwritten',
+      sv('TNK-005')[5] === 'Daily' && sv('TNK-005')[6] === 350 && sv('TNK-001')[6] === D * 1000);
+  }
 }
 
 /* ---------- 6f. next year keeps this year's row order ---------- */
@@ -387,6 +711,15 @@ const page = fs.readFileSync(path.join(APPDIR, 'Scripts.html'), 'utf8').replace(
 let syntaxOk = true;
 try { new vm.Script(page); } catch (e) { syntaxOk = false; console.log(e.message); }
 t('page script parses', syntaxOk);
+{
+  const pv = vm.createContext({});
+  const src = n => { const i = page.indexOf('function ' + n + '('); let d = 0, j = page.indexOf('{', i); for (; j < page.length; j++) { if (page[j] === '{') d++; else if (page[j] === '}' && --d === 0) break; } return page.slice(i, j + 1); };
+  vm.runInContext(src('punchOf'), pv);
+  const po = c => vm.runInContext('punchOf(' + JSON.stringify(c) + ')', pv);
+  t('punch file: day shift read as first / last punch', po('09:20 AM\n06:00 PM') === '560,1080,2' && po('08:47 AM\n08:52 AM\n09:34 AM\n04:37 PM') === '527,997,4');
+  t('punch file: a night shift over midnight is its real length (9 PM to 2 AM = 5h)', po('09:00 PM\n02:00 AM') === '1260,1560,2');
+  t('punch file: muster codes and week off', po('FD') === 'FD' && po(' hd ') === 'HD' && po('WO') === 'SKIP' && po('-') === 'SKIP' && po('') === '');
+}
 const calls = [...new Set([...page.matchAll(/call\('([A-Za-z0-9_]+)'/g), ...page.matchAll(/fetchStore\('[a-z]+', '([A-Za-z0-9_]+)'/g)].map(m => m[1]))];
 const missing = calls.filter(f => A(`typeof ${f}`) !== 'function' || /_$/.test(f));
 t('every server function the page calls exists (' + calls.length + ')', !missing.length);

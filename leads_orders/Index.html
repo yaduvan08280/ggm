@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<?!= include('Styles'); ?>
+</head>
+<body>
+
+<div class="boot" id="boot">
+  <div class="brand-mark" style="width:46px;height:46px;border-radius:14px"><svg class="ic" viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M3 5h4v14H3zM10 5h4v9h-4zM17 5h4v6h-4z"/></svg></div>
+  <div class="spin"></div>
+  <p id="bootMsg">Loading the pipeline…</p>
+</div>
+
+<div class="app" id="app" hidden>
+  <aside class="rail">
+    <nav id="nav" style="display:flex;flex-direction:column;gap:6px"></nav>
+    <div class="rail-foot">
+      <span class="sync" id="sync" title="Live"></span>
+      <a class="nav-i" id="hubLink" target="_top" title="GGM Portal"><svg class="ic" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg><span class="tip">GGM Portal</span></a>
+      <div class="me-av" id="meAv"></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top" id="top">
+      <h1 id="pageTitle">Pipeline</h1>
+      <div class="seg flows" id="flowSeg"></div>
+      <div class="search" id="searchBox">
+        <svg class="ic" viewBox="0 0 24 24" style="color:var(--ink-faint);width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" placeholder="Find a lead: ORD no., company, phone, product…" autocomplete="off" spellcheck="false">
+        <button class="x" id="qx" hidden aria-label="Clear">&times;</button>
+        <div class="sugg" id="sugg" hidden></div>
+      </div>
+      <div class="top-r"><button class="btn btn-amber" id="newBtn">+ New lead</button></div>
+    </header>
+    <div id="view" style="flex:1;min-height:0;display:flex;flex-direction:column"></div>
+  </main>
+  <nav class="bnav" id="bnav"></nav>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+<div class="pop" id="pop" hidden></div>
+<div class="modal-scrim" id="modal"><div class="modal" id="modalBody"></div></div>
+<div class="viewer" id="viewer"><div class="spin"></div><img alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+<?!= sharedJs_() ?>
+window.BOOT_DATA = <?!= bootJson ?>;
+</script>
+<?!= include('App'); ?>
+</body>
+</html>

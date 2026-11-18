@@ -22,6 +22,37 @@ function installTriggers() {
 
   ScriptApp.newTrigger('warmCaches')
     .timeBased().everyMinutes(5).create();
+
+  ensureChangeTrigger_(true);
+}
+
+/**
+ * Someone changes the sheet by hand (a mark, a colour, a name, Settings, Employees...): the app's
+ * saved copies are dropped at once, so every open page shows it on its next refresh (Site rules,
+ * 10-30 s) or straight away with the Refresh button. The app's own writes do not fire this.
+ */
+function sheetChanged(e) {
+  try {
+    var t = todayParts_(), keys = ['ATT_EMP', 'ATT_SETTINGS', 'ATT_OVERVIEW_' + t.iso, 'ALLTIME_STATS'];
+    SITES.forEach(function (site) {
+      keys.push(dayKey_(site, t.iso));
+      for (var m = 1; m <= 12; m++) keys.push('ATT_REC_' + site + '_' + t.year + '_' + m);
+    });
+    CacheService.getScriptCache().removeAll(keys);
+    MEMO_ = {};
+    syncSupervisorDropdown_();
+  } catch (err) {
+    console.error('sheetChanged: ' + err);
+  }
+}
+
+/** Makes sure sheetChanged is hooked to the spreadsheet (warmCaches checks this, once). */
+function ensureChangeTrigger_(force) {
+  var props = PropertiesService.getScriptProperties();
+  if (!force && props.getProperty('ATT_CHANGE_TRIGGER') === '1') return;
+  var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sheetChanged'; });
+  if (!has) ScriptApp.newTrigger('sheetChanged').forSpreadsheet(ss_()).onChange().create();
+  props.setProperty('ATT_CHANGE_TRIGGER', '1');
 }
 
 /**
@@ -31,6 +62,11 @@ function installTriggers() {
  */
 function warmCaches() {
   try { syncSupervisorDropdown_(); } catch (e) { console.error('syncSupervisorDropdown_: ' + e); }
+  try { autoAbsent_(); } catch (e) { console.error('autoAbsent_: ' + e); }
+  try { ensureChangeTrigger_(false); } catch (e) { console.error('ensureChangeTrigger_: ' + e); }
+  try { backfillAbsentOnce_(); } catch (e) { console.error('backfillAbsentOnce_: ' + e); }
+  try { salSetupOnce_(); } catch (e) { console.error('salSetupOnce_: ' + e); }
+  try { salImportOnce_(); } catch (e) { console.error('salImportOnce_: ' + e); }
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return;
   try {
@@ -65,6 +101,10 @@ function nightlyMaintenance() {
   var t = todayParts_();
   var cache = CacheService.getScriptCache();
   cache.remove('ALLTIME_STATS');
+  var props = PropertiesService.getScriptProperties();   // yesterday's "Marked by me" lists
+  Object.keys(props.getProperties()).forEach(function (k) {
+    if (k.indexOf('ATT_BY_') === 0 && k.indexOf('ATT_BY_' + t.iso + '_') !== 0) props.deleteProperty(k);
+  });
 
   SITES.forEach(function (site) {
     var name = yearTabName_(site, t.year);
@@ -73,6 +113,7 @@ function nightlyMaintenance() {
     syncRoster_(ss, sh, site, t.year, true);
     paintElapsedDays_(sh, t.year);
   });
+  try { salSyncSetup_(ss); } catch (e) { console.error('salSyncSetup_: ' + e); }   // new people get a Salary Setup row
 }
 
 /** Handy from the editor if a day ever fails to turn red. */

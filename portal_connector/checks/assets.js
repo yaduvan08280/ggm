@@ -34,13 +34,13 @@ function sheet(name) {
       setValues: v => { pad(r + v.length - 1, c + v[0].length - 1); v.forEach((x, i) => x.forEach((y, j) => { g()[r - 1 + i][c - 1 + j] = y; })); },
       setValue: v => { pad(r, c); g()[r - 1][c - 1] = v; },
       clearContent: () => { for (let i = r - 1; i < r - 1 + nr && i < g().length; i++) for (let j = c - 1; j < c - 1 + nc; j++) g()[i][j] = ''; },
-      getValue: () => (g()[r - 1] || [])[c - 1]
+      getValue: () => (g()[r - 1] || [])[c - 1], setFontWeight() { return this; }
     }),
     getDataRange() { return this.getRange(1, 1, g().length, g()[0].length); },
     getLastRow: () => /Owned|Contractor/.test(name) ? last() : g().length, getMaxRows: () => g().length,
     getLastColumn: () => g()[0].length,
     insertRowsAfter: (after, n) => { for (let i = 0; i < n; i++) g().push(Array(g()[0].length).fill('')); },
-    appendRow: row => g().push(row.slice()), deleteRow: r => g().splice(r - 1, 1),
+    appendRow: row => g().push(row.slice()), deleteRow: r => g().splice(r - 1, 1), setFrozenRows: () => {},
     clearContents: () => { book[name] = [['', '', '']]; }
   };
 }
@@ -103,11 +103,14 @@ t('receiving it twice is refused', /nothing to receive/.test(R(`processWebReceiv
 /* 4. dispatch rules */
 t('cannot dispatch something already on its way', /already on its way/.test(R(`processWebTransfer('SANWARIYA', '${A4679}', 'DUMPERS', 'SANWARIYA', 'TONK')`).message));
 t('cannot dispatch from a site it is not at', /is at KHAKHUNDA/.test(R(`processWebTransfer('BOSS', '${A4678}', 'DUMPERS', 'TONK', 'NEWAI')`).message));
+t('a dispatch without a driver name is refused', /driver name/.test(R(`processWebTransfer('KHAKHUNDA', '${A4678}', 'DUMPERS', 'KHAKHUNDA', 'NEWAI', '  ', [], '')`).message) && status()[A4678].status === 'AT_BASE');
 const send = R(`processWebTransfer('KHAKHUNDA', '${A4678}', 'DUMPERS', 'KHAKHUNDA', 'NEWAI', 'Ram', [], '')`);
 t('a normal dispatch works and shows in transit at once', send.success && status()[A4678].status === 'IN_TRANSIT' && status()[A4678].dest === 'NEWAI');
 
 /* 5. cancel puts it back */
-const can = R(`cancelAssetTransfer('KHAKHUNDA', '${A4678}')`);
+t('cancelling without a reason is refused (it stays on its way)', /why this transfer/.test(R(`cancelAssetTransfer('KHAKHUNDA', '${A4678}', ' ')`).message) && status()[A4678].status === 'IN_TRANSIT');
+const can = R(`cancelAssetTransfer('KHAKHUNDA', '${A4678}', 'trip called off')`);
+t('…the cancel is kept in Cancelled Transfers with who, the driver and the reason', (book['Cancelled Transfers'] || []).some(r => r[1] === 'KHAKHUNDA' && r[2] === A4678 && r[4] === 'KHAKHUNDA' && r[5] === 'NEWAI' && r[6] === 'Ram' && r[11] === 'trip called off'));
 s = status();
 t('cancelling the dispatch puts it back at KHAKHUNDA', can.success && s[A4678].status === 'AT_BASE' && s[A4678].location === 'KHAKHUNDA');
 t('an asset nobody moved stays where it is', s['RJ26GA5930 (TATA MOTORS)'].status === 'AT_BASE' && s['RJ26GA5930 (TATA MOTORS)'].location === 'KHAKHUNDA');
@@ -138,7 +141,7 @@ t('…still known as CONTRACTOR while moving', status()[CT].owner === 'CONTRACTO
 R(`processWebReceive('NEWAI', '${CT}', 'NEWAI', 'DUMPERS', 'Ram', [], '')`);
 t('received at NEWAI → NEWAI Contractors column, not Own', list(CON, 'NEWAI', 'DUMPERS').includes(CT) && !list(OWN, 'NEWAI', 'DUMPERS').includes(CT));
 R(`processWebTransfer('NEWAI', '${CT}', 'DUMPERS', 'NEWAI', 'TONK', 'Ram', [], '')`);
-R(`cancelAssetTransfer('NEWAI', '${CT}')`);
+R(`cancelAssetTransfer('NEWAI', '${CT}', 'trip called off')`);
 t('a cancelled contractor transfer goes back to the Contractors column', list(CON, 'NEWAI', 'DUMPERS').includes(CT) && !list(OWN, 'NEWAI', 'DUMPERS').includes(CT) && status()[CT].status === 'AT_BASE');
 
 /* 8. a long list just runs further down (no row limit any more) */

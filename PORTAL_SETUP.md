@@ -628,3 +628,155 @@ Only the transfer date was visible; the receipt half of each History row was nev
   the same either way on 12 Nov.
 - Check: `portal_connector/checks/assets_received.js` (13).
 
+## Attendance: second site (13 Nov 2026)
+- **No supervisor** (Employees D blank): every supervisor at the person's site has them ("Shared with the other
+  supervisors"). This was already so (`SUPERVISOR_SEES_UNASSIGNED`); since 5 Nov every D cell is blank.
+- **Second site** (Employees column **G "Secondary Site"**, dropdown of the 5 sites; also in the app: Employees → add /
+  edit → *Second site*): every supervisor at that site also gets the person on their marking list, tagged
+  "Staying here from <main site>". The mark is written on the **main site's** year tab (one record per person per
+  day, so month totals and HR approval stay with the main site). The main site's supervisors keep them too; whoever
+  marks first wins, the other sees it marked. The supervisor badge counts them. The marking window is the marking
+  supervisor's own site's. Blank, unknown or same-as-main values in G are ignored; case does not matter.
+- HR's Today / Record screens list the person under their main site only.
+- Check: `portal_connector/checks/attendance.js` (86).
+
+## Attendance: punch mismatches are purple cells (13 Nov 2026, Attendance "main app 8", v15)
+- Punch report (More → Punch report): a mark that does not fit the punches gets a **purple background**
+  (`CLR_MISMATCH` #b4a7d6, state `Mismatch`) instead of red text. Purple means "waiting for HR" again, whatever the cell's
+  approval colour was before. Text is set back to black (clears red text left by earlier uploads of the same dates).
+- HR: purple counts as "Awaiting check" (and in the HR badge), shows "Punches don't match"; **Approve all skips it**
+  (the app says how many are left). Approve → green, Send back → yellow, as before.
+- After a correction (in the app or in the sheet), uploading the report again turns a purple cell that now fits back
+  to light red (waiting for HR). Grey (switched-off) and blank cells are never touched.
+- Check: `portal_connector/checks/attendance.js` (90).
+- **Update (13 Nov 2026, "main app 9", v16):** the upload counts as HR's check. Every marked day that fits the punches
+  turns **green (approved)** and every one that does not turns **purple**, whatever colour it had before (also a
+  yellow "sent back"). Blank, grey and future days are untouched. After a correction, upload again: it turns green.
+  Result screen: Fit — approved / Different (purple) / Punched, not marked / Not on attendance. Check (91).
+- **Update (13 Nov 2026, "main app 10", v17):** the upload also takes the machine's **Muster Report** (day cells FD / HD /
+  A / P = the machine's verdict, compared with the mark as is; WO / "-" skipped; today's column skipped because it is
+  still changing). Daily Punch Report: a last punch earlier in the day than the first counts as the next morning (night
+  shift 09:00 PM-02:00 AM = 5h, not 19h). Checked on the real files: daily_punch_report (Sep 2026, 779 people, 8,239
+  punched days; 344 overnight cells, all Full Day either way) and muster_report (1-13 Nov, 816 people). Check (98).
+
+## Attendance: punch notes, result lists, auto Absent (13 Nov 2026, "main app 11", v18)
+- **Notes:** a purple cell gets a note: `Punch report (<file>, <date time>, <user>)` / `Punches: 9:20 AM–1:10 PM (3h50)` /
+  `Marked: Full Day` / `Punches fit: Half Day`. The note is removed when the mark fits on a later upload. Notes not
+  written by the app are never touched.
+- **Result tiles open their lists:** Fit (approved), Different (purple, with what fits), Punched-not-marked (with the
+  punch times), Not on attendance (name + department from the file). People in the report whose Employee ID is not on
+  the attendance are only listed: nothing is written for them. Add them in Employees with the same ID, upload again.
+- **Auto Absent:** `autoAbsent_` runs from `warmCaches` (every 5 min). After a site's closing time, every active person
+  still not marked today is set to **A**, light red (waiting for HR), note `Auto-marked Absent: not marked by 15:00 on
+  …`. Once a day per site. A site where nobody was marked that day is skipped (holiday / no supervisor) and logged
+  AUTO_ABSENT_SKIPPED. Switch per site: Site rules → "At closing time" (Settings column H, blank = on). HR changing an
+  auto Absent removes its note. A later punch upload turns an auto Absent of someone who punched purple.
+- Check: `portal_connector/checks/attendance.js` (108).
+- Note: Git Bash here ignores `TZ=Asia/Kolkata` (prints UTC). Use the browser or Python for India time.
+- **Update ("main app 12", v19):** a blank (not marked) day on which the report shows punches also turns purple, note
+  "Marked: nothing" with the punch times and what would fit. Blank days without punches (or A / WO / "-") stay blank.
+
+- **One-off ("main app 13", v20, 13 Nov 2026):** `backfillAbsentOnce_()` (run once by `warmCaches`, guarded by script
+  property `ATT_BACKFILL_2026-10-01`) filled every empty day from 1 Oct 2026 to yesterday with A, light red (waiting
+  for HR), note "Auto-marked Absent: day left empty, filled in on …". Empty purple (punched) days got A, stayed purple,
+  note "Marked: Absent". Skipped: switched-off people, grey cells, and days where nobody at the site was marked.
+  Result rows: AuditLog action `BACKFILL_ABSENT`. To undo, clear the cells whose note starts "Auto-marked Absent: day left empty".
+  Ran 13/11 17:40: Newai 20,743 filled (7-12 Nov left empty: nobody marked), Jaipur 28, other sites nothing marked.
+- **Update ("main app 14", v21):** hand edits in the sheet show in the app at once. An installable onChange trigger
+  `sheetChanged` (self-installed by `warmCaches` via `ensureChangeTrigger_`, flag `ATT_CHANGE_TRIGGER`; also in
+  `installTriggers`) drops the saved copies (today's day rows, all this year's month records, Employees, Settings,
+  overview) and re-syncs the supervisor dropdown. Pages then pick it up on their next refresh (Site rules seconds).
+- **Update ("main app 15", v22): no holidays.** Auto Absent at closing (`autoAbsent_`, key now `ATT_AUTOABS2_<site>`)
+  also marks a day when nobody at the site was marked. The one-off fill ran a second pass (`ATT_BACKFILL2_2026-10-01`)
+  that filled the days the first pass skipped, at every site whose Site rule "At closing time" is on. The only way to
+  stop it for a site is Site rules → "Leave them unmarked".
+- **"main app 16" (v23):** the "Add a worker" button is a round + on the right of the dark Mark-today tile.
+- **"main app 17" (v24):** Mark-today filter "My workers · N" = people whose Employees Supervisor is this supervisor
+  (not the site's shared/unassigned people, not visitors from another site).
+- **"main app 18": "Marked by me" filter.** `submitAttendance` adds the id to script property
+  `ATT_BY_<today>_<username>` (`addMarkedByMe_`); `supervisorData_` flags `byMe`. If the property is missing it is
+  rebuilt from today's AuditLog MARK / RESUBMIT rows (`markedByFromAudit_`). `nightlyMaintenance` deletes older days' keys.
+
+### Assets app, 14 Nov 2026 ("main app 20" v82, "main app 21" v83)
+- Cancel transfer needs a reason; recorded in new tab **Cancelled Transfers** (Cancelled At, By, Asset, Category, From, To,
+  Driver, Sent At, Sent By, Photos, Remarks, Reason). Only an asset that is in transit can be cancelled.
+- Driver name / vehicle no. is required on a transfer (page + `processWebTransfer`).
+- **History** tab now B..S: K-S = Sent By, Driver, Photos, Remarks (sent) | Received By, Driver, Photos, Remarks (received) |
+  Cancelled ("when | who | reason"). Cancelled transfers stay in the log. The grid grows rows/columns itself.
+- Photos: `getAssetPhotos(token, ids, full)` returns thumbnails / full photo as data URLs, only for Drive ids found in the
+  History photo columns. Nobody needs Drive access to see them.
+- Phones: Movement log + Overview ledger are compact cards (asset, status, route, sent/received time, driver, remarks,
+  photo thumbnails, Receive/Cancel buttons). Fleet + History filter bars = search + "Filters" button (dropdowns fold away).
+- Checks: `assets_received.js` (26), `assets.js` (54).
+
+## Hub: "Copy link" on forms (14 Nov 2026, hub "main app 26", v31)
+- In the Forms list each tile has a **Copy link** button where the ↗ arrow was. Tapping the tile still opens the form.
+- The link is still handed out only on the tap (`openLink(session, 'form', name, 'copy')`): the tick is checked again, and the Log records `COPY LINK` instead of `OPEN`.
+- If the phone's browser refuses to copy, a small box shows the link to copy by hand.
+- Sheets keep the arrow.
+- `albert.js` (a one-line comment someone added in the online editor) is kept and allowed in `.claspignore`.
+
+## Leads & Orders joins GGM Portal (14 Nov 2026, app "main app 1", hub "main app 27")
+Folder `leads_orders` (script `1B7hEqx7…`, bound to the new sheet **Leads & Orders App** `1sQ_3GJ5NuMqqMSKFJrezxFG2cyk35tmLq6_WXzj4FpI`).
+Live link: `https://script.google.com/macros/s/AKfycby_i8FyBg7koPXFPoE-9y81Heyv-zHH6LZJLBJZOacIXCsUCTl4Qz6gCcwuOARs3Rde1A/exec` (deployment "main app 1").
+App ID **LEADS** · Fields `role,doer` · Roles Admin / Manager / Executive · Doer name = the name in the FMS sheets (ATT. NAME / SALES PER.).
+- **Data:** the two FMS sheets stay the source of truth (01.LEADS TO ORDER FMS `1PzN…`, 2. ORDER TO DELIVERY `1xe2…`). Steps,
+  hours (row 5), answers (Config tab) and fields are read from the sheet headings; the app writes Actual / answer / fields into the
+  same cells. Planned = the sheets' own formula; the app only works a deadline out itself after a send-back (clock restarts).
+- **Own tabs** in Leads & Orders App: Events (who did what), Notes, Photos (Drive folder "Leads & Orders — photos"), Lead State
+  (restarts, hand closings, industry, lead↔order links), Activity (opens + screen time), Settings, Portal Users LEADS.
+- **Board:** one column per step, one tile per lead; green on time · yellow under 30 % of the time left · red overdue (red always on
+  top). Answers decide where the tile goes (Settings → Answer rules): next · stay (follow-up) · back to a step · won · lost. Field rules:
+  sample "Failed" / "Req. Another Sample" / "Un Delivered" → back to Send sample; client "No" → back to Station.
+- **Who answers:** the lead's owner where "Lead owner" is ticked (all Leads steps, Order steps whose Who says SALES); Station / Site /
+  Accounts steps need people ticked in Settings → Steps & people. Admin / Manager can answer anything.
+- **Performance:** score from Events + steps entered in the sheet (credited to the owner) + opens / screen time; trends; team table.
+  An evening trigger (19:00) charges overdue tiles to their people.
+- Checks: `portal_connector/checks/leads.js` (64).
+
+**To finish (owner only):**
+1. Open the Leads & Orders App sheet → Extensions → Apps Script → run `setup` → approve the permissions.
+   (Or reload the sheet and use the **Leads & Orders** menu → Set up / repair.)
+2. GGM Portal sheet → Portal Admin → **Set up / repair tabs** (adds the LEADS row with its link and sheet) → click the LEADS row →
+   **Connect selected app** → copy the key → in the Leads & Orders App sheet: **Leads & Orders → Paste GGM Portal key…**.
+3. Portal Admin → **Refresh dropdowns**, then tick LEADS in Access with Role + Doer name (e.g. Executive · SURAJ).
+4. In the app (Admin): Settings → Steps & people → tick who answers Station, Transport, Dispatch, Payment confirmation, Invoice,
+   Delivery (the Order → Delivery steps not done by the sales person).
+
+**Done 14 Nov 2026 (17:30–17:45):** app permissions approved and `setup` run (tabs, photo folder, 4 triggers; both FMS layouts
+read fine) · hub Set up / repair added the LEADS row + Access columns · ticked in Access and synced: admin (Admin), SURAJ,
+HEMANT AGARWAL, BHOPAL GURJAR (Executive) · Arrange transport assigned to Hemant + Bhopal (Settings tab).
+**Still open:** PORTAL_KEY (owner pastes: Leads & Orders → Paste GGM Portal key…), then Portal Admin → Refresh dropdowns;
+Nakul / Vipin / Neeraj (Manager, doer NAKUL GOYAL / VIPIN GOYAL / NEERAJ KUMAR GOYAL) and AAYUSHI KHANDELWAL
+(Executive, doer AAYUSHI) still to be ticked by the owner.
+
+## Leads & Orders: no doer names (14 Nov 2026, app "main app 2", hub "main app 28")
+- Hub Fields for LEADS = `role` only (Apps row + DEFAULT_APPS); Access grid refreshed (Doer column gone), synced.
+- Whoever signs in is who they are. Leads are theirs when ATT. NAME / SALES PER. matches their portal name or username
+  (SURAJ → SURAJ / SURAJ KUMAR, Vipin Goyal → VIPIN GOYAL, username NEERAJ → NEERAJ KUMAR GOYAL, AAYUSHI KHANDELWAL → AAYUSHI).
+- Admin assigns inside the app: Settings → **People** (other spellings; the first one is written for new / assigned leads,
+  plus a list of open-lead names nobody matches), Settings → Steps & people (who answers each step), and **Assigned to** on
+  every lead (Admin / Manager) and in the New lead form. An Executive's new lead is always their own.
+- Checks: leads.js 71.
+
+## Leads & Orders: usernames, speed, compact board (14 Nov 2026, app "main app 4")
+- **Owner names = Master App usernames, permanently.** One-time run renamed 261 cells: AAYUSHI → AAYUSHI KHANDELWAL (91),
+  NAKUL GOYAL → NAKUL (62), Suraj → SURAJ (41), SURAJ KUMAR → SURAJ (33), VIPIN GOYAL → VIPIN (25), NEERAJ KUMAR GOYAL →
+  NEERAJ (9). Not matched (left as is): MAAHI, SHOJI RAM JI — add the spelling to a person in Settings → People.
+  The 10-minute job renames new rows too (Google Form entries). Users are read from Master App → Users (HUB_SHEET_ID).
+  Lead Ratio (01.LEADS TO ORDER FMS) person dropdown D2 now: ALL / SURAJ / AAYUSHI KHANDELWAL / MAAHI.
+- **Speed.** The order sheet's formulas run 50,000 rows down, so a full read of both sheets takes ~60 s. It now only
+  happens in triggers (any hand edit → rebuild in the background; every 30 min). Visitors get the saved board (~0.25 s on the
+  server); saves patch the saved board. The page draws the last copy kept on the phone at once; opened from the portal tile,
+  the data is inside the page. Saving updates the screen at once (server confirms in the background; undone with a message
+  if it refuses). The side panel opens at once from the board; history fills in. Timings: `…/exec?bench=1` (numbers only).
+- **Board.** Compact columns (toggle), empty steps fold to a slim strip, step strip on top to jump, ‹ › buttons and side
+  arrows, ← → keys, drag the empty board area with the mouse; no redraw while scrolling. Ribbon: **Late by** (0–1, 1–3, 3–5,
+  0–5, 5–10, 10–20, 20–30, 30+ days, custom range), More filters panel.
+- **Dashboards.** Charts fit the screen; team KPIs; "Pipeline now" (open / overdue per step, tap to jump); last view shown at once.
+- Checks: leads.js 81.
+
+### Leads & Orders — own backend (main app 7)
+Everything now lives in the **Leads & Orders App** sheet: `LEADS` and `ORDERS` (same layout as the old FMS sheets, plain values, colour-coded step blocks), `Steps` (step key, when the clock starts, answer options — edit answers here), `Holidays` (office hours, weekly off, holidays), plus Events / Notes / Photos / Lead State / Activity / Settings / Portal tabs.
+The two old FMS sheets and their Google Forms are no longer used: every new lead and order is entered in the app (+ New lead / + New order). The form import was removed in main app 11.
+Dropped from ORDERS: the 7 per-mine "Material Grade (…)" columns (merged into Mat. Gr.), Delay Days, Est. Date (one day bef).

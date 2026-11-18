@@ -1,0 +1,2057 @@
+<script>
+/* ============================================================
+   Leads & Orders — page script
+   Board: one column per FMS step, one tile per lead/order.
+   Green = on time · yellow = deadline close · red = overdue (always on top).
+   ============================================================ */
+var S = {
+  me: null, flows: {}, boards: {}, ver: '', users: [], industries: [], warnPct: 30, scores: {},
+  fid: 'L2O', view: 'board', f: {}, cf: {}, pin: null, flash: null, closedTab: 'won', closedAll: true, more: {},
+  panel: null, perf: { range: '30', user: '' }, perfData: null, set: null, setTab: 'people', setFid: 'L2O',
+  det: {}, perfCache: {}, expand: {}, closedOpen: false, dense: true, started: false, timers: false, lastScroll: 0
+};
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function ls(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem('lo_' + k) || 'null'); localStorage.setItem('lo_' + k, JSON.stringify(v)); } catch (e) { return null; } }
+function call(fn) {
+  var args = [].slice.call(arguments, 1);
+  return new Promise(function (res, rej) {
+    PORTAL.run.withSuccessHandler(res).withFailureHandler(function (e) { rej(e); })[fn].apply(null, args);
+  });
+}
+function errMsg(e) { return String((e && e.message) || e || 'Something went wrong.').replace(/^(Error|Exception):\s*/, ''); }
+function toast(msg, kind) {
+  var t = $('toast'); t.textContent = msg; t.className = 'toast on' + (kind ? ' ' + kind : '');
+  clearTimeout(toast.t); toast.t = setTimeout(function () { t.className = 'toast'; }, kind === 'err' ? 6000 : 3800);
+}
+function fail(e) { toast(errMsg(e), 'err'); }
+
+var IC = {
+  board: '<path d="M3 5h4v14H3zM10 5h4v9h-4zM17 5h4v6h-4z"/>',
+  me: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  team: '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3.2-5.5 7-5.5s7 2 7 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M22 20c0-2.8-1.8-4.6-4.5-5.3"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  filter: '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
+  note: '<path d="M4 4h16v12H8l-4 4z"/>',
+  cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  back: '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+  fu: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  link: '<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+  sheet: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/>',
+  chevl: '<path d="m15 18-6-6 6-6"/>',
+  chevr: '<path d="m9 18 6-6-6-6"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>'
+};
+function ic(n, st) { return '<svg class="ic" viewBox="0 0 24 24"' + (st ? ' style="' + st + '"' : '') + '>' + IC[n] + '</svg>'; }
+function ini(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '')[1] || '')).toUpperCase(); }
+
+/* ---------------------------------------------------------- dates & values */
+var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function ist(ms) { var d = new Date(ms + W_OFF); return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes() }; }
+function fDate(ms) { if (!ms) return ''; var x = ist(ms); return ('0' + x.d).slice(-2) + ' ' + MON[x.m] + ' ' + String(x.y).slice(2); }
+function fTime(ms) { if (!ms) return ''; var x = ist(ms), h = x.h % 12 || 12; return h + ':' + ('0' + x.mi).slice(-2) + (x.h < 12 ? ' am' : ' pm'); }
+function fDT(ms) { return ms ? fDate(ms) + ', ' + fTime(ms) : ''; }
+function isoDay(ms) { var x = ist(ms); return x.y + '-' + ('0' + (x.m + 1)).slice(-2) + '-' + ('0' + x.d).slice(-2); }
+function fVal(fl, v) {
+  if (v == null || v === '') return '';
+  if (fl && (fl.t === 'date') && typeof v === 'number') { var x = ist(v); return x.h || x.mi ? fDT(v) : fDate(v); }
+  if (fl && fl.t === 'datetime' && typeof v === 'number') return fDT(v);
+  return String(v);
+}
+
+/* ---------------------------------------------------------- flow helpers */
+function FL(fid) { return S.flows[fid || S.fid]; }
+function stepsOf(fid) { return FL(fid).steps; }
+function stepOf(fid, k) { var a = stepsOf(fid); for (var i = 0; i < a.length; i++) if (a[i].key === k) return a[i]; return null; }
+function lab(fid, k) { var s = stepOf(fid, k); return s ? s.cfg.label : k; }
+function mainSteps(fid) { return stepsOf(fid).filter(function (s) { return !s.cfg.side; }); }
+function isLastMain(fid, k) { var m = mainSteps(fid); return m.length && m[m.length - 1].key === k && !stepOf(fid, k).cfg.side; }
+function nextMain(fid, k) { var a = stepsOf(fid), i = a.map(function (s) { return s.key; }).indexOf(k); for (var j = i + 1; j < a.length; j++) if (!a[j].cfg.side) return a[j].key; return null; }
+function leadsOf(fid) { return (S.boards[fid || S.fid] || {}).leads || []; }
+/** The Order → Delivery board also shows the steps of its cycles (CYC). */
+function boardFlows(fid) { return fid === 'O2D' && S.flows.CYC ? ['O2D', 'CYC'] : [fid]; }
+function boardOf(fid) { return (S.flows[fid] && S.flows[fid].parent) || fid; }
+function stepFid(k) { var fs = boardFlows(S.fid); for (var i = 0; i < fs.length; i++) if (stepOf(fs[i], k)) return fs[i]; return S.fid; }
+function flowList() { return ['L2O', 'O2D'].concat(S.flows.CYC ? ['CYC'] : []); }
+function numOf(v) { var n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isNaN(n) ? 0 : n; }
+function fmtT(v) { var n = Math.round(numOf(v) * 100) / 100; return String(n); }
+function cycN(id) { var m = /-C(\d+)$/.exec(String(id)); return m ? Number(m[1]) : 0; }
+function cyclesOfOrder(id) { return leadsOf('CYC').filter(function (c) { return String(pick(c.b, 'Order No')).trim() === id; }).sort(function (a, b) { return cycN(a.id) - cycN(b.id); }); }
+function findLead(fid, id) { var a = leadsOf(fid); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+function pick(o, h) { if (!o) return ''; if (o[h] != null) return o[h]; var k = String(h).toLowerCase().trim(); for (var x in o) if (x.toLowerCase().trim() === k) return o[x]; return ''; }
+function refVal(lead, ref) {
+  var i = ref.indexOf(':'), sk = ref.slice(0, i), h = ref.slice(i + 1);
+  if (sk === 'base') return pick(lead.b, h);
+  var s = lead.s[sk]; if (!s) return '';
+  if (h === '@status') return s.s || '';
+  return pick(s.f, h);
+}
+function refField(fid, ref) {
+  var i = ref.indexOf(':'), sk = ref.slice(0, i), h = ref.slice(i + 1).toLowerCase();
+  if (h === '@status') return { k: (stepOf(fid, sk) || {}).cfg ? lab(fid, sk) : sk, t: 'text' };
+  var list = sk === 'base' ? FL(fid).base : ((stepOf(fid, sk) || {}).fields || []);
+  for (var j = 0; j < list.length; j++) if (list[j].k.toLowerCase() === h) return list[j];
+  return null;
+}
+function refLabel(fid, ref) {
+  var i = ref.indexOf(':'), sk = ref.slice(0, i), h = ref.slice(i + 1);
+  if (h === '@status') return lab(fid, sk);
+  return nice(h);
+}
+function nice(h) {
+  var map = { 'CONTACT PERSON': 'Contact', 'Contact Details': 'Phone', 'PRODUCT NAME': 'Product', 'QUANTITY': 'Qty', 'SOURCE': 'Source',
+    'COUNTRY / CITY': 'Place', 'EXP. / DOM': 'Market', 'Product Category': 'Category', 'ATT. NAME': 'Owner', 'MAIL ID': 'E-mail',
+    'Mines/Factory': 'Mine', 'Mat. Gr.': 'Material', 'QTY.': 'Qty', 'EST. DEL. Dt.': 'Est. delivery', 'SALES PER.': 'Sales person',
+    'PARTY NAME': 'Party', 'Prev. Dt.': 'Ready by', 'EDD': 'EDD', 'TPT. NAME': 'Transporter', 'VEH.': 'Vehicle', 'WT.': 'Weight',
+    'MOB.': 'Driver mob.', 'Balance WT.': 'Balance wt', 'Act. Date': 'Dispatched', 'Payment Term': 'Payment', 'Sample Status': 'Sample result',
+    'DELIVERY STATUS': 'Sample delivery', 'DISPATCH DATE': 'Sample sent', 'Company Name': 'Company' };
+  var k = String(h).trim().replace(/\s+/g, ' ');
+  if (map[k]) return map[k];
+  return /[a-z]/.test(k) || k.length < 4 ? k : k.charAt(0) + k.slice(1).toLowerCase();   // "REMARK" → "Remark"
+}
+function titleOf(lead, fid) {
+  var f = FL(fid || S.fid), t = '';
+  f.titles.forEach(function (h) { if (!t) t = String(pick(lead.b, h) || '').trim(); });
+  return t || '(no name)';
+}
+function tileKeys(lead) { return lead.closed ? [] : (lead.cur ? [lead.cur] : []).concat(lead.side || []); }
+function dueOf(fid, lead, k) {
+  var st = stepOf(fid, k), x = (lead.s || {})[k] || {};
+  if (!st) return 'none';
+  return dueState(x.p, st.tat, Date.now(), FL(fid).cal, S.warnPct);
+}
+function dueText(fid, lead, k) {
+  var x = lead.s[k] || {}, d = dueOf(fid, lead, k), now = Date.now();
+  if (d === 'none') return 'No deadline';
+  if (d === 'over') return 'Late ' + fmtDur(now - x.p);
+  return fmtDur(x.p - now) + ' left';
+}
+function myNames() { return S.me.names || []; }
+/** The person with access whose names match a sheet name (ATT. NAME / SALES PER.), if any. */
+function userOfName(name) {
+  var v = String(name || '').trim().toLowerCase();
+  if (!v) return null;
+  for (var i = 0; i < S.users.length; i++) if (S.users[i].u.toLowerCase() === v) return S.users[i];
+  for (var j = 0; j < S.users.length; j++) if ((S.users[j].names || [S.users[j].n, S.users[j].u]).some(function (n) { return namesMatch(n, name); })) return S.users[j];
+  return null;
+}
+function roleWord(u) { return { admin: 'Admin', manager: 'Manager', exec: 'Executive', leadgen: 'Lead Generator', ordergen: 'Order Generator' }[u.r] || u.rn || ''; }
+var GEN = { leadgen: 'L2O', ordergen: 'O2D' };
+/** People a lead / order can be given to (form-only roles never work one). */
+function workers() { return S.users.filter(function (u) { return !GEN[u.r]; }); }
+/** One label for a person everywhere (assign list, Owner filter): the Master App username written in the sheet. */
+function userLabel(u) { return u.u + (u.n && u.n.toUpperCase() !== u.u.toUpperCase() ? ' — ' + u.n : '') + ' · ' + roleWord(u); }
+/** Owner filter: everyone with access + names in the sheet that have no access yet. */
+function ownerOpts(fid) {
+  var m = {};
+  workers().forEach(function (u) { m[u.u.toUpperCase()] = { v: u.u, t: userLabel(u), n: 0 }; });
+  leadsOf(fid).forEach(function (l) {
+    var o = String(l.owner || '').trim();
+    if (!o) return;
+    var u = userOfName(o), k = (u ? u.u : o).toUpperCase();
+    m[k] = m[k] || { v: o, t: o + ' · no access', n: 0 };
+    m[k].n++;
+  });
+  return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return a.v.localeCompare(b.v); });
+}
+function assignSelect(id, cur, withMe, extra) {
+  var curU = cur ? userOfName(cur) : null;
+  return '<select class="inp" id="' + id + '"' + (extra || '') + ' style="max-width:260px">' + (curU ? '' : '<option value="">' + esc(cur ? cur + ' (no access)' : '— pick —') + '</option>') +
+    workers().map(function (u) { var on = curU ? curU.u === u.u : (withMe && u.u === S.me.username); return '<option value="' + esc(u.u) + '"' + (on ? ' selected' : '') + '>' + esc(userLabel(u)) + '</option>'; }).join('') + '</select>';
+}
+/** A step this person works: ticked as a doer, or answered by the lead owner. */
+function myStep(st) {
+  var un = S.me.username.toLowerCase();
+  return st.cfg.ownerActs || (st.cfg.doers || []).some(function (d) { return String(d).toLowerCase() === un; });
+}
+function isOwner(lead) { return myNames().some(function (n) { return namesMatch(n, lead.owner); }); }
+function canAct(fid, lead, k) {
+  if (S.me.role !== 'exec') return true;
+  var c = (stepOf(fid, k) || {}).cfg; if (!c) return false;
+  var un = S.me.username.toLowerCase();
+  if ((c.doers || []).some(function (d) { return String(d).toLowerCase() === un; })) return true;
+  return c.ownerActs && isOwner(lead);
+}
+function ruleText(fid, k, rule) {
+  if (rule === 'next') { var n = nextMain(fid, k); return n ? 'Moves to “' + lab(fid, n) + '”' : 'Finishes the ' + FL(fid).unit; }
+  if (rule === 'stay') return 'Stays at this step — logged as a follow-up, the deadline keeps running';
+  if (rule === 'won') return fid === 'L2O' ? 'Closes as WON — then turn it into an order' : 'Completes the order';
+  if (rule === 'lost') return 'Closes as LOST';
+  if (rule.indexOf('back:') === 0) return 'Goes back to “' + lab(fid, rule.slice(5)) + '” — that step starts again';
+  return rule;
+}
+function ruleCls(rule) { return rule.indexOf('back:') === 0 ? 'back' : rule; }
+
+/* ---------------------------------------------------------- start */
+PORTAL.ready(function (u) { boot(u); });
+
+function cacheKey(name) { return 'lo_cache_' + String(name || '').toLowerCase(); }
+/**
+ * 1) opened from the portal tile: the data is already inside the page (BOOT_DATA) → drawn at once;
+ * 2) otherwise the last copy saved on this phone is drawn at once and refreshed in the background.
+ */
+function boot(u) {
+  var name = (u && u.username) || '', first = window.BOOT_DATA;
+  window.BOOT_DATA = null;
+  if (first && first.me && first.me.username.toLowerCase() === name.toLowerCase()) { start(first); saveCache(); return; }
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem(cacheKey(name)) || 'null'); } catch (e) {}
+  if (cached && cached.me && cached.flows && cached.me.username.toLowerCase() === name.toLowerCase()) { start(cached); $('sync').className = 'sync busy'; }
+  call('bootstrap').then(function (r) {
+    if (!S.started) start(r);
+    else { applyBoot(r); if (S.view === 'board') renderBoard(true); renderShell(); }
+    $('sync').className = 'sync';
+    saveCache();
+  }).catch(function (e) { if (!S.started) $('bootMsg').textContent = errMsg(e); else $('sync').className = 'sync off'; });
+}
+function start(r) {
+  applyBoot(r);
+  S.started = true;
+  $('boot').hidden = true; $('app').hidden = false;
+  if (GEN[S.me.role]) { renderGen(); return; }
+  var v = ls('view'); if (v && navItems().some(function (x) { return x.k === v; })) S.view = v;
+  var f = ls('fid'); if (f && S.flows[f]) S.fid = f;
+  S.f = ls('filters') || {};
+  S.dense = ls('dense') !== false;
+  renderShell(); render();
+  startTimers();
+}
+/** Keeps the last data on this device so the next open draws instantly (never blocks the page). */
+function saveCache() {
+  if (!S.me) return;
+  clearTimeout(saveCache.t);
+  saveCache.t = setTimeout(function () {
+    var k = cacheKey(S.me.username);
+    try {
+      localStorage.setItem(k, JSON.stringify({ me: S.me, flows: Object.keys(S.flows).map(function (x) { return S.flows[x]; }),
+        boards: Object.keys(S.boards).map(function (x) { return S.boards[x]; }), ver: S.ver, users: S.users, industries: S.industries,
+        warnPct: S.warnPct, scores: S.scores, hub: S.hub }));
+    } catch (e) { try { localStorage.removeItem(k); } catch (e2) {} }
+  }, 600);
+}
+function applyBoot(r) {
+  S.lists = r.lists || null;
+  S.me = r.me; S.users = r.users || []; S.industries = r.industries || []; S.warnPct = r.warnPct; S.scores = r.scores; S.ver = r.ver;
+  (r.flows || []).forEach(function (f) { wCal(f.cal); S.flows[f.fid] = f; });
+  setBoards(r.boards);
+  S.hub = r.hub || S.hub;
+  if (S.hub) $('hubLink').href = S.hub.replace(/\?app=.*$/, '');
+}
+function setBoards(list) { (list || []).forEach(function (b) { S.boards[b.fid] = b; }); buildIndex(); }
+
+function navItems() {
+  var a = [{ k: 'board', t: 'Pipeline', i: 'board' }, { k: 'me', t: 'My performance', i: 'me' }, { k: 'rem', t: 'Reminders', i: 'bell' }];
+  if (S.me && S.me.role !== 'exec') a.push({ k: 'team', t: 'Team performance', i: 'team' });
+  if (S.me && S.me.role === 'admin') a.push({ k: 'settings', t: 'Settings', i: 'gear' });
+  return a;
+}
+function renderShell() {
+  var items = navItems();
+  $('nav').innerHTML = items.map(function (x) { return '<button class="nav-i' + (S.view === x.k ? ' on' : '') + '" data-nav="' + x.k + '">' + ic(x.i) + '<span class="tip">' + x.t + '</span></button>'; }).join('');
+  $('bnav').innerHTML = items.map(function (x) { return '<button class="' + (S.view === x.k ? 'on' : '') + '" data-nav="' + x.k + '">' + ic(x.i) + '<span>' + x.t.replace('performance', '').trim() + '</span></button>'; }).join('');
+  $('meAv').innerHTML = '<span data-ggm-photo="' + esc(S.me.username) + '">' + esc(ini(S.me.name)) + '</span>';
+  $('meAv').title = S.me.name + ' · ' + S.me.roleName;
+}
+
+/* ---------------------------------------------------------- live updates + screen time */
+var ACT = { last: Date.now(), acc: 0 };
+function startTimers() {
+  if (S.timers) return;
+  S.timers = true;
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { window.addEventListener(ev, function () { ACT.last = Date.now(); }, { passive: true, capture: true }); });
+  document.addEventListener('scroll', function () { ACT.last = S.lastScroll = Date.now(); }, { passive: true, capture: true });
+  setInterval(function () { if (document.visibilityState === 'visible' && Date.now() - ACT.last < 180000) ACT.acc += 5; }, 5000);
+  setInterval(function () { sync(false); }, 45000);
+  setTimeout(function () { S.pingOpens = 1; sync(false); }, 3000);
+  document.addEventListener('visibilitychange', function () { sync(false); });
+  window.addEventListener('resize', function () { clearTimeout(S.rz); S.rz = setTimeout(function () { if ((S.view === 'me' || S.view === 'team') && S.perfData) drawPerf(S.perfData); }, 200); });
+}
+function sync(force) {
+  var secs = ACT.acc, opens = S.pingOpens || 0;
+  ACT.acc = 0; S.pingOpens = 0;
+  $('sync').className = 'sync busy';
+  return call('ping', secs, force ? '' : S.ver, opens).then(function (r) {
+    $('sync').className = 'sync';
+    S.ver = r.ver;
+    if (!r.same) { (r.flows || []).forEach(function (f) { wCal(f.cal); S.flows[f.fid] = f; }); setBoards(r.boards); saveCache(); }
+    refreshBoardSoon();
+  }).catch(function () { ACT.acc += secs; S.pingOpens = opens; $('sync').className = 'sync off'; });
+}
+/** Redraw for new data / passing time — but never while someone is scrolling, typing or has a filter open. */
+function refreshBoardSoon() {
+  if (S.view !== 'board') return;
+  var a = document.activeElement, typing = a && a.closest && a.closest('#ribbon,#pop,#searchBox,#modal');
+  if (typing || !$('pop').hidden || Date.now() - S.lastScroll < 4000) { clearTimeout(refreshBoardSoon.t); refreshBoardSoon.t = setTimeout(refreshBoardSoon, 3000); return; }
+  renderBoard(true);
+}
+/* ---------------------------------------------------------- render: top + views */
+function render() {
+  renderShell();
+  var board = S.view === 'board';
+  $('flowSeg').hidden = !board; $('searchBox').hidden = !board; $('newBtn').hidden = !board;
+  $('pageTitle').textContent = { board: 'Pipeline', me: 'My performance', team: 'Team performance', settings: 'Settings', rem: 'Reminders' }[S.view];
+  if (board) { renderFlowSeg(); renderBoard(); }
+  else if (S.view === 'me' || S.view === 'team') renderPerf();
+  else if (S.view === 'settings') renderSettings();
+  else if (S.view === 'rem') { if (S.rem) drawRem(); renderRem(false); }
+}
+function renderFlowSeg() {
+  $('flowSeg').innerHTML = ['L2O', 'O2D'].map(function (fid) {
+    var open = 0, red = 0;
+    boardFlows(fid).forEach(function (bf) { leadsOf(bf).forEach(function (l) { tileKeys(l).forEach(function (k) { open++; if (dueOf(bf, l, k) === 'over') red++; }); }); });
+    return '<button class="' + (S.fid === fid ? 'on' : '') + '" data-flow="' + fid + '">' + esc(S.flows[fid].title) + ' <span class="n">' + open + '</span>' + (red ? '<span class="r">' + red + '</span>' : '') + '</button>';
+  }).join('');
+  $('newBtn').textContent = S.fid === 'L2O' ? '+ New lead' : '+ New order';
+}
+
+/* ---------------------------------------------------------- filters */
+function F() { return S.f[S.fid] || (S.f[S.fid] = {}); }
+function saveF() { ls('filters', S.f); }
+function distinct(fid, getter) {
+  var m = {};
+  leadsOf(fid).forEach(function (l) { var v = String(getter(l) == null ? '' : getter(l)).trim(); if (v) { var k = v.toUpperCase(); m[k] = m[k] || { v: v, n: 0 }; m[k].n++; } });
+  return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return a.v.localeCompare(b.v); });
+}
+function passTop(fid, l, k) {
+  var f = S.f[boardOf(fid)] || {}, fl = FL(fid);
+  if (f.owner && !namesMatch(f.owner, l.owner)) return false;
+  var ts = pick(l.b, 'Timestamp');
+  if (f.from && (!ts || isoDay(ts) < f.from)) return false;
+  if (f.to && (!ts || isoDay(ts) > f.to)) return false;
+  if (f.cat && String(pick(l.b, fl.category)).trim().toUpperCase() !== f.cat.toUpperCase()) return false;
+  if (f.mat && String(pick(l.b, fl.material)).toUpperCase().indexOf(f.mat.toUpperCase()) < 0) return false;
+  if (f.ind && (l.ind || '') !== f.ind) return false;
+  if (f.src && String(pick(l.b, fl.source)).trim().toUpperCase() !== f.src.toUpperCase()) return false;
+  if (f.mkt && fl.market && String(pick(l.b, fl.market)).trim().toUpperCase() !== f.mkt.toUpperCase()) return false;
+  if (k && f.due && dueOf(fid, l, k) !== f.due) return false;
+  if (k && f.mine && !canAct(fid, l, k)) return false;
+  if (k && f.late && !passLate(f.late, fid, l, k)) return false;
+  if (f.back && !l.bk) return false;
+  return true;
+}
+var LATE = [['', 'Late by…'], ['0-1', '0–1 day late'], ['1-3', '1–3 days late'], ['3-5', '3–5 days late'], ['0-5', '0–5 days late'],
+  ['5-10', '5–10 days late'], ['10-20', '10–20 days late'], ['20-30', '20–30 days late'], ['30-', '30+ days late'], ['custom', 'Custom range…']];
+/** Days past the deadline (−1 when not late). */
+function lateDays(fid, l, k) { var x = (l.s || {})[k] || {}; if (!x.p) return -1; var d = Date.now() - x.p; return d > 0 ? d / 864e5 : -1; }
+function passLate(v, fid, l, k) {
+  var d = lateDays(fid, l, k);
+  if (d < 0) return false;
+  var p = String(v).split('-'), a = Number(p[0]) || 0, b = p[1] === '' || p[1] == null ? Infinity : Number(p[1]);
+  return d >= a && d < b;
+}
+function lateLabel(v) {
+  var m = LATE.filter(function (x) { return x[0] === v; })[0];
+  if (m) return m[1];
+  var p = String(v).split('-');
+  return p[1] ? p[0] + '–' + p[1] + ' days late' : p[0] + '+ days late';
+}
+var MORE_KEYS = ['mat', 'ind', 'src', 'mkt', 'from', 'to', 'back'];
+function topActive() { var f = F(); return Object.keys(f).filter(function (k) { return f[k]; }).length; }
+function selF(key, label, opts) {
+  var v = F()[key] || '';
+  return '<select class="fsel' + (v ? ' on' : '') + '" data-f="' + key + '"><option value="">' + esc(label) + '</option>' +
+    opts.map(function (o) { return '<option value="' + esc(o.v) + '"' + (o.v.toUpperCase() === v.toUpperCase() ? ' selected' : '') + '>' + esc(o.t || o.v) + (o.n ? ' (' + o.n + ')' : '') + '</option>'; }).join('') + '</select>';
+}
+function renderRibbon() {
+  var fid = S.fid, fl = FL(), f = F(), cnt = { over: 0, warn: 0, ok: 0, none: 0 };
+  boardFlows(fid).forEach(function (bf) { leadsOf(bf).forEach(function (l) { tileKeys(l).forEach(function (k) { if (passTop(bf, l, null)) cnt[dueOf(bf, l, k)]++; }); }); });
+  var chips = [['over', 'Overdue', 'var(--bad)'], ['warn', 'Due soon', 'var(--warn)'], ['ok', 'On time', 'var(--ok)'], ['none', 'No deadline', '#C9C3B4']].map(function (x) {
+    return '<button class="kchip' + (f.due === x[0] ? ' on' : '') + '" data-due="' + x[0] + '" title="' + x[1] + '"><i style="background:' + x[2] + '"></i>' + cnt[x[0]] + '<span class="kl"> ' + x[1] + '</span></button>';
+  }).join('');
+  var lateOpts = LATE.slice();
+  if (f.late && !LATE.some(function (x) { return x[0] === f.late; })) lateOpts.splice(LATE.length - 1, 0, [f.late, lateLabel(f.late)]);
+  var late = '<select class="fsel' + (f.late ? ' on' : '') + '" data-f="late" title="Show tiles that are this many days past their deadline">' +
+    lateOpts.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (f.late === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select>';
+  var more = MORE_KEYS.filter(function (k) { return f[k]; }).length;
+  return '<div class="ribbon" id="ribbon"><div class="kstrip">' + chips + '</div>' +
+    '<button class="tog' + (f.mine ? ' on' : '') + '" data-tog="mine">' + ic('me', 'width:14px;height:14px') + ' My work</button>' + late +
+    selF('owner', fid === 'L2O' ? 'Owner' : 'Sales person', ownerOpts(fid)) +
+    selF('cat', fid === 'L2O' ? 'Category' : 'Material', distinct(fid, function (l) { return pick(l.b, fl.category); }).slice(0, 120)) +
+    '<button class="tog' + (more ? ' on' : '') + '" data-act="moreF">' + ic('filter', 'width:13px;height:13px') + ' More' + (more ? ' · ' + more : '') + '</button>' +
+    (topActive() ? '<button class="lnk" data-act="clearTop">Clear</button>' : '') +
+    '<span class="rib-r"><button class="tog' + (S.dense ? ' on' : '') + '" data-act="dense" title="Narrow columns so more steps fit on the screen">Compact</button></span></div>';
+}
+function placePop(btn, w) {
+  var pop = $('pop'), r = btn.getBoundingClientRect();
+  pop.style.width = (w || 310) + 'px';
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - (w || 310) - 8, r.left)) + 'px';
+  pop.style.top = (r.bottom + 6) + 'px';
+  pop.hidden = false;
+}
+function openMoreFilters(btn) {
+  var fid = S.fid, fl = FL(), f = F(), pop = $('pop');
+  var sel = function (key, label, opts) {
+    return '<h5>' + label + '</h5><select class="inp" data-f="' + key + '"><option value="">Any</option>' + opts.map(function (o) {
+      return '<option value="' + esc(o.v) + '"' + (String(f[key] || '').toUpperCase() === o.v.toUpperCase() ? ' selected' : '') + '>' + esc(o.v) + (o.n ? ' (' + o.n + ')' : '') + '</option>'; }).join('') + '</select>';
+  };
+  var h = (fid === 'L2O' ? '<h5>Product contains</h5><input class="inp" data-f="mat" value="' + esc(f.mat || '') + '" placeholder="e.g. talc">' : '') +
+    sel('ind', 'Industry', S.industries.map(function (x) { return { v: x }; })) +
+    sel('src', fid === 'L2O' ? 'Source' : 'Mine / factory', distinct(fid, function (l) { return pick(l.b, fl.source); })) +
+    (fl.market ? sel('mkt', 'Export / domestic', distinct(fid, function (l) { return pick(l.b, fl.market); })) : '') +
+    '<h5>Received between</h5><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><input type="date" class="inp" data-f="from" value="' + esc(f.from || '') + '"><input type="date" class="inp" data-f="to" value="' + esc(f.to || '') + '"></div>' +
+    '<h5>Other</h5><button class="chip' + (f.back ? ' on' : '') + '" data-tog="back">' + ic('back', 'width:13px;height:13px') + ' Sent back at least once</button>' +
+    '<div class="foot"><button class="btn btn-ghost btn-sm" data-act="moreClear">Clear these</button><button class="btn btn-dark btn-sm" data-act="cfDone">Done</button></div>';
+  pop.innerHTML = h; pop.dataset.k = '__more';
+  placePop(btn, 300);
+}
+function openLateCustom(anchor) {
+  var pop = $('pop'), p = String(F().late || '').split('-');
+  pop.innerHTML = '<h5>Late by (days)</h5><div style="display:flex;gap:8px;align-items:center"><input class="inp" type="number" min="0" id="lateA" value="' + esc(p[0] || '') + '" placeholder="from">' +
+    '<span>to</span><input class="inp" type="number" min="0" id="lateB" value="' + esc(p[1] || '') + '" placeholder="no limit"></div>' +
+    '<div class="hint" style="margin-top:6px">e.g. 5 to 10 = tiles 5 to 10 days past their deadline.</div>' +
+    '<div class="foot"><button class="btn btn-ghost btn-sm" data-act="cfDone">Cancel</button><button class="btn btn-dark btn-sm" data-act="lateApply">Apply</button></div>';
+  pop.dataset.k = '__late';
+  placePop(anchor, 280);
+  setTimeout(function () { $('lateA').focus(); }, 30);
+}
+/* ---------------------------------------------------------- column filters & sorting */
+function CF(k) { return S.cf[S.fid + '|' + k] || (S.cf[S.fid + '|' + k] = { sort: 'due', due: [], who: '', fu: '', vals: {}, q: '' }); }
+function colActive(k) { var c = S.cf[S.fid + '|' + k]; if (!c) return false; return c.sort !== 'due' || c.due.length || c.who || c.fu || c.q || Object.keys(c.vals).some(function (r) { return c.vals[r].length; }); }
+function colRefs(fid, k) {        // select-type fields that make sense to filter in this column
+  var out = [], keys = stepsOf(fid).map(function (s) { return s.key; }), upto = keys.indexOf(k);
+  FL(fid).base.forEach(function (b) { if (!b.ro && b.k !== FL(fid).owner && (b.o || /category|source|exp|mines|mat\. gr/i.test(b.k))) out.push('base:' + b.k); });
+  stepsOf(fid).forEach(function (s, i) {
+    if (i > upto) return;
+    if (i < upto) out.push(s.key + ':@status');
+    s.fields.forEach(function (fl) { if (fl.o && fl.o.length) out.push(s.key + ':' + fl.k); });
+  });
+  return out;
+}
+function passCol(fid, l, k) {
+  var c = S.cf[boardOf(fid) + '|' + k];
+  if (!c) return true;
+  if (c.due.length && c.due.indexOf(dueOf(fid, l, k)) < 0) return false;
+  if (c.who && !namesMatch(c.who, l.owner)) return false;
+  if (c.fu === 'yes' && !(l.att || {})[k]) return false;
+  if (c.fu === 'no' && (l.att || {})[k]) return false;
+  for (var r in c.vals) { var vs = c.vals[r]; if (vs.length && vs.indexOf(String(refVal(l, r)).trim()) < 0) return false; }
+  if (c.q) { var q = c.q.toLowerCase(); if (JSON.stringify(l.b).toLowerCase().indexOf(q) < 0 && JSON.stringify(l.s).toLowerCase().indexOf(q) < 0) return false; }
+  return true;
+}
+var DUE_RANK = { over: 0, warn: 1, ok: 2, none: 3 };
+function sortTiles(fid, k, list) {
+  var c = CF(k), pin = S.pin;
+  function num(v) { var n = parseFloat(String(v).replace(/[^0-9.]/g, '')); return isNaN(n) ? -1 : n; }
+  var by = {
+    due: function (a, b) { var r = DUE_RANK[dueOf(fid, a, k)] - DUE_RANK[dueOf(fid, b, k)]; return r || ((a.s[k].p || 9e15) - (b.s[k].p || 9e15)); },
+    old: function (a, b) { return (pick(a.b, 'Timestamp') || 0) - (pick(b.b, 'Timestamp') || 0); },
+    new: function (a, b) { return (pick(b.b, 'Timestamp') || 0) - (pick(a.b, 'Timestamp') || 0); },
+    fu: function (a, b) { return ((b.att || {})[k] || 0) - ((a.att || {})[k] || 0); },
+    name: function (a, b) { return titleOf(a, fid).localeCompare(titleOf(b, fid)); },
+    qty: function (a, b) { return num(pick(b.b, FL(fid).qty)) - num(pick(a.b, FL(fid).qty)); },
+    act: function (a, b) { return (b.la || 0) - (a.la || 0); }
+  }[c.sort] || null;
+  return list.sort(function (a, b) {
+    if (pin && pin.fid === fid) { if (a.id === pin.id) return -1; if (b.id === pin.id) return 1; }
+    var ra = dueOf(fid, a, k) === 'over' ? 0 : 1, rb = dueOf(fid, b, k) === 'over' ? 0 : 1;   // red always on top
+    if (ra !== rb) return ra - rb;
+    return by ? by(a, b) : 0;
+  });
+}
+
+/* ---------------------------------------------------------- board */
+function renderBoard(keep) {
+  if (S.view !== 'board') return;
+  var view = $('view'), old = $('board'), sc = {};
+  if (keep && old) { sc.x = old.scrollLeft; [].forEach.call(old.querySelectorAll('.col-b'), function (c) { sc[c.dataset.k] = c.scrollTop; }); }
+  renderFlowSeg();
+  var fid = S.fid, cols = '', pills = '';
+  var mineOnly = S.me.scope === 'mine';
+  boardFlows(fid).forEach(function (bf) {
+    stepsOf(bf).forEach(function (st) {
+      if (mineOnly && !myStep(st)) return;
+      var c = colData(bf, st);
+      cols += colHtml(bf, st, c);
+      pills += '<button class="sp' + (c.red ? ' r' : '') + (c.list.length ? '' : ' z') + (bf !== fid ? ' cy' : '') + '" data-jump="' + st.key + '" title="' + esc(st.cfg.label) + (bf !== fid ? ' (cycle step)' : '') + '"><b>' + esc(st.num) + '</b>' +
+        '<span class="spl">' + esc(st.cfg.label) + '</span><span class="spn">' + c.list.length + '</span>' + (c.red ? '<span class="spr">' + c.red + '</span>' : '') + '</button>';
+    });
+  });
+  if (!mineOnly) cols += closedCol(fid);
+  view.innerHTML = renderRibbon() +
+    '<div class="navstrip"><button class="sarrow" data-scroll="-1" title="Scroll left (←)" aria-label="Scroll left">' + ic('chevl') + '</button>' +
+    '<div class="pills" id="pills">' + pills + (mineOnly ? '' : '<button class="sp cl" data-jump="_closed"><span class="spl">Closed</span></button>') + '</div>' +
+    '<button class="sarrow" data-scroll="1" title="Scroll right (→)" aria-label="Scroll right">' + ic('chevr') + '</button></div>' +
+    '<div class="board-wrap"><button class="edge l" data-scroll="-1" aria-label="Scroll left">' + ic('chevl') + '</button>' +
+    '<div class="board' + (S.dense ? ' dense' : '') + '" id="board">' + cols + '</div>' +
+    '<button class="edge r" data-scroll="1" aria-label="Scroll right">' + ic('chevr') + '</button></div>';
+  var b = $('board');
+  if (keep) { b.scrollLeft = sc.x || 0; [].forEach.call(b.querySelectorAll('.col-b'), function (c) { if (sc[c.dataset.k]) c.scrollTop = sc[c.dataset.k]; }); }
+  attachDrag(b);
+  b.addEventListener('scroll', edgeState, { passive: true });
+  edgeState();
+  if (window.portalPhotosApply) try { window.portalPhotosApply(); } catch (e) {}
+}
+function colData(fid, st) {
+  var list = [], red = 0;
+  leadsOf(fid).forEach(function (l) {
+    if (tileKeys(l).indexOf(st.key) < 0) return;
+    if (!passTop(fid, l, st.key) || !passCol(fid, l, st.key)) return;
+    list.push(l);
+  });
+  sortTiles(fid, st.key, list);
+  list.forEach(function (l) { if (dueOf(fid, l, st.key) === 'over') red++; });
+  return { list: list, red: red };
+}
+/** Hides the side arrows at the ends. */
+function edgeState() {
+  var b = $('board'); if (!b) return;
+  var l = document.querySelector('.edge.l'), r = document.querySelector('.edge.r');
+  if (l) l.classList.toggle('off', b.scrollLeft < 4);
+  if (r) r.classList.toggle('off', b.scrollLeft + b.clientWidth > b.scrollWidth - 4);
+}
+function scrollBoard(dir) {
+  var b = $('board'); if (!b) return;
+  var col = b.querySelector('.col:not(.slim)'), w = col ? col.getBoundingClientRect().width + 10 : 260;
+  b.scrollBy({ left: dir * Math.max(w, Math.floor(b.clientWidth / w) * w - w), behavior: 'smooth' });
+}
+function jumpTo(k) {
+  if (k !== '_closed') {
+    var sf = stepFid(k);
+    if (S.expand[sf + k] === undefined) { var st = stepOf(sf, k); if (st && !colData(sf, st).list.length) { S.expand[sf + k] = true; renderBoard(true); } }
+  }
+  if (k === '_closed' && !S.closedOpen) { S.closedOpen = true; renderBoard(true); }
+  var col = document.querySelector('.col[data-step="' + k + '"]');
+  if (col) col.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+}
+/** Mouse: drag the empty board area sideways to scroll. */
+function attachDrag(b) {
+  var d = null;
+  b.addEventListener('pointerdown', function (e) {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.tile,button,select,input,a,textarea')) return;
+    d = { x: e.clientX, l: b.scrollLeft, id: e.pointerId };
+  });
+  b.addEventListener('pointermove', function (e) {
+    if (!d) return;
+    var dx = e.clientX - d.x;
+    if (!d.on && Math.abs(dx) > 5) { d.on = true; b.classList.add('dragging'); try { b.setPointerCapture(d.id); } catch (er) {} }
+    if (d.on) { b.scrollLeft = d.l - dx; S.lastScroll = Date.now(); }
+  });
+  var end = function () { if (d && d.on) b.classList.remove('dragging'); d = null; };
+  b.addEventListener('pointerup', end); b.addEventListener('pointercancel', end); b.addEventListener('pointerleave', end);
+}
+function colHtml(fid, st, c) {
+  c = c || colData(fid, st);
+  var list = c.list, red = c.red;
+  if (!list.length && !S.expand[fid + st.key]) {
+    return '<section class="col slim" data-step="' + st.key + '" data-expand="' + st.key + '" title="' + esc(st.cfg.label) + ' — nothing here' + (colActive(st.key) || topActive() ? ' with these filters' : '') + '">' +
+      '<span class="col-num">' + esc(st.num) + '</span><span class="vlab">' + esc(st.cfg.label) + '</span><span class="cnt">0</span></section>';
+  }
+  var lim = S.more[fid + st.key] || 50;
+  var body = list.slice(0, lim).map(function (l) { return tileHtml(fid, l, st.key); }).join('') +
+    (list.length > lim ? '<button class="col-more" data-more="' + st.key + '">Show ' + (list.length - lim) + ' more</button>' : '') +
+    (!list.length ? '<div class="col-empty">Nothing here' + (colActive(st.key) || topActive() ? ' with these filters' : '') + '</div>' : '');
+  return '<section class="col" data-step="' + st.key + '"><div class="col-h"><span class="col-num">' + esc(st.num) + '</span>' +
+    '<div class="col-t"><b title="' + esc(st.title) + '">' + esc(st.cfg.label) + '</b><span>' + esc(st.who || '') + (st.tat ? ' · ' + st.tat + ' h' : '') + (st.cfg.side ? ' · beside' : '') + '</span></div>' +
+    (red ? '<span class="cnt r" title="Overdue">' + red + '</span>' : '') + '<span class="cnt">' + list.length + '</span>' +
+    '<button class="icon-btn' + (colActive(st.key) ? ' act' : '') + '" data-colf="' + st.key + '" title="Filter & sort this step">' + ic('filter', 'width:15px;height:15px') + '</button>' +
+    (S.expand[fid + st.key] && !list.length ? '<button class="icon-btn" data-collapse="' + st.key + '" title="Fold">&times;</button>' : '') + '</div>' +
+    '<div class="col-b" data-k="' + st.key + '">' + body + '</div></section>';
+}
+function tileHtml(fid, l, k) {
+  var st = stepOf(fid, k), d = l.closed ? l.closed.o : dueOf(fid, l, k), x = l.s[k] || {};
+  var card = st ? st.cfg.card.slice(0, 12) : [], low = card.map(function (r) { return r.toLowerCase(); });
+  if (st && !l.closed) (st.fields || []).forEach(function (f) {   // details already saved at this step always show (after the chosen ones)
+    var r = k + ':' + f.k, v = (x.f || {})[f.k];
+    if (v !== '' && v != null && low.indexOf(r.toLowerCase()) < 0) card.push(r);
+  });
+  var kv = card.map(function (ref) {   // every detail the Admin picked, in that order (Compact only narrows the columns)
+    var v = refVal(l, ref); if (v === '' || v == null) return '';
+    var saved = ref.indexOf(k + ':') === 0 && low.indexOf(ref.toLowerCase()) < 0;
+    return '<div class="t-kv' + (saved ? ' sv' : '') + '"><span class="k">' + esc(saved ? nice(ref.slice(ref.indexOf(':') + 1)) : refLabel(fid, ref)) + '</span><span class="v">' + esc(fVal(refField(fid, ref), v)) + '</span></div>';
+  }).join('');
+  if (fid === 'O2D' && k === 'CYCLES' && !l.closed) {         // the bar already says qty / loaded / left / cycles
+    kv = cycleBar(l) + card.filter(function (r) { return r !== 'base:QTY.' && r.indexOf('CYCLES:') !== 0; }).map(function (ref) {
+      var v = refVal(l, ref); if (v === '' || v == null) return '';
+      return '<div class="t-kv"><span class="k">' + esc(refLabel(fid, ref)) + '</span><span class="v">' + esc(fVal(refField(fid, ref), v)) + '</span></div>';
+    }).join('');
+  }
+  var icons = '';
+  if ((l.att || {})[k]) icons += '<span class="fu" title="Follow-ups at this step">' + ic('fu') + l.att[k] + '</span>';
+  if (l.bk) icons += '<span class="bk" title="Sent back">' + ic('back') + l.bk + '</span>';
+  if (l.nN) icons += '<span title="Notes">' + ic('note') + l.nN + '</span>';
+  if (l.nP) icons += '<span title="Photos">' + ic('cam') + l.nP + '</span>';
+  var cls = 'tile ' + d + (S.pin && S.pin.fid === fid && S.pin.id === l.id ? ' pin' : '') + (S.flash && S.flash.fid === fid && S.flash.id === l.id ? ' flash' : '');
+  var dueChip = l.closed ? '<span class="due ' + d + '">' + (d === 'won' ? 'Won' : 'Lost') + ' ' + fDate(l.closed.at) + '</span>'
+    : k === 'CYCLES' ? '<span class="due none">In cycles</span>' : '<span class="due ' + d + '">' + esc(dueText(fid, l, k)) + '</span>';
+  var callBtn = l.closed ? '' : '<button class="t-call" data-logcall="' + esc(l.id) + '" data-fid="' + fid + '" title="Log a call">' + ic('phone', 'width:11px;height:11px') + ' Log call</button>';
+  return '<div class="' + cls + '" data-open="' + esc(l.id) + '" data-fid="' + fid + '" data-k="' + k + '" id="t_' + fid + '_' + esc(l.id) + '_' + k + '">' +
+    '<div class="t-top"><span class="t-id mono">' + esc(l.id) + '</span>' + ((st && st.cfg.side) ? '<span class="t-side">beside</span>' : '') + dueChip + '</div>' +
+    '<div class="t-name">' + esc(titleOf(l, fid)) + '</div>' + kv +
+    '<div class="t-foot"><span class="av" data-ggm-photo="' + esc(l.owner) + '">' + esc(ini(l.owner)) + '</span><span class="own">' + esc(l.owner || '—') + '</span>' +
+    (l.ind ? '<span class="fl-tag">' + esc(l.ind) + '</span>' : '') + '<span class="t-ic">' + icons + callBtn + '</span></div></div>';
+}
+/** Order tile while its cycles run: loaded / ordered, what is left, each cycle and where it is. */
+function cycleBar(l) {
+  var x = (l.s.CYCLES || {}).f || {}, qty = numOf(pick(l.b, 'QTY.')), loaded = numOf(x['Loaded (t)']), bal = x['Balance (t)'];
+  var pct = qty ? Math.min(100, Math.round(100 * loaded / qty)) : 0, cs = cyclesOfOrder(l.id), left = bal === '' || bal == null ? null : numOf(bal);
+  return '<div class="cy-bar"><div class="cy-t"><b>' + fmtT(loaded) + (qty ? ' / ' + fmtT(qty) : '') + ' t</b> loaded' + (left != null ? ' · <b>' + fmtT(Math.max(0, left)) + ' t</b> left' : '') + '</div>' +
+    '<div class="cy-track"><i style="width:' + pct + '%"></i></div><div class="cy-chips">' +
+    cs.map(function (c) { return '<span class="cy-chip' + (c.closed ? ' done' : '') + '" data-opencyc="' + esc(c.id) + '" title="' + esc(c.id) + '">C' + cycN(c.id) + ' ' + (c.closed ? '✓' : esc(lab('CYC', c.cur))) + '</span>'; }).join('') +
+    (left == null || left > 0.01 ? '<button class="cy-new" data-newcycle="' + esc(l.id) + '">+ Next cycle</button>' : '') + '</div></div>';
+}
+function closedCol(fid) {
+  var won = [], lost = [], cut = Date.now() - 30 * 864e5;
+  leadsOf(fid).forEach(function (l) {
+    if (!l.closed || !passTop(fid, l, null)) return;
+    if (!S.closedAll && (l.closed.at || 0) < cut) return;
+    (l.closed.o === 'won' ? won : lost).push(l);
+  });
+  if (!S.closedOpen) return '<section class="col slim closedslim" data-step="_closed" data-act="openClosed" title="' + (S.closedAll ? 'All closed (completed · lost)' : 'Closed in the last 30 days') + '">' +
+    '<span class="vlab">Closed</span><span class="cnt" style="background:var(--ok-wash);color:var(--ok)">' + won.length + '</span><span class="cnt">' + lost.length + '</span></section>';
+  var list = (S.closedTab === 'won' ? won : lost).sort(function (a, b) { return (b.closed.at || 0) - (a.closed.at || 0); });
+  var lim = S.more[fid + '_closed'] || 40;
+  return '<section class="col closedcol" data-step="_closed"><div class="col-h"><div class="col-t"><b>Closed</b><span>' + (S.closedAll ? 'all time' : 'last 30 days') +
+    ' · <button class="lnk" data-act="closedAll">' + (S.closedAll ? 'last 30 days' : 'show all') + '</button></span></div><button class="icon-btn" data-act="foldClosed" title="Fold">&times;</button></div>' +
+    '<div style="padding:0 8px 8px"><div class="seg" style="width:100%;display:grid;grid-template-columns:1fr 1fr">' +
+    '<button class="' + (S.closedTab === 'won' ? 'on' : '') + '" data-ctab="won">' + (fid === 'L2O' ? 'Won' : 'Completed') + ' <span class="n">' + won.length + '</span></button>' +
+    '<button class="' + (S.closedTab === 'lost' ? 'on' : '') + '" data-ctab="lost">Lost <span class="n">' + lost.length + '</span></button></div></div>' +
+    '<div class="col-b" data-k="_closed">' + list.slice(0, lim).map(function (l) { return tileHtml(fid, l, l.closed.step || stepsOf(fid)[0].key); }).join('') +
+    (list.length > lim ? '<button class="col-more" data-more="_closed">Show ' + (list.length - lim) + ' more</button>' : '') +
+    (!list.length ? '<div class="col-empty">None</div>' : '') + '</div></section>';
+}
+/* ---------------------------------------------------------- column filter popover */
+function openColFilter(k, btn) {
+  var fid = stepFid(k), c = CF(k), st = stepOf(fid, k), pop = $('pop');
+  var inCol = leadsOf(fid).filter(function (l) { return tileKeys(l).indexOf(k) > -1 && passTop(fid, l, k); });
+  var owners = {};
+  inCol.forEach(function (l) { if (l.owner) owners[l.owner] = (owners[l.owner] || 0) + 1; });
+  var sorts = [['due', 'Deadline (soonest first)'], ['old', 'Oldest received'], ['new', 'Newest received'], ['fu', 'Most follow-ups'], ['act', 'Last activity'], ['name', 'Name A–Z'], ['qty', 'Quantity (high → low)']];
+  var h = '<h5>Sort · ' + esc(st.cfg.label) + '</h5><select class="inp" data-cf="sort">' + sorts.map(function (s) { return '<option value="' + s[0] + '"' + (c.sort === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('') + '</select>' +
+    '<div class="hint" style="margin-top:4px">Overdue (red) tiles always stay on top.</div>' +
+    '<h5>Deadline</h5><div class="chips">' + [['over', 'Overdue'], ['warn', 'Due soon'], ['ok', 'On time'], ['none', 'No deadline']].map(function (x) {
+      return '<button class="chip' + (c.due.indexOf(x[0]) > -1 ? ' on' : '') + '" data-cfdue="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+    '<h5>' + (fid === 'L2O' ? 'Owner' : 'Sales person') + '</h5><select class="inp" data-cf="who"><option value="">Everyone</option>' +
+    Object.keys(owners).sort().map(function (o) { return '<option' + (c.who === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>' +
+    '<h5>Follow-ups at this step</h5><div class="chips">' + [['', 'Any'], ['yes', 'Has follow-ups'], ['no', 'None yet']].map(function (x) {
+      return '<button class="chip' + (c.fu === x[0] ? ' on' : '') + '" data-cffu="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  colRefs(fid, k).forEach(function (ref) {
+    var cnt = {};
+    inCol.forEach(function (l) { var v = String(refVal(l, ref) || '').trim(); if (v) cnt[v] = (cnt[v] || 0) + 1; });
+    var vals = Object.keys(cnt).sort();
+    if (!vals.length || vals.length > 60) return;
+    var sel = c.vals[ref] || [];
+    h += '<h5>' + esc(refLabel(fid, ref)) + '</h5><div class="vlist">' + vals.map(function (v) {
+      return '<label><input type="checkbox" data-cfv="' + esc(ref) + '" value="' + esc(v) + '"' + (sel.indexOf(v) > -1 ? ' checked' : '') + '>' + esc(v) + '<span class="c">' + cnt[v] + '</span></label>'; }).join('') + '</div>';
+  });
+  h += '<h5>Text in this column</h5><input class="inp" data-cf="q" placeholder="Any word…" value="' + esc(c.q) + '">' +
+    '<div class="foot"><button class="btn btn-ghost btn-sm" data-act="cfClear" data-k="' + k + '">Clear</button><button class="btn btn-dark btn-sm" data-act="cfDone">Done</button></div>';
+  pop.innerHTML = h; pop.dataset.k = k; pop.hidden = false;
+  var r = btn.getBoundingClientRect(), w = 310;
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
+  pop.style.top = (r.bottom + 6) + 'px';
+}
+function closePop() { $('pop').hidden = true; }
+
+/* ---------------------------------------------------------- search */
+var IDX = [];
+function buildIndex() {
+  IDX = [];
+  flowList().forEach(function (fid) {
+    if (!S.flows[fid]) return;
+    var fl = S.flows[fid];
+    leadsOf(fid).forEach(function (l) {
+      var parts = [l.id, titleOf(l, fid), pick(l.b, fl.sub), pick(l.b, fl.phone), pick(l.b, fl.material), l.owner, pick(l.b, fl.place), pick(l.b, 'MAIL ID')];
+      IDX.push({ fid: fid, id: l.id, t: titleOf(l, fid), s: [pick(l.b, fl.material), l.owner, l.closed ? (l.closed.o === 'won' ? 'won' : 'lost') : (l.cur ? lab(fid, l.cur) : '')].filter(String).join(' · '), hay: parts.join(' | ').toLowerCase() });
+    });
+  });
+}
+function suggest(q) {
+  q = q.trim().toLowerCase();
+  var box = $('sugg');
+  if (!q) { box.hidden = true; return; }
+  var res = IDX.filter(function (x) { return x.hay.indexOf(q) > -1; }).sort(function (a, b) {
+    var ai = a.id.toLowerCase() === q || a.id.toLowerCase().endsWith(q) ? 0 : a.t.toLowerCase().indexOf(q) === 0 ? 1 : 2;
+    var bi = b.id.toLowerCase() === q || b.id.toLowerCase().endsWith(q) ? 0 : b.t.toLowerCase().indexOf(q) === 0 ? 1 : 2;
+    return ai - bi || (a.fid === S.fid ? -1 : 1);
+  }).slice(0, 9);
+  box.innerHTML = res.length ? res.map(function (x, i) {
+    return '<button class="sg' + (i === 0 ? ' on' : '') + '" data-find="' + esc(x.id) + '" data-fid="' + x.fid + '"><span class="fl-tag">' + S.flows[x.fid].short + '</span><span class="b"><span class="t">' + esc(x.id + ' · ' + x.t) + '</span><span class="s">' + esc(x.s) + '</span></span></button>'; }).join('')
+    : '<div class="empty" style="padding:14px">No match</div>';
+  box.hidden = false;
+}
+/** Brings the tile up: switches flow, clears filters that hide it, pins it on top of its step's column. */
+function findTile(fid, id) {
+  $('sugg').hidden = true;
+  var l = findLead(fid, id);
+  if (!l) return;
+  if (S.view !== 'board') { S.view = 'board'; ls('view', 'board'); }
+  var bf = boardOf(fid);
+  if (S.fid !== bf) { S.fid = bf; ls('fid', bf); }
+  if (l.closed) { render(); openLead(fid, id); return; }
+  var k = tileKeys(l)[0], cleared = false;
+  if (!passTop(fid, l, k)) { S.f[bf] = {}; saveF(); cleared = true; }
+  if (!passCol(fid, l, k)) { delete S.cf[bf + '|' + k]; cleared = true; }
+  S.pin = { fid: fid, id: id }; S.flash = { fid: fid, id: id };
+  render();
+  var col = document.querySelector('.col[data-step="' + k + '"]');
+  if (col) col.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  var cb = col && col.querySelector('.col-b'); if (cb) cb.scrollTop = 0;
+  if (cleared) toast('Filters were cleared so ' + id + ' can be seen.');
+  setTimeout(function () { S.flash = null; }, 3000);
+}
+
+/* ---------------------------------------------------------- drawer (one lead) */
+function provisional(fid, l) {
+  var can = {};
+  tileKeys(l).forEach(function (k) { can[k] = canAct(fid, l, k); });
+  return { lead: l, events: [], notes: [], photos: [], can: can, editAny: S.me.role !== 'exec', owner: isOwner(l), prov: 1 };
+}
+function openLead(fid, id, tab) {
+  var l = findLead(fid, id), cached = S.det[fid + '|' + id], d = null;
+  if (cached) { d = cached; if (l && !l.slim) d.lead = l; }
+  else if (l && !l.slim) d = provisional(fid, l);
+  S.panel = { fid: fid, id: id, tab: tab || 'work', d: d, forms: {}, life: {}, loading: 1 };
+  $('drawer').classList.add('on'); $('scrim').classList.add('on'); $('drawer').setAttribute('aria-hidden', 'false');
+  $('drawer').scrollTop = 0;
+  renderDrawer(l);
+  loadDetail();
+}
+function loadDetail() {
+  var p = S.panel;
+  p.loading = 1;
+  return call('leadDetail', p.fid, p.id).then(function (d) {
+    S.det[p.fid + '|' + p.id] = d;
+    if (S.panel !== p || p.saving) return;
+    Object.keys(p.forms).forEach(keepForm);
+    p.d = d; p.loading = 0; mergeLead(p.fid, d.lead); renderDrawer();
+  }).catch(function (e) { p.loading = 0; fail(e); });
+}
+function mergeLead(fid, lead) {
+  var a = leadsOf(fid);
+  for (var i = 0; i < a.length; i++) if (a[i].id === lead.id) { a[i] = lead; buildIndex(); return; }
+  a.push(lead); buildIndex();
+}
+function closeDrawer() {
+  S.panel = null;
+  $('drawer').classList.remove('on'); $('scrim').classList.remove('on'); $('drawer').setAttribute('aria-hidden', 'true');
+}
+function renderDrawer(lite) {
+  var p = S.panel; if (!p) return;
+  var keepIds = ['noteText', 'noteStep', 'backWhy', 'backTo', 'closeWhy', 'indSel', 'ownerSel'], kept = {};
+  keepIds.forEach(function (i) { var e = $(i); if (e) kept[i] = e.value; });
+  var top = $('drawer').scrollTop;
+  renderDrawer_(lite, p);
+  keepIds.forEach(function (i) { var e = $(i); if (e && kept[i] != null && kept[i] !== '') e.value = kept[i]; });
+  $('drawer').scrollTop = top;
+}
+function renderDrawer_(lite, p) {
+  var fid = p.fid, d = p.d, l = d ? d.lead : (lite || findLead(fid, p.id));
+  if (!l) return;
+  var k = l.cur, st = k ? stepOf(fid, k) : null, due = k ? dueOf(fid, l, k) : '';
+  var stateBadge = l.closed ? '<span class="badge ' + (l.closed.o === 'won' ? 'b-ok' : 'b-bad') + '">' + (l.closed.o === 'won' ? (fid === 'L2O' ? 'WON' : 'COMPLETED') : 'LOST') + '</span>'
+    : '<span class="badge ' + (due === 'over' ? 'b-bad' : due === 'warn' ? 'b-amber' : 'b-mute') + '">' + esc(st ? st.cfg.label : '') + ' · ' + esc(k ? dueText(fid, l, k) : '') + '</span>';
+  var tabs = [['work', 'Work'], ['life', 'Lifecycle'], ['details', 'Details'], ['notes', 'Notes & photos', (l.nN || 0) + (l.nP || 0)]];
+  var h = '<div class="dr-head"><button class="dr-close" data-act="closeDrawer">&times;</button>' +
+    '<div class="dr-t"><span class="dr-id mono">' + esc(l.id) + '</span><span class="badge b-mute">' + esc(FL(fid).title) + '</span>' + stateBadge +
+    (l.closed ? '' : '<button class="badge b-mute dr-rem" data-logcall="' + esc(l.id) + '" data-fid="' + fid + '" title="Log a call">' + ic('phone', 'width:12px;height:12px') + ' Log call</button>') +
+    (l.link ? '<button class="badge b-info" data-link="' + esc(l.link) + '">' + ic('link', 'width:12px;height:12px') + ' ' + (fid === 'L2O' ? 'Order ' : 'From lead ') + esc(l.link) + '</button>' : '') + '</div>' +
+    '<div class="dr-name">' + esc(titleOf(l, fid)) + '</div>' +
+    '<div class="dr-meta"><span>' + (fid === 'L2O' ? 'Owner' : 'Sales') + ' <b>' + esc(l.owner || '—') + '</b></span><span>Received <b>' + esc(fDT(pick(l.b, 'Timestamp'))) + '</b></span>' +
+    (pick(l.b, FL(fid).phone) ? '<span>' + ic('phone', 'width:12px;height:12px;vertical-align:-1px') + ' <a href="tel:' + esc(String(pick(l.b, FL(fid).phone)).replace(/[^0-9+]/g, '')) + '" style="color:#F4F0E5">' + esc(pick(l.b, FL(fid).phone)) + '</a></span>' : '') +
+    (l.ind ? '<span>Industry <b>' + esc(l.ind) + '</b></span>' : '') + '</div>' +
+    (p.loading ? '<span class="dr-sync"><span class="spin sm"></span></span>' : '') +
+    '<div class="dr-tabs">' + tabs.map(function (t) { return '<button class="' + (p.tab === t[0] ? 'on' : '') + '" data-tab="' + t[0] + '">' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') +
+    '<button class="dr-remind" data-act="remLead" data-fid="' + fid + '" data-id="' + esc(l.id) + '" title="Get a Telegram reminder about this">' + ic('bell', 'width:15px;height:15px') + ' Remind me</button></div></div>';
+  var body = !d ? '<div class="dr-load"><div class="spin"></div></div>' :
+    p.tab === 'work' ? drWork(fid, d) : p.tab === 'life' ? drLife(fid, d) : p.tab === 'details' ? drDetails(fid, d) : drNotes(fid, d);
+  $('drawer').innerHTML = h + '<div class="dr-body">' + body + '</div>';
+  if (window.portalPhotosApply) try { window.portalPhotosApply(); } catch (e) {}
+}
+
+/* ---- field inputs */
+function inputHtml(fl, v, name, req) {
+  var val = v == null ? '' : v, nm = ' data-fld="' + esc(name) + '"';
+  var lbl = '<span>' + esc(nice(fl.k)) + (req ? ' <i>*</i>' : '') + '</span>';
+  var wide = fl.t === 'textarea' ? ' wide' : '';
+  if (fl.ro) return '<label class="fld' + wide + '">' + lbl + '<div class="inp" style="background:var(--line-soft)">' + esc(fVal(fl, val) || '—') + '</div></label>';
+  var inp;
+  if (fl.t === 'select' && fl.o) {
+    var opts = fl.o.slice(); if (val !== '' && opts.indexOf(String(val)) < 0) opts.unshift(String(val));
+    inp = '<select class="inp"' + nm + '><option value="">—</option>' + opts.map(function (o) { return '<option' + (String(val) === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+  } else if (fl.t === 'date') {
+    inp = '<input type="date" class="inp"' + nm + ' value="' + (typeof val === 'number' ? isoDay(val) : esc(val)) + '">';
+  } else if (fl.t === 'textarea') {
+    inp = '<textarea class="inp" rows="2"' + nm + '>' + esc(val) + '</textarea>';
+  } else {
+    inp = '<input class="inp" type="' + (fl.t === 'number' ? 'text' : fl.t === 'tel' ? 'tel' : fl.t === 'email' ? 'email' : 'text') + '"' + (fl.t === 'number' ? ' inputmode="decimal"' : '') + nm + ' value="' + esc(val) + '"' + (fl.dl ? ' list="' + fl.dl + '"' : '') + '>';
+  }
+  return '<label class="fld' + wide + '">' + lbl + inp + '</label>';
+}
+function readFields(root) {
+  var out = {};
+  [].forEach.call(root.querySelectorAll('[data-fld]'), function (el) { out[el.dataset.fld] = el.value; });
+  return out;
+}
+
+/* ---- Work tab */
+function drWork(fid, d) {
+  var l = d.lead, h = '';
+  if (S.me.role !== 'exec') h += '<div class="act plain" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px"><b style="font-size:13px">Assigned to</b>' +
+    assignSelect('ownerSel', l.owner, false) + '<button class="btn btn-ghost btn-sm" data-act="assign">Assign</button>' +
+    (userOfName(l.owner) ? '' : '<span class="hint">“' + esc(l.owner || '—') + '” has no access yet — pick who should work it.</span>') + '</div>';
+  if (l.closed) {
+    h += '<div class="act plain"><div class="act-h"><h4>' + (l.closed.o === 'won' ? '✅ ' + (fid === 'L2O' ? 'Won' : 'Completed') : '✖ Lost') + '</h4><span class="hint">' + esc(fDT(l.closed.at)) + '</span></div>' +
+      '<div class="act-sub">' + esc(l.closed.step ? lab(fid, l.closed.step) + ': ' : '') + esc(l.closed.why || '') + (l.closed.by ? ' · by ' + esc(l.closed.by) : '') + '</div>';
+    if (fid === 'L2O' && l.closed.o === 'won' && !l.link) h += '<button class="btn btn-amber" data-act="makeOrder">Turn into an order (Order → Delivery)</button> ';
+    if (d.editAny || d.owner) h += '<button class="btn btn-ghost" data-act="reopen">Reopen</button>';
+    return h + '</div>';
+  }
+  h += cycleCard(fid, d);
+  tileKeys(l).forEach(function (k) { h += actionCard(fid, d, k); });
+  // send back / close
+  var keys = mainSteps(fid).map(function (s) { return s.key; }), ci = keys.indexOf(l.cur);
+  if (l.cur && (d.can[l.cur] || d.owner)) {
+    var opts = keys.slice(0, ci + 1).map(function (k2) { return '<option value="' + k2 + '">' + esc(lab(fid, k2)) + (k2 === l.cur ? ' (start this step again)' : '') + '</option>'; }).join('');
+    h += '<details class="more"><summary>' + ic('back', 'width:16px;height:16px;color:var(--info)') + ' Send back to an earlier step</summary><div class="in" id="backBox">' +
+      '<div class="form-grid"><label class="fld"><span>Back to</span><select class="inp" id="backTo">' + opts + '</select></label>' +
+      '<label class="fld wide"><span>Why? <i>*</i></span><textarea class="inp" id="backWhy" rows="2" placeholder="e.g. wrong sample was packed — pack and send again"></textarea></label></div>' +
+      '<div class="act-foot"><span class="hint">The steps after it are cleared in the sheet (kept in the history) and the clock restarts.</span><button class="btn btn-dark btn-sm" data-act="sendBack">Send back</button></div></div></details>';
+  }
+  if (d.editAny || d.owner) {
+    h += '<details class="more"><summary>Close this ' + FL(fid).unit + ' by hand</summary><div class="in">' +
+      '<label class="fld"><span>Reason <i>*</i></span><textarea class="inp" id="closeWhy" rows="2"></textarea></label>' +
+      '<div class="act-foot"><span class="hint">Uses the step\'s own closing answer when it has one.</span><span style="display:flex;gap:8px">' +
+      '<button class="btn btn-bad btn-sm" data-act="close" data-o="lost">Close as lost</button><button class="btn btn-ok btn-sm" data-act="close" data-o="won">Close as won</button></span></div></div></details>';
+  }
+  return h;
+}
+/** Lead panel: a cycle shows its payment, tons and trucks (add / remove at "Trucks"); an order shows its cycles. */
+function cycleCard(fid, d) {
+  var l = d.lead, h = '';
+  if (fid === 'CYC' && d.order) {
+    var adv = l.s.ADVANCE || {}, af = adv.f || {}, cov = numOf(af['Tons covered']), tr = d.trucks || [], on = tr.reduce(function (a, t) { return a + t.wt; }, 0);
+    var canTr = l.cur === 'TRANSPORT' && d.can.TRANSPORT;
+    h += '<div class="act plain cy-card"><div class="act-h"><h4>Cycle ' + cycN(l.id) + ' of <button class="lnk" data-opencyc-order="' + esc(d.order.id) + '">' + esc(d.order.id) + '</button></h4>' +
+      '<span class="hint">order: ' + fmtT(d.order.loaded) + (d.order.qty ? ' / ' + fmtT(d.order.qty) : '') + ' t loaded' + (d.order.qty ? ' · ' + fmtT(d.order.balance) + ' t left' : '') + '</span></div>' +
+      '<div class="cy-kv"><span>Payment</span><b>' + esc(adv.s || 'not recorded yet') + (af.Amount ? ' · ₹ ' + esc(af.Amount) : '') + '</b>' +
+      '<span>Covers</span><b>' + (cov ? fmtT(cov) + ' t' : '—') + '</b><span>On trucks</span><b>' + fmtT(on) + ' t' + (cov ? ' of ' + fmtT(cov) + ' t' : '') + '</b></div>' +
+      (tr.length ? '<table class="cy-tbl"><thead><tr><th>Truck</th><th>Transporter</th><th>Driver</th><th class="num">Tons</th>' + (canTr ? '<th></th>' : '') + '</tr></thead><tbody>' +
+        tr.map(function (t) { return '<tr><td class="mono">' + esc(t.truck) + '</td><td>' + esc(t.tpt) + '</td><td>' + (t.mob ? '<a href="tel:' + esc(String(t.mob).replace(/[^0-9+]/g, '')) + '">' + esc(t.mob) + '</a>' : '') + '</td><td class="num">' + fmtT(t.wt) + '</td>' +
+          (canTr ? '<td><button class="lnk" data-rmtruck="' + t.row + '" title="Remove">&times;</button></td>' : '') + '</tr>'; }).join('') + '</tbody></table>' : '') +
+      (l.cur === 'ADVANCE' ? '<div class="outcome stay" style="margin-top:8px">🔒 Trucks can be added after this cycle’s payment is recorded below.</div>' : '') +
+      (canTr ? '<div class="form-grid cy-add"><label class="fld"><span>Truck no. <i>*</i></span><input class="inp" id="trNo" placeholder="RJ14 GA 1234"></label>' +
+        '<label class="fld"><span>Weight loaded (t) <i>*</i></span><input class="inp" id="trWt" inputmode="decimal" placeholder="' + (cov ? 'up to ' + fmtT(Math.max(0, cov - on)) : 'tons') + '"></label>' +
+        '<label class="fld"><span>Transporter</span><input class="inp" id="trTpt"></label><label class="fld"><span>Driver mob.</span><input class="inp" id="trMob" inputmode="tel"></label></div>' +
+        '<div class="act-foot"><span class="hint">Trucks can carry up to the tons this payment covers.</span><button class="btn btn-dark btn-sm" data-act="addTruck">+ Add truck</button></div>' : '') + '</div>';
+  }
+  if (fid === 'O2D' && d.cycles) {
+    var s = d.sum || {};
+    h += '<div class="act plain cy-card"><div class="act-h"><h4>Cycles</h4><span class="hint">' + fmtT(s.loaded) + (s.qty ? ' / ' + fmtT(s.qty) : '') + ' t loaded' + (s.qty ? ' · <b>' + fmtT(s.balance) + ' t left</b>' : '') + '</span></div>' +
+      (d.cycles.length ? '<table class="cy-tbl"><thead><tr><th>Cycle</th><th>Where</th><th>Payment</th><th class="num">Covers</th><th class="num">Loaded</th><th>Dispatch</th><th>Invoice</th></tr></thead><tbody>' +
+        d.cycles.map(function (c) { return '<tr class="cy-row" data-opencyc="' + esc(c.id) + '"><td class="mono"><b>C' + cycN(c.id) + '</b></td><td>' + (c.closed ? (c.closed === 'won' ? '✓ done' : '✖ closed') : esc(c.label)) + '</td>' +
+          '<td>' + esc(c.term || '—') + (c.amount ? ' · ₹ ' + esc(c.amount) : '') + '</td><td class="num">' + (c.covered ? fmtT(c.covered) : '—') + '</td><td class="num">' + fmtT(c.loaded) + (c.trucks ? ' <span class="hint">(' + c.trucks + ')</span>' : '') + '</td>' +
+          '<td>' + esc(c.dispatch ? fDate(c.dispatch) : '') + '</td><td>' + esc(c.invoice || '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="hint">No cycle yet.</div>') +
+      (!l.closed && l.cur === 'CYCLES' ? '<div class="act-foot"><span class="hint">' + (s.qty && s.free <= 0.01 ? 'The open cycles already cover the whole balance.' : 'A new cycle starts at its payment; trucks follow.') + '</span>' +
+        (!s.qty || s.free > 0.01 ? '<button class="btn btn-amber btn-sm" data-newcycle="' + esc(l.id) + '">+ Start next cycle</button>' : '') + '</div>' : '') + '</div>';
+  }
+  return h;
+}
+function actionCard(fid, d, k) {
+  var l = d.lead, st = stepOf(fid, k), x = l.s[k] || {}, due = dueOf(fid, l, k), p = S.panel;
+  var form = p.forms[k] || (p.forms[k] = { status: '', photos: [] });
+  var head = '<div class="act-h"><h4><span class="col-num">' + esc(st.num) + '</span>' + esc(st.cfg.label) + '</h4><span class="due ' + due + '">' + esc(dueText(fid, l, k)) + '</span></div>' +
+    '<div class="act-sub">' + esc(st.title) + ' · Who: ' + esc(st.who || '—') + (st.how ? ' · How: ' + esc(st.how) : '') + ' · ' + st.tat + ' working h' +
+    (x.p ? ' · Deadline ' + esc(fDT(x.p)) : '') + ((l.att || {})[k] ? ' · ' + l.att[k] + ' follow-up(s)' : '') + '</div>';
+  if (!d.can[k]) {
+    var who = (st.cfg.doers || []).map(function (u) { var o = S.users.filter(function (z) { return z.u.toLowerCase() === String(u).toLowerCase(); })[0]; return o ? o.n : u; });
+    if (st.cfg.ownerActs) who.unshift(l.owner + ' (owner)');
+    return '<div class="act wait">' + head + '<div class="hint">Waiting on ' + esc(who.join(', ') || 'the people assigned in Settings') + '. You can still add notes and photos.</div></div>';
+  }
+  var rules = st.cfg.rules || {}, last = isLastMain(fid, k) && !st.cfg.side;
+  var allowed = fid === 'CYC' && k === 'ADVANCE' ? (d.terms || ['Advance received']) : null;   // until the panel has loaded: advance only
+  var answers = st.opts.map(function (o) {
+    var r = ruleOf(rules, k, o, last);
+    if (allowed && allowed.indexOf(o) < 0) return '<button class="ans off" disabled title="Not allowed for this customer — the Admin can allow it in Settings → Customers"><i></i>' + esc(o) + '</button>';
+    return '<button class="ans ' + ruleCls(r) + (form.status === o ? ' on' : '') + '" data-ans="' + esc(o) + '" data-k="' + k + '"><i></i>' + esc(o) + '</button>';
+  }).join('');
+  var rule = form.status ? ruleOf(rules, k, form.status, last) : '';
+  var req = st.cfg.required || [];
+  var fields = st.fields.filter(function (f) { return !f.arr; }).map(function (f) {
+    var isReq = req.indexOf(k + ':' + f.k) > -1;
+    var v = form.fields && f.k in form.fields ? form.fields[f.k] : x.f[f.k];
+    return inputHtml(f, v, f.k, isReq);
+  }).join('');
+  var ph = form.photos.map(function (q, i) { return '<span class="ph-wrap"><img class="ph" src="' + q.thumb + '"><button class="rm" data-rmph="' + i + '" data-k="' + k + '">×</button></span>'; }).join('');
+  return '<div class="act' + (due === 'over' ? ' over' : '') + '" data-card="' + k + '">' + head +
+    '<div class="fld"><span>' + esc(st.statusHead || 'Answer') + ' <i>*</i></span></div><div class="answers">' + answers + '</div>' +
+    '<div class="outcome ' + (rule ? ruleCls(rule) : '') + '" id="out_' + k + '">' + (rule ? esc(ruleText(fid, k, rule)) : 'Pick an answer — the colour shows where the tile goes next.') + '</div>' +
+    (fields ? '<div class="form-grid">' + fields + '</div>' : '') +
+    '<div class="form-grid" style="margin-top:11px"><label class="fld wide"><span>Note for this step</span><textarea class="inp" rows="2" data-note="' + k + '" placeholder="What happened, what was said…">' + esc(form.note || '') + '</textarea></label></div>' +
+    '<div class="fld" style="margin-top:11px"><span>Photos' + (st.cfg.photo ? ' (useful here: sample, payment slip, bilty, vehicle…)' : '') + '</span><div class="ph-row">' + ph +
+    '<label class="ph-add">' + ic('cam') + 'Add<input type="file" accept="image/*" multiple hidden data-addph="' + k + '"></label></div></div>' +
+    '<div class="act-foot"><span class="hint">' + (req.length ? '* needed to move on · ' : '') + '“Only save” keeps what you filled; the tile stays here.</span>' +
+    '<span class="act-btns"><button class="btn btn-ghost" data-act="saveOnly" data-k="' + k + '">Only save</button>' +
+    '<button class="btn btn-dark" data-act="submit" data-k="' + k + '">' + esc(moveLabel(fid, k, rule)) + '</button></span></div></div>';
+}
+/** The main button says what the chosen answer does. */
+function moveLabel(fid, k, rule) {
+  if (!rule || rule === 'next') return isLastMain(fid, k) ? 'Finish' : (stepOf(fid, k).cfg.side ? 'Mark done' : 'Move to next step');
+  if (rule === 'won') return fid === 'L2O' ? 'Close as won' : 'Complete order';
+  if (rule === 'lost') return 'Close as lost';
+  if (rule === 'stay') return 'Save follow-up';
+  if (rule.indexOf('back:') === 0) return 'Send back';
+  return 'Save answer';
+}
+function keepForm(k) {
+  var p = S.panel, card = document.querySelector('[data-card="' + k + '"]');
+  if (!p || !card) return;
+  var f = p.forms[k] || (p.forms[k] = { status: '', photos: [] });
+  f.fields = readFields(card);
+  var n = card.querySelector('[data-note]'); if (n) f.note = n.value;
+}
+function fieldRuleLocal(fid, k, fields) {
+  var hit = null;
+  (FL(fid).fieldRules || []).forEach(function (r) {
+    if (hit || r.step !== k) return;
+    Object.keys(fields).forEach(function (h) {
+      if (hit || h.toLowerCase().trim() !== String(r.field).toLowerCase().trim()) return;
+      var v = String(fields[h]).trim().toLowerCase();
+      if ((r.values || []).some(function (x) { return String(x).trim().toLowerCase() === v; })) hit = r;
+    });
+  });
+  return hit;
+}
+function dayMs(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v + 'T00:00:00+05:30').getTime() : v; }
+/** What the server will do with this answer, done here first so the tile moves straight away. */
+function applyAnswer(fid, l, k, status, fields, rule) {
+  var now = Date.now(), st = stepOf(fid, k), cal = FL(fid).cal, x = l.s[k] || (l.s[k] = { f: {} });
+  x.f = x.f || {};
+  Object.keys(fields).forEach(function (h) { var fl = st.fields.filter(function (z) { return z.k === h; })[0], v = fields[h]; if (fl && fl.t === 'date') v = dayMs(v); if (v === '' || v == null) delete x.f[h]; else x.f[h] = v; });
+  l.att = l.att || {}; l.side = l.side || [];
+  if (rule === 'stay') { x.s = status; l.att[k] = (l.att[k] || 0) + 1; return; }
+  if (rule.indexOf('back:') === 0) { goBack(fid, l, rule.slice(5), k); return; }
+  x.s = status; x.a = now;
+  l.by = l.by || {}; l.by[k] = { u: S.me.username, n: S.me.name, t: now };
+  if (rule === 'won' || rule === 'lost') { l.closed = { o: rule, at: now, step: k, why: status }; l.cur = null; l.side = []; return; }
+  if (st.cfg.side) { l.side = l.side.filter(function (z) { return z !== k; }); return; }
+  var nx = nextMain(fid, k);
+  l.cur = nx;
+  if (nx) {
+    var ns = stepOf(fid, nx), fr = ns.from || {}, anchor = fr.actual ? (l.s[fr.step] || {}).a : fr.field ? dayMs(refVal(l, fr.step + ':' + fr.field)) : pick(l.b, 'Timestamp');
+    l.s[nx] = l.s[nx] || { f: {} };
+    l.s[nx].p = anchor ? workAdd(Number(anchor), ns.tat, cal) : null;
+  }
+  stepsOf(fid).forEach(function (s2) {
+    if (!s2.cfg.side || (l.s[s2.key] || {}).a || l.side.indexOf(s2.key) > -1 || !(s2.from && s2.from.step === k)) return;
+    var cond = refVal(l, s2.cfg.side);
+    var cs = cond == null ? '' : String(cond).trim();
+    if (cs !== '' && !(/^-?[\d.,]+$/.test(cs) && !(Number(cs.replace(/,/g, '')) > 0))) { l.side.push(s2.key); l.s[s2.key] = l.s[s2.key] || { f: {} }; l.s[s2.key].p = workAdd(now, s2.tat, cal); }
+  });
+}
+function goBack(fid, l, to, fromK) {
+  var keys = stepsOf(fid).map(function (s) { return s.key; }), ti = keys.indexOf(to), ui = Math.max(keys.indexOf(fromK || l.cur), keys.indexOf(l.cur));
+  for (var i = ti; i <= ui; i++) { var y = l.s[keys[i]]; if (y) { delete y.a; delete y.s; } }
+  l.rs = l.rs || {}; l.rs[to] = Date.now();
+  l.s[to] = l.s[to] || { f: {} };
+  l.s[to].p = workAdd(Date.now(), stepOf(fid, to).tat, FL(fid).cal);
+  l.cur = to; l.side = []; l.bk = (l.bk || 0) + 1; l.att = {};
+}
+/**
+ * Change the lead on screen now, send it to the server in the background; if the server says no,
+ * the lead goes back to how it was and the reason is shown.
+ */
+function optimistic(mutate, server, msg, mutateDetail) {
+  var p = S.panel, fid = p.fid, id = p.id, bl = findLead(fid, id), dl = p.d && p.d.lead;
+  var snapB = bl ? JSON.stringify(bl) : null, snapD = p.d ? JSON.stringify(p.d) : null;
+  if (bl) mutate(bl);
+  if (dl && dl !== bl) mutate(dl);
+  if (p.d && mutateDetail) mutateDetail(p.d);
+  p.saving = (p.saving || 0) + 1;
+  if (msg) toast(msg, 'ok');
+  S.flash = { fid: fid, id: id }; setTimeout(function () { S.flash = null; }, 2600);
+  renderDrawer();
+  if (S.view === 'board') renderBoard(true);
+  buildIndex();
+  return server().then(function (r) { p.saving--; afterSave(r, true); })
+    .catch(function (e) {
+      p.saving--;
+      var a = leadsOf(fid);
+      for (var i = 0; i < a.length; i++) if (a[i].id === id && snapB) a[i] = JSON.parse(snapB);
+      if (S.panel === p && snapD) p.d = JSON.parse(snapD);
+      renderDrawer(); if (S.view === 'board') renderBoard(true);
+      toast('Not saved: ' + errMsg(e), 'err');
+    });
+}
+function submitStep(k) {
+  var p = S.panel, fid = p.fid, l = p.d.lead, st = stepOf(fid, k);
+  keepForm(k);
+  var f = p.forms[k];
+  if (!f.status) { toast('Pick an answer to move on — or press “Only save” to keep what you filled.', 'err'); return; }
+  var rule = ruleOf(st.cfg.rules || {}, k, f.status, isLastMain(fid, k) && !st.cfg.side);
+  if (rule !== 'stay' && rule !== 'lost') {
+    var miss = (st.cfg.required || []).filter(function (ref) {
+      var h = ref.slice(ref.indexOf(':') + 1), sk = ref.slice(0, ref.indexOf(':'));
+      var v = sk === k && f.fields && h in f.fields ? f.fields[h] : refVal(l, ref);
+      return v === '' || v == null;
+    });
+    if (miss.length) { toast('Fill in: ' + miss.map(function (r) { return nice(r.slice(r.indexOf(':') + 1)); }).join(', '), 'err'); return; }
+  }
+  var fields = {};
+  Object.keys(f.fields || {}).forEach(function (h) {
+    var old = (l.s[k].f || {})[h], v = f.fields[h], fl = st.fields.filter(function (z) { return z.k === h; })[0];
+    var oldS = old == null ? '' : (fl && fl.t === 'date' && typeof old === 'number' ? isoDay(old) : String(old));
+    if (String(v) !== oldS) fields[h] = v;
+  });
+  var fr = fieldRuleLocal(fid, k, fields);
+  if (fr && (rule === 'next' || rule === 'stay')) rule = fr.action;
+  var payload = { status: f.status, fields: fields, note: f.note || '', photos: f.photos || [] };
+  var msg = l.id + ' — ' + (rule === 'stay' ? 'follow-up logged, stays at “' + st.cfg.label + '”' : ruleText(fid, k, rule).replace(/ —.*$/, '')) + (payload.photos.length ? ' · uploading ' + payload.photos.length + ' photo(s)…' : '');
+  p.forms[k] = { status: '', photos: [] };
+  optimistic(function (lead) {
+    applyAnswer(fid, lead, k, payload.status, fields, rule);
+    if (payload.note) lead.nN = (lead.nN || 0) + 1;
+    if (payload.photos.length) lead.nP = (lead.nP || 0) + payload.photos.length;
+  }, function () { return call('submitStep', fid, l.id, k, payload); }, msg, function (d) {
+    if (payload.note) d.notes.push({ t: Date.now(), u: S.me.username, n: S.me.name, st: k, x: payload.note });
+    d.events.push({ t: Date.now(), u: S.me.username, n: S.me.name, f: fid, id: l.id, st: k, a: rule === 'stay' ? 'FOLLOWUP' : rule.indexOf('back:') === 0 ? 'BACK' : 'DONE', v: payload.status, to: rule.indexOf('back:') === 0 ? rule.slice(5) : '' });
+    d.can = {}; tileKeys(d.lead).forEach(function (kk) { d.can[kk] = canAct(fid, d.lead, kk); });
+  });
+}
+/** "Only save": fields / note / photos are kept, the tile does not move. */
+function saveOnly(k) {
+  var p = S.panel, fid = p.fid, l = p.d.lead, st = stepOf(fid, k);
+  keepForm(k);
+  var f = p.forms[k], fields = {};
+  Object.keys(f.fields || {}).forEach(function (h) {
+    var old = (l.s[k].f || {})[h], v = f.fields[h], fl = st.fields.filter(function (z) { return z.k === h; })[0];
+    var oldS = old == null ? '' : (fl && fl.t === 'date' && typeof old === 'number' ? isoDay(old) : String(old));
+    if (String(v) !== oldS) fields[h] = v;
+  });
+  var note = String(f.note || '').trim(), photos = f.photos || [];
+  if (!Object.keys(fields).length && !note && !photos.length) { toast('Nothing new to save.', 'err'); return; }
+  var payload = { fields: fields, note: note, photos: photos };
+  p.forms[k] = { status: f.status, photos: [] };                       // the picked answer stays picked
+  optimistic(function (lead) {
+    var x = lead.s[k] || (lead.s[k] = { f: {} }); x.f = x.f || {};
+    Object.keys(fields).forEach(function (h) { var fl = st.fields.filter(function (z) { return z.k === h; })[0], v = fields[h]; if (fl && fl.t === 'date') v = dayMs(v); if (v === '' || v == null) delete x.f[h]; else x.f[h] = v; });
+    if (note) lead.nN = (lead.nN || 0) + 1;
+    if (photos.length) lead.nP = (lead.nP || 0) + photos.length;
+  }, function () { return call('saveStepDraft', fid, l.id, k, payload); }, l.id + ' — saved, stays at “' + st.cfg.label + '”' + (photos.length ? ' · uploading ' + photos.length + ' photo(s)…' : ''), function (d) {
+    if (note) d.notes.push({ t: Date.now(), u: S.me.username, n: S.me.name, st: k, x: note });
+    if (Object.keys(fields).length) d.events.push({ t: Date.now(), u: S.me.username, n: S.me.name, f: fid, id: l.id, st: k, a: 'SAVE', v: Object.keys(fields).join(', ') });
+  });
+}
+function truckDone(r) {
+  toast(r.msg, 'ok');
+  var p = S.panel;
+  if (r.order) mergeLead('O2D', r.order);
+  if (r.detail) { S.det['CYC|' + r.detail.lead.id] = r.detail; mergeLead('CYC', r.detail.lead); if (p && p.fid === 'CYC' && p.id === r.detail.lead.id) { Object.keys(p.forms).forEach(keepForm); p.d = r.detail; renderDrawer(); } }
+  if (S.view === 'board') renderBoard(true);
+  saveCache();
+}
+function startCycle(orderId, btn) {
+  if (btn) btn.disabled = true;
+  call('createCycle', orderId).then(function (r) {
+    toast(r.msg, 'ok');
+    mergeLead('O2D', r.order); mergeLead('CYC', r.cycle);
+    var p = S.panel; if (p && p.fid === 'O2D' && p.id === orderId) loadDetail();
+    if (S.view === 'board') renderBoard(true);
+    saveCache();
+  }).catch(function (e) { if (btn) btn.disabled = false; fail(e); });
+}
+function afterSave(r, quiet) {
+  if (!r) return;
+  if (!quiet && r.msg) toast(r.msg, 'ok');
+  var p = S.panel;
+  if (r.extra) Object.keys(r.extra).forEach(function (f) { (r.extra[f] || []).forEach(function (x) { if (x) mergeLead(f, x); }); });
+  if (r.detail) {
+    var fid = p ? p.fid : S.fid;
+    S.det[fid + '|' + r.detail.lead.id] = r.detail;
+    mergeLead(fid, r.detail.lead);
+    if (p && p.id === r.detail.lead.id && !p.saving) { Object.keys(p.forms).forEach(keepForm); p.d = r.detail; p.loading = 0; renderDrawer(); }
+  }
+  if (S.view === 'board') refreshBoardSoon();
+  saveCache();
+}
+/* ---- Lifecycle tab */
+var EV_ICON = { CYCLE: '⟳', TRUCK: '🚚', MOVE: '⇢', SAVE: '💾', DONE: '✓', FOLLOWUP: '↻', BACK: '↩', ANSWER: '?', EDIT: '✎', NOTE: '✎', PHOTO: '📷', WON: '★', LOST: '✖', CREATE: '+', ORDER: '→', REOPEN: '↺', INDUSTRY: '#', OVERDUE: '!' };
+function evLine(fid, e) {
+  var what = {
+    DONE: 'answered <b>' + esc(e.v) + '</b>' + (e.ot === false ? ' · <span class="neg">' + (Math.round(e.late * 10) / 10) + ' h late</span>' : e.ot ? ' · <span class="pos">on time</span>' : ''),
+    FOLLOWUP: 'follow-up: <b>' + esc(e.v) + '</b>', BACK: 'sent it back to <b>' + esc(lab(fid, e.to)) + '</b> — ' + esc(e.v),
+    ANSWER: 'answered <b>' + esc(e.v) + '</b>', EDIT: 'changed ' + esc(e.v), SAVE: 'saved (not moved on): ' + esc(e.v), CYCLE: esc(e.v), TRUCK: 'truck ' + esc(e.v), MOVE: esc(e.v), NOTE: 'note: ' + esc(e.v), PHOTO: 'added a photo' + (e.v ? ': ' + esc(e.v) : ''),
+    WON: 'closed as <b>won</b>' + (e.v ? ' — ' + esc(e.v) : ''), LOST: 'closed as <b>lost</b>' + (e.v ? ' — ' + esc(e.v) : ''), CREATE: 'created it' + (e.v ? ' (' + esc(e.v) + ')' : ''),
+    ORDER: 'made order <b>' + esc(e.v) + '</b>', ASSIGN: 'assigned it to <b>' + esc(e.v) + '</b>', REOPEN: 'reopened it', INDUSTRY: 'set industry: ' + esc(e.v)
+  }[e.a] || esc(e.a + ' ' + e.v);
+  var ch = '';
+  if (e.d && e.d.fields) ch = '<div class="m">' + Object.keys(e.d.fields).map(function (k) { var x = e.d.fields[k]; return esc(nice(k)) + ': ' + esc(x[0] === '' ? '—' : (typeof x[0] === 'number' && x[0] > 1e11 ? fDT(x[0]) : x[0])) + ' → ' + esc(typeof x[1] === 'number' && x[1] > 1e11 ? fDT(x[1]) : x[1]); }).join(' · ') + '</div>';
+  return '<div class="ev"><span class="ei ' + e.a + '">' + (EV_ICON[e.a] || '•') + '</span><div class="eb"><div><b>' + esc(e.n) + '</b> ' + what + '</div>' + ch +
+    '<div class="m">' + esc(fDT(e.t)) + (e.st && e.a !== 'DONE' ? ' · ' + esc(lab(fid, e.st)) : '') + '</div></div></div>';
+}
+function drLife(fid, d) {
+  var l = d.lead, keys = stepsOf(fid).map(function (s) { return s.key; });
+  var created = d.events.filter(function (e) { return e.a === 'CREATE'; })[0];
+  var h = '<div class="tl"><div class="tl-node"><span class="tl-dot done">1</span><div class="tl-card"><div class="tl-top"><span class="tl-stage">Received</span><span class="tl-time">' + esc(fDT(pick(l.b, 'Timestamp'))) + '</span></div>' +
+    '<div class="kvs">' + FL(fid).base.filter(function (b, i) { return i > 0 && b.k !== 'Timestamp' && pick(l.b, b.k) !== ''; }).slice(0, 8).map(function (b) { return '<span class="kv">' + esc(nice(b.k)) + ' <b>' + esc(fVal(b, pick(l.b, b.k))) + '</b></span>'; }).join('') + '</div>' +
+    '<div class="tl-sub"><div class="ev"><span class="ei CREATE">+</span><div class="eb">' + (created ? '<b>' + esc(created.n) + '</b> created it in the app' : 'Entered before the app (copied from the old FMS sheet)') + '</div></div></div></div></div>';
+  stepsOf(fid).forEach(function (st) {
+    var k = st.key, x = l.s[k] || {}, open = tileKeys(l).indexOf(k) > -1, cls, tx;
+    var lostHere = l.closed && l.closed.o === 'lost' && l.closed.step === k;
+    if (x.a) { var late = x.p && x.a > x.p; cls = lostHere ? 'lost' : late ? 'late' : 'done'; tx = late ? fmtDur(x.a - x.p) + ' late' : 'on time'; }
+    else if (open) { var du = dueOf(fid, l, k); cls = du === 'over' ? 'over' : 'cur'; tx = dueText(fid, l, k); }
+    else { cls = 'pend'; tx = st.cfg.side ? 'only when needed' : 'not yet'; }
+    var by = (l.by || {})[k];
+    var evs = d.events.filter(function (e) { return e.st === k && e.a !== 'DONE' && e.a !== 'NOTE' && e.a !== 'PHOTO'; });
+    var notes = d.notes.filter(function (n) { return n.st === k; }), photos = d.photos.filter(function (q) { return q.st === k; });
+    var kv = (x.s ? '<span class="kv">Answer <b>' + esc(x.s) + '</b></span>' : '') + st.fields.map(function (f) { var v = x.f[f.k]; return v === '' || v == null ? '' : '<span class="kv">' + esc(nice(f.k)) + ' <b>' + esc(fVal(f, v)) + '</b></span>'; }).join('');
+    var sub = '';
+    if (x.a) sub += '<div class="ev"><span class="ei DONE">✓</span><div class="eb">' + (by ? '<b>' + esc(by.n) + '</b> finished it in the app' : 'Finished in the sheet') + '<div class="m">' + esc(fDT(x.a)) + '</div></div></div>';
+    sub += evs.map(function (e) { return evLine(fid, e); }).join('');
+    sub += notes.map(function (n) { return '<div class="ev"><span class="ei NOTE">✎</span><div class="eb"><b>' + esc(n.n) + '</b>: ' + esc(n.x) + '<div class="m">' + esc(fDT(n.t)) + '</div></div></div>'; }).join('');
+    if (photos.length) sub += '<div class="ph-row">' + photos.map(function (q) { return '<img class="ph" src="' + esc(q.th) + '" data-photo="' + esc(q.id) + '" title="' + esc(q.n + ' · ' + fDT(q.t)) + '">'; }).join('') + '</div>';
+    var canEdit = x.a && (d.editAny || canAct(fid, l, k)) && st.fields.some(function (f) { return !f.ro; });
+    var editing = S.panel.life[k];
+    var edit = '';
+    if (editing) {
+      edit = '<div class="tl-sub" data-edit="' + k + '"><div class="form-grid">' +
+        (st.s >= 0 || true ? '<label class="fld"><span>Answer</span><select class="inp" data-fld="__status">' + st.opts.map(function (o) { return '<option' + (o === x.s ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>' : '') +
+        st.fields.filter(function (f) { return !f.arr; }).map(function (f) { return inputHtml(f, x.f[f.k], f.k, false); }).join('') + '</div>' +
+        '<div class="act-foot"><span class="hint">Changes are logged. Some answers send the lead back (Settings → rules).</span><span style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" data-act="lifeEdit" data-k="' + k + '">Cancel</button><button class="btn btn-dark btn-sm" data-act="lifeSave" data-k="' + k + '">Save</button></span></div></div>';
+    }
+    h += '<div class="tl-node"><span class="tl-dot ' + cls + '">' + esc(st.num) + '</span><div class="tl-card' + (cls === 'pend' ? ' pend' : open ? ' cur' : '') + '">' +
+      '<div class="tl-top"><span class="tl-stage">' + esc(st.cfg.label) + '</span><span class="tl-time">' + esc(tx) + '</span></div>' +
+      '<div class="tl-time">' + esc(st.who || '') + (x.p ? ' · deadline ' + esc(fDT(x.p)) : '') + (x.a ? ' · done ' + esc(fDT(x.a)) : '') + '</div>' +
+      (kv ? '<div class="kvs">' + kv + '</div>' : '') + (sub ? '<div class="tl-sub">' + sub + '</div>' : '') +
+      (canEdit && !editing ? '<div style="margin-top:8px"><button class="lnk" data-act="lifeEdit" data-k="' + k + '">Edit this step</button></div>' : '') + edit + '</div></div>';
+  });
+  if (l.closed) h += '<div class="tl-node"><span class="tl-dot ' + (l.closed.o === 'won' ? 'done' : 'lost') + '">' + (l.closed.o === 'won' ? '★' : '✖') + '</span><div class="tl-card"><div class="tl-top"><span class="tl-stage">' + (l.closed.o === 'won' ? (fid === 'L2O' ? 'Won' : 'Completed') : 'Lost') + '</span><span class="tl-time">' + esc(fDT(l.closed.at)) + '</span></div><div class="tl-time">' + esc(l.closed.why || '') + '</div></div></div>';
+  h += '</div><div class="sec-t" style="margin-top:20px">Everything that happened <span>' + (d.prov ? '' : d.events.length) + '</span></div>';
+  if (d.prov) return h + '<div class="empty"><span class="spin sm"></span> Loading the history…</div>';
+  h += d.events.length ? d.events.slice().reverse().map(function (e) { return evLine(fid, e); }).join('') : '<div class="empty">Nothing was done in the app yet — the steps above come from the sheet.</div>';
+  return h;
+}
+
+/* ---- Details tab */
+function drDetails(fid, d) {
+  var l = d.lead, canEdit = d.editAny || d.owner, ed = S.panel.editBase;
+  var h = '<div class="sec-t">' + (fid === 'L2O' ? 'Enquiry' : 'Order') + ' details' + (canEdit && !ed ? '<button class="btn btn-ghost btn-sm" data-act="editBase">Edit</button>' : '') + '</div>';
+  if (ed) {
+    h += '<div data-edit="base"><div class="form-grid">' + FL(fid).base.map(function (b) { return inputHtml(b, pick(l.b, b.k), b.k, false); }).join('') + '</div>' +
+      '<div class="act-foot"><span></span><span style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" data-act="editBase">Cancel</button><button class="btn btn-dark btn-sm" data-act="saveBase">Save</button></span></div></div>';
+  } else {
+    h += '<div class="attr-grid">' + FL(fid).base.map(function (b) { var v = pick(l.b, b.k); return '<div class="attr"><div class="k">' + esc(nice(b.k)) + '</div><div class="v' + (v === '' ? ' e' : '') + '">' + esc(v === '' ? '—' : fVal(b, v)) + '</div></div>'; }).join('') + '</div>';
+  }
+  h += '<div class="sec-t">Industry</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select class="inp" id="indSel" style="max-width:280px"' + (canEdit || canAct(fid, l, l.cur || '') ? '' : ' disabled') + '><option value="">— not set —</option>' +
+    S.industries.map(function (x) { return '<option' + (l.ind === x ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' +
+    '<button class="btn btn-ghost btn-sm" data-act="saveInd">Save</button></div>';
+  if (S.me.role !== 'exec') h += '<div class="sec-t">Sheet</div><a class="btn btn-ghost btn-sm" target="_blank" href="' + esc(FL(fid).url + '&range=A' + l.r) + '">' + ic('sheet', 'width:15px;height:15px') + ' Open row ' + l.r + ' in the ' + (fid === 'L2O' ? 'LEADS' : 'ORDERS') + ' tab</a>';
+  return h;
+}
+
+/* ---- Notes & photos tab */
+function drNotes(fid, d) {
+  var l = d.lead, opts = '<option value="">The ' + FL(fid).unit + ' in general</option>' + stepsOf(fid).map(function (s) { return '<option value="' + s.key + '"' + (s.key === l.cur ? ' selected' : '') + '>' + esc(s.cfg.label) + '</option>'; }).join('');
+  var h = '<div class="act plain"><div class="form-grid"><label class="fld"><span>Step</span><select class="inp" id="noteStep">' + opts + '</select></label><span></span>' +
+    '<label class="fld wide"><span>Note</span><textarea class="inp" id="noteText" rows="3" placeholder="Call summary, customer requirement, reminder…"></textarea></label></div>' +
+    '<div class="act-foot"><label class="btn btn-ghost btn-sm">' + ic('cam', 'width:15px;height:15px') + ' Add photos<input type="file" accept="image/*" multiple hidden id="notePh"></label><button class="btn btn-dark btn-sm" data-act="addNote">Add note</button></div></div>';
+  h += '<div class="sec-t">Photos <span>' + d.photos.length + '</span></div>' + (d.photos.length ? '<div class="pgrid">' + d.photos.map(function (q) {
+    return '<figure><img src="' + esc(q.th) + '" data-photo="' + esc(q.id) + '"><figcaption>' + esc((q.st ? lab(fid, q.st) : 'General') + ' · ' + q.n + ' · ' + fDate(q.t)) + '</figcaption></figure>'; }).join('') + '</div>' : '<div class="empty">No photos yet.</div>');
+  h += '<div class="sec-t">Notes <span>' + d.notes.length + '</span></div>' + (d.notes.length ? d.notes.slice().reverse().map(function (n) {
+    return '<div class="note"><div class="m"><b>' + esc(n.n) + '</b> · ' + esc(n.st ? lab(fid, n.st) : 'General') + ' · ' + esc(fDT(n.t)) + '</div><div class="x">' + esc(n.x) + '</div></div>'; }).join('') : '<div class="empty">No notes yet.</div>');
+  return h;
+}
+
+/* ---------------------------------------------------------- photos (shrunk on the phone before upload) */
+function shrink(file, max, q) {
+  return new Promise(function (res, rej) {
+    var r = new FileReader();
+    r.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var s = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', q));
+      };
+      img.onerror = function () { rej(new Error('Not an image: ' + file.name)); };
+      img.src = r.result;
+    };
+    r.onerror = function () { rej(new Error('Could not read ' + file.name)); };
+    r.readAsDataURL(file);
+  });
+}
+function readPhotos(files) {
+  return Promise.all([].slice.call(files, 0, 8).map(function (f) {
+    return Promise.all([shrink(f, 1400, .82), shrink(f, 220, .6)]).then(function (a) { return { data: a[0], thumb: a[1], caption: '' }; });
+  }));
+}
+function viewPhoto(id) {
+  var v = $('viewer'), img = v.querySelector('img');
+  img.removeAttribute('src'); v.classList.add('on'); v.querySelector('.spin').hidden = false;
+  call('getPhoto', id).then(function (src) { img.src = src; v.querySelector('.spin').hidden = true; }).catch(function (e) { v.classList.remove('on'); fail(e); });
+}
+
+/* ---------------------------------------------------------- new lead / order */
+/** Names already used in a field: from the board, or (form-only roles) the lists the server sent. No size limit. */
+function suggestVals(fid, k) {
+  if (S.lists && S.lists[fid]) return S.lists[fid][k] || [];
+  return distinct(fid, function (l) { return pick(l.b, k); }).map(function (v) { return v.v; });
+}
+function datalists(fid) {
+  var h = '';
+  FL(fid).base.forEach(function (b, i) {
+    b.dl = '';
+    if (b.ro || b.o || b.t !== 'text') return;
+    var vals = suggestVals(fid, b.k);
+    if (!vals.length) return;
+    b.dl = 'dl_' + fid + '_' + i;
+    h += '<datalist id="' + b.dl + '">' + vals.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>';
+  });
+  return h;
+}
+/** "Prakash Traders" ≈ "Prakash Trader, merut" ≈ "prakash trader": a name with the noise taken out. */
+function normName(s) {
+  return String(s || '').toLowerCase().replace(/m\/s|\b(pvt|private|ltd|limited|the|co|company)\b/g, ' ')
+    .split(/[^a-z0-9]+/).filter(String).map(function (w) { return w.length > 3 ? w.replace(/s$/, '') : w; }).join('');
+}
+function editDist(a, b) {
+  var p = [], i, j;
+  for (j = 0; j <= b.length; j++) p[j] = j;
+  for (i = 1; i <= a.length; i++) {
+    var prev = p[0]; p[0] = i;
+    for (j = 1; j <= b.length; j++) { var t = p[j]; p[j] = Math.min(p[j] + 1, p[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; }
+  }
+  return p[b.length];
+}
+/** Existing names that look like a typo / variant of v (none when v is already in the list as typed). */
+function nearNames(v, list) {
+  var up = String(v).trim().toUpperCase(), n = normName(v);
+  if (n.length < 3 || list.some(function (x) { return String(x).trim().toUpperCase() === up; })) return [];
+  var score = function (m) {
+    var lo = Math.min(m.length, n.length), hi = Math.max(m.length, n.length);
+    if (!m) return -1;
+    return m === n ? 0 : (lo >= 5 && (m.indexOf(n) > -1 || n.indexOf(m) > -1)) ? 1 : (lo >= 6 && editDist(m, n) <= Math.max(1, Math.floor(hi / 7))) ? 2 : -1;
+  };
+  return list.map(function (x) {
+    var a = score(normName(x)), b = score(normName(String(x).split(/[,(]/)[0]));   // "Krishna Udhyog, Jaipur" → also "Krishna Udhyog"
+    var s = a < 0 ? b : b < 0 ? a : Math.min(a, b);
+    return s < 0 ? null : { v: x, s: s };
+  }).filter(Boolean).sort(function (a, b) { return a.s - b.s || a.v.localeCompare(b.v); }).slice(0, 4).map(function (x) { return x.v; });
+}
+function showNear(fid, k, v, near) {
+  var box = $('nearBox'), what = fid === 'O2D' ? 'party' : 'company';
+  box.innerHTML = '<div><b>“' + esc(v) + '”</b> is not in the list yet. Did you mean:</div><div class="near-opts">' +
+    near.map(function (x) { return '<button class="btn btn-sm" data-act="nearPick" data-k="' + esc(k) + '" data-v="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') +
+    '<button class="btn btn-ghost btn-sm" data-act="nearNew" data-v="' + esc(v) + '">No, it is a new ' + what + '</button></div>';
+  box.hidden = false;
+  box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function newEntry(fid, prefill, fromLead) {
+  $('modalBody').innerHTML = '<h2>' + (fid === 'L2O' ? 'New lead' : 'New order') + (fromLead ? ' from ' + esc(fromLead) : '') + '</h2>' +
+    '<p class="msub">Goes straight into the ' + esc(FL(fid).title) + ' sheet with the next ORD number; the first step\'s deadline starts now.</p>' +
+    entryForm(fid, prefill) +
+    '<div class="modal-foot"><button class="btn btn-ghost" data-act="closeModal">Cancel</button><button class="btn btn-dark" data-act="createEntry" data-fid="' + fid + '" data-from="' + esc(fromLead || '') + '">Create</button></div>';
+  $('modal').classList.add('on');
+}
+function entryForm(fid, prefill) {
+  var fl = FL(fid), pre = prefill || {};
+  var dl = datalists(fid), boss = S.me.role !== 'exec';
+  var ownerHtml = boss ? '<label class="fld"><span>Assign to <i>*</i></span>' + assignSelect('newOwner', pre.__ownerName || '', true, ' data-fld="__owner"') + '</label>'
+    : '<div class="fld"><span>Assigned to</span><div class="inp" style="background:var(--line-soft)">You (' + esc(S.me.name) + ')</div></div>';
+  var flds = ownerHtml + fl.base.filter(function (b) { return !b.ro && b.k !== fl.owner && !/^material grade \(/i.test(b.k); }).map(function (b) {
+    var req = fl.titles.indexOf(b.k) === 0 || (fid === 'L2O' && b.k === fl.phone) || (fid === 'O2D' && (b.k === fl.qty || b.k === fl.source));
+    return inputHtml(b, pre[b.k], b.k, req);
+  }).join('');
+  return dl + '<div class="form-grid" id="newForm">' + flds +
+    '<label class="fld"><span>Industry</span><select class="inp" data-fld="__industry"><option value="">—</option>' + S.industries.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select></label>' +
+    '<label class="fld wide"><span>Note</span><textarea class="inp" rows="2" data-fld="__note"></textarea></label></div>' +
+    '<div class="near" id="nearBox" hidden></div>';
+}
+/** Lead Generator / Order Generator: only the form of their flow, nothing else. */
+function renderGen(done) {
+  var fid = GEN[S.me.role], fl = FL(fid);
+  S.fid = fid;
+  document.body.classList.add('gen');
+  S.genDone = S.genDone || [];
+  if (done) S.genDone.unshift(done);
+  $('view').innerHTML = '<div class="genwrap"><div class="gen-h"><div class="brand-mark">' + ic('board') + '</div><div><h2>' + (fid === 'L2O' ? 'New lead' : 'New order') + '</h2>' +
+    '<p class="msub">' + esc(S.me.name) + ' · ' + esc(S.me.roleName) + ' — fill the form and press Save; it goes straight to the person you pick.</p></div>' +
+    (S.hub ? '<a class="btn btn-ghost btn-sm" href="' + esc(S.hub.replace(/\?app=.*$/, '')) + '" target="_top">GGM Portal</a>' : '') + '</div>' +
+    (S.genDone.length ? '<div class="gen-ok">' + S.genDone.slice(0, 5).map(function (x) { return '<div>✓ <b>' + esc(x.id) + '</b> saved' + (x.owner ? ' · with ' + esc(x.owner) : '') + '</div>'; }).join('') + '</div>' : '') +
+    '<div class="gen-card">' + entryForm(fid, {}) +
+    '<div class="modal-foot"><button class="btn btn-dark" data-act="createEntry" data-fid="' + fid + '" data-gen="1">Save ' + (fid === 'L2O' ? 'lead' : 'order') + '</button></div></div></div>';
+  window.scrollTo(0, 0);
+}
+
+/* ---------------------------------------------------------- performance (me / team) */
+function perfRange() {
+  var now = Date.now(), t = isoDay(now), r = S.perf.range;
+  if (r === '7') return { from: isoDay(now - 6 * 864e5), to: t };
+  if (r === '30') return { from: isoDay(now - 29 * 864e5), to: t };
+  if (r === '90') return { from: isoDay(now - 89 * 864e5), to: t };
+  if (r === 'month') return { from: t.slice(0, 8) + '01', to: t };
+  if (r === 'last') { var d = new Date(t.slice(0, 8) + '01T12:00:00+05:30'); d.setUTCDate(0); var e = isoDay(d.getTime()); return { from: e.slice(0, 8) + '01', to: e }; }
+  return { from: S.perf.from || isoDay(now - 29 * 864e5), to: S.perf.to || t };
+}
+function renderPerf() {
+  var team = S.view === 'team', rg = perfRange();
+  var user = team ? (S.perf.user || '*') : S.me.username;
+  var ctrl = '<div class="ctrl"><div class="seg">' + [['7', '7 days'], ['30', '30 days'], ['month', 'This month'], ['last', 'Last month'], ['90', '90 days']].map(function (x) {
+    return '<button class="' + (S.perf.range === x[0] ? 'on' : '') + '" data-prange="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+    (team ? '<select class="fsel' + (user !== '*' ? ' on' : '') + '" id="perfUser" style="max-width:240px"><option value="*">Whole team</option>' + workers().map(function (u) { return '<option value="' + esc(u.u) + '"' + (u.u.toLowerCase() === user.toLowerCase() ? ' selected' : '') + '>' + esc(u.n) + '</option>'; }).join('') + '</select>' : '') +
+    '<span class="hint">' + esc(fDate(new Date(rg.from + 'T12:00:00+05:30').getTime())) + ' → ' + esc(fDate(new Date(rg.to + 'T12:00:00+05:30').getTime())) + '</span><span class="dr-sync" id="perfSync" style="position:static"></span></div>';
+  var key = user.toLowerCase() + '|' + rg.from + '|' + rg.to, cached = S.perfCache[key];
+  S.perfKey = key;
+  $('view').innerHTML = '<div class="page">' + ctrl + '<div id="perfBody">' + (cached ? '' : '<div class="dr-load"><div class="spin"></div></div>') + '</div></div>';
+  if (cached) drawPerf(cached);
+  $('perfSync').innerHTML = '<span class="spin sm"></span>';
+  call('perfData', { from: rg.from, to: rg.to, user: user }).then(function (d) {
+    S.perfCache[key] = d;
+    if (S.perfKey !== key || !$('perfBody')) return;
+    $('perfSync').innerHTML = '';
+    drawPerf(d);
+  }).catch(function (e) { if ($('perfSync')) $('perfSync').innerHTML = ''; if ($('perfBody') && !cached) $('perfBody').innerHTML = '<div class="empty">' + esc(errMsg(e)) + '</div>'; else fail(e); });
+}
+function drawPerf(d) {
+  S.perfData = d;
+  if (!$('perfBody')) return;
+  $('perfBody').innerHTML = d.team ? teamHtml(d) : personHtml(d);
+  if (window.portalPhotosApply) try { window.portalPhotosApply(); } catch (e) {}
+}
+function chartW(half) {
+  var w = ($('perfBody') && $('perfBody').clientWidth) || 760;
+  if (half && w > 860) w = w / 2 - 7;
+  return Math.max(300, Math.round(w - 38));
+}
+/** Open tiles per step right now (from the board already on the phone). mine = only tiles this person works. */
+function pipelineHtml(mineOf) {
+  var h = '';
+  flowList().forEach(function (fid) {
+    if (!S.flows[fid]) return;
+    var rows = stepsOf(fid).map(function (st) {
+      var n = 0, red = 0, warn = 0;
+      leadsOf(fid).forEach(function (l) {
+        if (tileKeys(l).indexOf(st.key) < 0) return;
+        if (mineOf && !(mineOf.names || [mineOf.n, mineOf.u]).some(function (x) { return namesMatch(x, l.owner); }) && (st.cfg.doers || []).map(function (z) { return String(z).toLowerCase(); }).indexOf(mineOf.u.toLowerCase()) < 0) return;
+        n++; var du = dueOf(fid, l, st.key); if (du === 'over') red++; else if (du === 'warn') warn++;
+      });
+      return { st: st, n: n, red: red, warn: warn };
+    });
+    var max = Math.max.apply(null, rows.map(function (r) { return r.n; }).concat([1]));
+    h += '<div class="pl"><div class="pl-h">' + esc(S.flows[fid].title) + '</div>' + rows.map(function (r) {
+      var w = 100 * r.n / max;
+      return '<button class="pl-r" data-plj="' + fid + '|' + r.st.key + '"><span class="pl-l"><b>' + esc(r.st.num) + '</b> ' + esc(r.st.cfg.label) + '</span><span class="pl-bar"><i style="width:' + w + '%">' +
+        (r.n ? '<s class="o" style="width:' + (100 * r.red / r.n) + '%"></s><s class="w" style="width:' + (100 * r.warn / r.n) + '%"></s>' : '') + '</i></span><span class="pl-n">' + r.n + (r.red ? ' <em>' + r.red + ' late</em>' : '') + '</span></button>';
+    }).join('') + '</div>';
+  });
+  return '<div class="card"><div class="card-h"><h3>' + (mineOf ? 'My open tiles now' : 'Pipeline now') + '</h3><span class="sub">red = overdue · yellow = due soon · tap a step to open it</span></div><div class="pls">' + h + '</div></div>';
+}
+function hrs(secs) { if (!secs) return '0m'; var m = Math.round(secs / 60); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; }
+function kpi(l, v, s, cls) { return '<div class="kpi' + (cls ? ' ' + cls : '') + '"><div class="kpi-l">' + l + '</div><div class="kpi-v">' + v + '</div>' + (s ? '<div class="kpi-s">' + s + '</div>' : '') + '</div>'; }
+function personHtml(d) {
+  var k = d.kpi, p = d.person;
+  var h = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><span class="me-av" style="width:44px;height:44px;font-size:15px" data-ggm-photo="' + esc(p.u) + '">' + esc(ini(p.n)) + '</span>' +
+    '<div><div style="font-weight:800;font-size:17px">' + esc(p.n) + '</div><div class="hint">' + esc({ admin: 'Admin', manager: 'Manager', exec: 'Marketing executive' }[p.role] || p.role) + (p.sheet ? ' · in the sheets as ' + esc(p.sheet) : '') + '</div></div></div>';
+  h += '<div class="kpis">' +
+    kpi('Score', (k.score > 0 ? '+' : '') + k.score, '<span class="pos">+' + k.pos + '</span> &nbsp; <span class="neg">' + k.neg + '</span>', 'feature') +
+    kpi('Steps done', k.done, k.fromSheet ? k.fromSheet + ' entered in the sheet' : '') +
+    kpi('On time', k.onTimePct == null ? '—' : k.onTimePct + '<small>%</small>', k.late ? k.late + ' late · avg ' + k.avgLate + ' h' : 'none late') +
+    kpi('Open now', k.open, '<span class="neg">' + k.over + ' overdue</span> · ' + k.warn + ' due soon', k.over ? 'bad' : '') +
+    kpi('Won / lost', k.won + ' / ' + k.lost, k.conv == null ? '' : k.conv + '% won') +
+    kpi('Follow-ups', k.follow, k.notes + ' notes · ' + k.photos + ' photos') +
+    kpi('New leads', k.created, k.rework ? '<span class="neg">' + k.rework + ' sent back</span>' : 'nothing sent back') +
+    kpi('Screen time', hrs(k.secsPerDay), 'a day · ' + k.daysActive + ' days active · ' + hrs(k.secs) + ' total') + '</div>';
+  h += '<div class="card"><div class="card-h"><h3>Score by day</h3><span class="sub">green = points earned · red = points lost · line = net</span></div>' + chartScore(d.days) + '</div>';
+  h += '<div class="grid2"><div class="card"><div class="card-h"><h3>Steps done</h3></div>' + chartSteps(d.days) +
+    '<div class="legend"><span><i style="background:var(--ok)"></i>on time</span><span><i style="background:var(--warn)"></i>late</span></div></div>' +
+    '<div class="card"><div class="card-h"><h3>Screen time & opens</h3></div>' + chartTime(d.days) +
+    '<div class="legend"><span><i style="background:var(--amber)"></i>minutes active</span><span><i style="background:var(--charcoal)"></i>times opened</span></div></div></div>';
+  var meU = S.users.filter(function (u) { return u.u.toLowerCase() === String(p.u).toLowerCase(); })[0];
+  if (meU) h += '<div style="margin-top:14px">' + pipelineHtml(meU) + '</div>';
+  h += '<div class="card" style="margin-top:14px"><div class="card-h"><h3>Where the points came from</h3></div>' + (d.breakdown.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>What</th><th class="num">Times</th><th class="num">Points</th><th>Examples</th></tr></thead><tbody>' +
+    d.breakdown.map(function (b) { return '<tr><td>' + esc(b.label) + '</td><td class="num">' + b.count + '</td><td class="num ' + (b.pts >= 0 ? 'pos' : 'neg') + '">' + (b.pts > 0 ? '+' : '') + b.pts + '</td><td class="hint">' + esc(b.last.join(' · ')) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>' : '<div class="empty">No points in this period yet.</div>') + '</div>';
+  h += '<div class="card"><div class="card-h"><h3>Recent work</h3></div>' + (d.recent.length ? d.recent.map(function (e) {
+    return '<div class="ev" style="margin-bottom:8px;cursor:pointer" data-find="' + esc(e.id) + '" data-fid="' + esc(e.f) + '"><span class="ei ' + e.a + '">' + (EV_ICON[e.a] || '•') + '</span><div class="eb"><div><b>' + esc(e.f ? S.flows[e.f].short + ' ' + e.id : '') + '</b> ' +
+      (e.st && S.flows[e.f] ? esc(lab(e.f, e.st)) + ' — ' : '') + esc(e.a.toLowerCase()) + (e.v ? ': ' + esc(e.v) : '') + '</div><div class="m">' + esc(fDT(e.t)) + '</div></div></div>'; }).join('') : '<div class="empty">Nothing in this period.</div>') + '</div>';
+  return h;
+}
+function teamHtml(d) {
+  var rows = d.team, max = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.score); }).concat([1]));
+  var T = rows.reduce(function (a, r) { a.score += r.score; a.done += r.done; a.open += r.open; a.over += r.over; a.won += r.won; a.lost += r.lost; a.secs += r.secsPerDay; if (r.onTimePct != null) { a.ot += r.onTimePct * r.done; a.otn += r.done; } return a; },
+    { score: 0, done: 0, open: 0, over: 0, won: 0, lost: 0, secs: 0, ot: 0, otn: 0 });
+  var active = rows.filter(function (r) { return r.days; }).length;
+  // open tiles of the whole pipeline, each counted once (summing people counts a tile twice when two people share a step,
+  // and never counts tiles of owners without access)
+  T.open = 0; T.over = 0;
+  flowList().forEach(function (fid) { leadsOf(fid).forEach(function (l) { tileKeys(l).forEach(function (k) { T.open++; if (dueOf(fid, l, k) === 'over') T.over++; }); }); });
+  return '<div class="kpis">' + kpi('Team score', (T.score > 0 ? '+' : '') + T.score, active + ' of ' + rows.length + ' people active', 'feature') +
+    kpi('Steps done', T.done, T.otn ? Math.round(T.ot / T.otn) + '% on time' : '') + kpi('Open now', T.open, '<span class="neg">' + T.over + ' overdue</span> · both boards', T.over ? 'bad' : '') +
+    kpi('Won / lost', T.won + ' / ' + T.lost, T.won + T.lost ? Math.round(100 * T.won / (T.won + T.lost)) + '% won' : '') +
+    kpi('Screen time', hrs(active ? T.secs / active : 0), 'a day, per active person') + '</div>' +
+    '<div class="card"><div class="card-h"><h3>People</h3><span class="sub">tap a person for their dashboard · open / late = tiles waiting on them now</span></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Person</th><th>Score</th><th class="num">+</th><th class="num">−</th><th class="num">Steps</th><th class="num">On time</th><th class="num">Open / late</th><th class="num">Won / lost</th><th class="num">Screen/day</th><th>Last seen</th></tr></thead><tbody>' +
+    rows.map(function (r) {
+      var w = Math.round(70 * Math.abs(r.score) / max);
+      return '<tr class="click" data-puser="' + esc(r.u) + '"><td><span style="display:inline-flex;gap:8px;align-items:center"><span class="av" style="width:26px;height:26px;font-size:10px" data-ggm-photo="' + esc(r.u) + '">' + esc(ini(r.n)) + '</span><b>' + esc(r.n) + '</b></span></td>' +
+        '<td><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;height:8px;border-radius:4px;width:' + w + 'px;background:' + (r.score >= 0 ? 'var(--ok)' : 'var(--bad)') + '"></span><b>' + r.score + '</b></span></td>' +
+        '<td class="num pos">+' + r.pos + '</td><td class="num neg">' + r.neg + '</td><td class="num">' + r.done + '</td><td class="num">' + (r.onTimePct == null ? '—' : r.onTimePct + '%') + '</td>' +
+        '<td class="num">' + r.open + ' / <span class="' + (r.over ? 'neg' : '') + '">' + r.over + '</span></td><td class="num">' + r.won + ' / ' + r.lost + '</td><td class="num">' + hrs(r.secsPerDay) + '</td><td class="hint">' + (r.last ? esc(fDT(r.last)) : 'never') + '</td></tr>';
+    }).join('') + '</tbody></table></div></div>' + '<div style="margin-top:14px">' + pipelineHtml(null) + '</div>';
+}
+function axisDates(days, W, H, pad) {
+  var n = days.length, step = Math.max(1, Math.ceil(n / 8)), bw = (W - pad * 2) / n, s = '';
+  var lastTick = Math.floor((n - 1) / step) * step;   // the end date only when it does not run into the previous label
+  days.forEach(function (d, i) { if (i % step === 0 || (i === n - 1 && (i - lastTick) * bw >= 44)) s += '<text x="' + (pad + bw * i + bw / 2) + '" y="' + (H - 4) + '" font-size="10" text-anchor="middle" fill="currentColor" opacity=".55">' + d.d.slice(8) + ' ' + MON[Number(d.d.slice(5, 7)) - 1] + '</text>'; });
+  return s;
+}
+function chartScore(days) {
+  var W = chartW(false), H = 220, pad = 26, n = days.length || 1, bw = (W - pad * 2) / n;
+  var max = Math.max.apply(null, days.map(function (d) { return Math.max(d.pos, -d.neg); }).concat([5]));
+  var mid = 18 + (H - 40) / 2, sc = ((H - 40) / 2) / max, s = '', line = [];
+  days.forEach(function (d, i) {
+    var x = pad + bw * i + bw * .15, w = Math.max(2, bw * .7);
+    if (d.pos) s += '<rect x="' + x + '" y="' + (mid - d.pos * sc) + '" width="' + w + '" height="' + (d.pos * sc) + '" rx="2" fill="var(--ok)"/>';
+    if (d.neg) s += '<rect x="' + x + '" y="' + mid + '" width="' + w + '" height="' + (-d.neg * sc) + '" rx="2" fill="var(--bad)"/>';
+    line.push((pad + bw * i + bw / 2) + ',' + (mid - (d.pos + d.neg) * sc));
+  });
+  return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" style="color:var(--ink)"><line x1="' + pad + '" x2="' + (W - pad) + '" y1="' + mid + '" y2="' + mid + '" stroke="var(--line)"/>' + s +
+    '<polyline points="' + line.join(' ') + '" fill="none" stroke="var(--charcoal)" stroke-width="2" stroke-linejoin="round"/>' +
+    '<text x="2" y="' + (mid - max * sc + 10) + '" font-size="10" fill="currentColor" opacity=".55">+' + max + '</text><text x="2" y="' + (mid + max * sc - 2) + '" font-size="10" fill="currentColor" opacity=".55">−' + max + '</text>' + axisDates(days, W, H, pad) + '</svg>';
+}
+function chartSteps(days) {
+  var W = chartW(true), H = 200, pad = 18, n = days.length || 1, bw = (W - pad * 2) / n;
+  var max = Math.max.apply(null, days.map(function (d) { return d.onTime + d.late; }).concat([3])), sc = (H - 40) / max, base = H - 22, s = '';
+  days.forEach(function (d, i) {
+    var x = pad + bw * i + bw * .15, w = Math.max(2, bw * .7), y = base;
+    if (d.onTime) { s += '<rect x="' + x + '" y="' + (y - d.onTime * sc) + '" width="' + w + '" height="' + (d.onTime * sc) + '" fill="var(--ok)" rx="1.5"/>'; y -= d.onTime * sc; }
+    if (d.late) s += '<rect x="' + x + '" y="' + (y - d.late * sc) + '" width="' + w + '" height="' + (d.late * sc) + '" fill="var(--warn)" rx="1.5"/>';
+  });
+  return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" style="color:var(--ink);height:200px"><line x1="' + pad + '" x2="' + (W - pad) + '" y1="' + base + '" y2="' + base + '" stroke="var(--line)"/>' + s +
+    '<text x="2" y="' + (base - max * sc + 9) + '" font-size="10" fill="currentColor" opacity=".55">' + max + '</text>' + axisDates(days, W, H, pad) + '</svg>';
+}
+function chartTime(days) {
+  var W = chartW(true), H = 200, pad = 18, n = days.length || 1, bw = (W - pad * 2) / n;
+  var maxM = Math.max.apply(null, days.map(function (d) { return d.secs / 60; }).concat([30])), maxO = Math.max.apply(null, days.map(function (d) { return d.opens; }).concat([3]));
+  var base = H - 22, sc = (H - 40) / maxM, so = (H - 40) / maxO, s = '', pts = [];
+  days.forEach(function (d, i) {
+    var x = pad + bw * i + bw * .15, w = Math.max(2, bw * .7), m = d.secs / 60;
+    if (m) s += '<rect x="' + x + '" y="' + (base - m * sc) + '" width="' + w + '" height="' + (m * sc) + '" fill="var(--amber)" rx="1.5"/>';
+    pts.push((pad + bw * i + bw / 2) + ',' + (base - d.opens * so));
+  });
+  return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" style="color:var(--ink);height:200px"><line x1="' + pad + '" x2="' + (W - pad) + '" y1="' + base + '" y2="' + base + '" stroke="var(--line)"/>' + s +
+    '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--charcoal)" stroke-width="1.6"/>' +
+    '<text x="2" y="' + (base - maxM * sc + 9) + '" font-size="10" fill="currentColor" opacity=".55">' + hrs(maxM * 60) + '</text>' + axisDates(days, W, H, pad) + '</svg>';
+}
+
+/* ---------------------------------------------------------- reminders + Telegram (Notify.js) */
+var REP = [['', 'Once'], ['daily', 'Every day'], ['workdays', 'Every working day'], ['weekly', 'Every week']];
+function remIso(ms) { var x = ist(ms); return { d: isoDay(ms), t: ('0' + x.h).slice(-2) + ':' + ('0' + x.mi).slice(-2) }; }
+function remDefault() { var t = Date.now() + 864e5, d = isoDay(t); return { d: d, t: '10:00' }; }
+function renderRem(poll) {
+  if (!S.rem) $('view').innerHTML = '<div class="page"><div class="dr-load"><div class="spin"></div></div></div>';
+  return call('myReminders', !!poll).then(function (r) { S.rem = r; if (S.view === 'rem') drawRem(); return r; })
+    .catch(function (e) { if (S.view === 'rem') $('view').innerHTML = '<div class="page"><div class="empty">' + esc(errMsg(e)) + '</div></div>'; });
+}
+function tgCard(tg) {
+  if (!tg.ready) return '<div class="card tg-card"><div class="card-h"><h3>Telegram</h3></div><p class="hint">Telegram is not set up yet — the Admin adds the bot in Settings → Telegram. You can still save reminders now; they will come once Telegram is connected.</p></div>';
+  if (!tg.linked) return '<div class="card tg-card"><div class="card-h"><h3>Telegram</h3><span class="sub">not connected</span></div>' +
+    '<p style="margin:0 0 12px">Connect once and your reminders and alerts arrive on Telegram.</p>' +
+    '<ol class="tg-steps"><li>Press <b>Connect Telegram</b> — Telegram opens the bot <b>@' + esc(tg.bot) + '</b>.</li><li>Press <b>Start</b> there.</li><li>Come back here: it shows “Connected”.</li></ol>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-dark" data-act="tgConnect">Connect Telegram</button>' +
+    (S.tgWaiting ? '<button class="btn btn-ghost" data-act="tgCheck">I pressed Start — check</button>' : '') + '</div></div>';
+  return '<div class="card tg-card ok"><div class="card-h"><h3>Telegram</h3><span class="sub">✓ connected' + (tg.tg ? ' as ' + esc(tg.tg) : '') + '</span></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-act="tgTest">Send a test message</button></div></div>';
+}
+function remForm(pre) {
+  pre = pre || {};
+  var w = pre.when ? remIso(pre.when) : remDefault();
+  var lead = pre.fid && pre.lead ? '<div class="rem-lead" id="remLead" data-fid="' + esc(pre.fid) + '" data-id="' + esc(pre.lead) + '">' + ic('link', 'width:13px;height:13px') +
+    ' <b>' + esc(pre.lead) + '</b> ' + esc(pre.title || '') + ' <button class="lnk" data-act="remNoLead" title="Not about this lead">&times;</button></div>' : '';
+  return '<div class="form-grid" id="remForm" data-id="' + esc(pre.id || '') + '">' +
+    '<label class="fld wide"><span>What to do <i>*</i></span><textarea class="inp" rows="2" id="remText" placeholder="e.g. Call Naina Leva about the sample">' + esc(pre.text || '') + '</textarea></label>' +
+    '<label class="fld"><span>Date <i>*</i></span><input type="date" class="inp" id="remD" value="' + esc(w.d) + '"></label>' +
+    '<label class="fld"><span>Time <i>*</i></span><input type="time" class="inp" id="remT" value="' + esc(w.t) + '"></label>' +
+    '<div class="fld wide"><span>Quick</span><div class="chips">' + [['1h', 'In 1 hour'], ['eve', 'Today 5 pm'], ['tom', 'Tomorrow 10 am'], ['mon', 'Monday 10 am']].map(function (q) {
+      return '<button class="chip" data-act="remQuick" data-q="' + q[0] + '">' + q[1] + '</button>'; }).join('') + '</div></div>' +
+    '<label class="fld"><span>Repeat</span><select class="inp" id="remRep">' + REP.map(function (r) { return '<option value="' + r[0] + '"' + ((pre.repeat || '') === r[0] ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('') + '</select></label>' +
+    (lead ? '<div class="fld"><span>About</span>' + lead + '</div>' : '') + '</div>';
+}
+function readRemForm() {
+  var l = $('remLead');
+  return { id: $('remForm').dataset.id || '', text: $('remText').value, when: $('remD').value + 'T' + $('remT').value, repeat: $('remRep').value,
+           fid: l ? l.dataset.fid : '', lead: l ? l.dataset.id : '' };
+}
+function drawRem() {
+  var r = S.rem, open = r.list.filter(function (x) { return x.status === 'open'; }), done = r.list.filter(function (x) { return x.status !== 'open'; });
+  var row = function (x) {
+    return '<div class="rem-row' + (x.status === 'open' ? '' : ' done') + '"><div class="rem-when"><b>' + esc(fDate(x.when)) + '</b><span>' + esc(fTime(x.when)) + '</span></div>' +
+      '<div class="rem-b"><div class="rem-t">' + esc(x.text) + '</div><div class="hint">' + (x.repeat ? esc(REP.filter(function (p) { return p[0] === x.repeat; })[0][1]) + ' · ' : '') +
+      (x.lead ? '<button class="lnk" data-find="' + esc(x.lead) + '" data-fid="' + esc(x.fid) + '">' + esc(x.lead) + (x.title ? ' ' + esc(x.title) : '') + '</button> · ' : '') +
+      (x.status === 'open' ? 'waiting' : 'sent ' + esc(fDT(x.last))) + '</div></div>' +
+      '<div class="rem-a">' + (x.status === 'open' ? '<button class="btn btn-ghost btn-sm" data-act="remEdit" data-id="' + esc(x.id) + '">Edit</button>' : '') +
+      '<button class="btn btn-ghost btn-sm" data-act="remDel" data-id="' + esc(x.id) + '">Delete</button></div></div>';
+  };
+  $('view').innerHTML = '<div class="page rem-page">' + tgCard(r.tg) +
+    '<div class="card"><div class="card-h"><h3>' + (S.remEdit ? 'Edit reminder' : 'New reminder') + '</h3><span class="sub">it comes on Telegram at that time (within 5 minutes)</span></div>' +
+    remForm(S.remEdit || S.remPre) + '<div class="act-foot">' + (S.remEdit ? '<button class="btn btn-ghost" data-act="remCancel">Cancel</button>' : '<span></span>') +
+    '<button class="btn btn-dark" data-act="remSave">' + (S.remEdit ? 'Save changes' : 'Set reminder') + '</button></div></div>' +
+    '<div class="card"><div class="card-h"><h3>Coming up</h3><span class="sub">' + open.length + '</span></div>' + (open.length ? open.map(row).join('') : '<div class="empty" style="padding:14px">Nothing set.</div>') + '</div>' +
+    (done.length ? '<div class="card"><div class="card-h"><h3>Sent</h3></div>' + done.slice(0, 30).map(row).join('') + '</div>' : '') + '</div>';
+}
+/** "Remind me" from a lead: a small form in a pop-up, about that lead. */
+function remModal(fid, id) {
+  var l = findLead(fid, id);
+  $('modalBody').innerHTML = '<h2>Remind me</h2><p class="msub">' + esc(id) + ' · ' + esc(l ? titleOf(l, fid) : '') + ' — comes on Telegram at the time you pick.</p>' +
+    (S.rem && S.rem.tg && !S.rem.tg.linked ? '<div class="outcome stay" style="margin-bottom:10px">Telegram is not connected yet — set it up on the Reminders page (🔔 in the menu).</div>' : '') +
+    remForm({ fid: fid, lead: id, title: l ? titleOf(l, fid) : '' }) +
+    '<div class="modal-foot"><button class="btn btn-ghost" data-act="closeModal">Cancel</button><button class="btn btn-dark" data-act="remSave" data-modal="1">Set reminder</button></div>';
+  $('modal').classList.add('on');
+  if (!S.rem) call('myReminders', false).then(function (r) { S.rem = r; }).catch(function () {});
+}
+function remQuick(q) {
+  var now = Date.now(), x = ist(now), d, t;
+  if (q === '1h') { var m = now + 3600000, y = remIso(m); d = y.d; t = y.t; }
+  else if (q === 'eve') { d = isoDay(now); t = '17:00'; }
+  else if (q === 'tom') { d = isoDay(now + 864e5); t = '10:00'; }
+  else { var dow = (wDay(now) + 4) % 7, add = ((8 - dow) % 7) || 7; d = isoDay(now + add * 864e5); t = '10:00'; }
+  $('remD').value = d; $('remT').value = t;
+}
+
+/* ---- Log call (button on every open tile) */
+var CALLS = ['Call not received', 'Talked – interested', 'Talked – not interested', 'Asked to call later'];
+function openLogCall(fid, id) {
+  var l = findLead(fid, id), phone = l ? pick(l.b, FL(fid).phone) : '';
+  S.call = { fid: fid, id: id, o: -1 };
+  $('modalBody').innerHTML = '<h2>Log call</h2><p class="msub">' + esc(id) + ' · ' + esc(l ? titleOf(l, fid) : '') +
+    (phone ? ' · <a href="tel:' + esc(String(phone).replace(/[^0-9+]/g, '')) + '">' + esc(phone) + '</a>' : '') + '</p>' +
+    '<div class="call-opts">' + CALLS.map(function (c, i) { return '<button class="call-o" data-callo="' + i + '"><b>' + (i + 1) + '</b>' + esc(c) + '</button>'; }).join('') + '</div>' +
+    '<div id="callNext" class="call-next" hidden><div class="fld"><span>Call again on <i>*</i></span></div><div class="form-grid">' +
+    '<label class="fld"><span>Date</span><input type="date" class="inp" id="remD" value="' + esc(isoDay(Date.now() + 864e5)) + '"></label>' +
+    '<label class="fld"><span>Time</span><input type="time" class="inp" id="remT" value="10:00"></label></div>' +
+    '<div class="chips" style="margin-top:6px">' + [['1h', 'In 1 hour'], ['eve', 'Today 5 pm'], ['tom', 'Tomorrow 10 am'], ['mon', 'Monday 10 am']].map(function (q) {
+      return '<button class="chip" data-act="remQuick" data-q="' + q[0] + '">' + q[1] + '</button>'; }).join('') + '</div>' +
+    '<div class="hint" style="margin-top:6px">You get a Telegram reminder at that time.</div></div>' +
+    '<label class="fld wide" style="margin-top:12px"><span>Anything to note</span><textarea class="inp" rows="3" id="callNote" placeholder="What was said, rates discussed…"></textarea></label>' +
+    '<div class="modal-foot"><button class="btn btn-ghost" data-act="closeModal">Cancel</button><button class="btn btn-dark" data-act="saveCall">Save call</button></div>';
+  $('modal').classList.add('on');
+}
+function pickCall(i) {
+  S.call.o = i;
+  [].forEach.call(document.querySelectorAll('[data-callo]'), function (b) { b.classList.toggle('on', Number(b.dataset.callo) === i); });
+  $('callNext').hidden = i !== 3;
+}
+function saveCall(el) {
+  var c = S.call; if (!c) return;
+  if (c.o < 0) { toast('Pick what happened on the call.', 'err'); return; }
+  var data = { outcome: CALLS[c.o], note: $('callNote').value, next: c.o === 3 ? $('remD').value + 'T' + $('remT').value : '' };
+  el.disabled = true;
+  call('logCall', c.fid, c.id, data).then(function (r) {
+    $('modal').classList.remove('on'); toast(r.msg, 'ok');
+    S.det[c.fid + '|' + c.id] = r.detail; mergeLead(c.fid, r.detail.lead);
+    var p = S.panel; if (p && p.fid === c.fid && p.id === c.id && !p.saving) { Object.keys(p.forms).forEach(keepForm); p.d = r.detail; renderDrawer(); }
+    if (S.view === 'board') renderBoard(true);
+    if (c.o === 3 && S.rem) S.rem = null;
+    saveCache();
+  }).catch(function (e) { el.disabled = false; fail(e); });
+}
+
+/* ---- Settings → Telegram (Admin) */
+function dateFields(fid) {
+  var out = [];
+  FL(fid).base.forEach(function (b) { if ((b.t === 'date' || b.t === 'datetime') && b.k !== 'Timestamp') out.push({ r: 'base:' + b.k, t: nice(b.k) }); });
+  stepsOf(fid).forEach(function (s) { s.fields.forEach(function (f) { if (f.t === 'date' || f.t === 'datetime') out.push({ r: s.key + ':' + f.k, t: s.cfg.label + ' › ' + nice(f.k) }); }); });
+  return out;
+}
+function showRefs(fid) {
+  var out = FL(fid).base.filter(function (b) { return b.k !== 'Order No' && b.k !== 'Timestamp'; }).map(function (b) { return { r: 'base:' + b.k, t: nice(b.k) }; });
+  stepsOf(fid).forEach(function (s) { s.fields.forEach(function (f) { out.push({ r: s.key + ':' + f.k, t: s.cfg.label + ' › ' + nice(f.k) }); }); });
+  return out;
+}
+function readTgDom() {
+  var A = S.tgA; if (!A) return;
+  [].forEach.call(document.querySelectorAll('[data-da]'), function (el) {
+    var r = A.dateAlerts[Number(el.dataset.i)]; if (!r) return;
+    var k = el.dataset.da;
+    if (k === 'off') r.off = !el.checked; else if (k === 'before') r.before = Number(el.value) || 0; else r[k] = el.value;
+  });
+  [].forEach.call(document.querySelectorAll('[data-la]'), function (el) {
+    var f = el.dataset.fid, k = el.dataset.k; A.lateAlerts[f] = A.lateAlerts[f] || {};
+    var c = A.lateAlerts[f][k] || (A.lateAlerts[f][k] = { on: false, extra: [] }); c.on = el.checked;
+  });
+  var dg = $('tgDigest'); if (dg) { A.digest.on = dg.checked; A.digest.at = $('tgDigestAt').value || '10:30'; }
+}
+function tgSettingsHtml() {
+  var A = S.tgA;
+  if (!A) { call('tgAdminData').then(function (d) { S.tgA = d; if (S.setTab === 'tg') drawSettings(); }).catch(fail); return '<div class="dr-load"><div class="spin"></div></div>'; }
+  var people = S.users.filter(function (u) { return !GEN[u.r]; });
+  var h = '<div class="card"><div class="card-h"><h3>Telegram bot</h3><span class="sub">' + (A.ready ? '✓ connected: @' + esc(A.bot) : 'not set up') + '</span></div>' +
+    (A.ready ? '' : '<ol class="tg-steps"><li>In Telegram open <b>@BotFather</b> → send <b>/newbot</b> → give it a name (e.g. GGM Leads) and a username ending in “bot”.</li><li>BotFather answers with a token like <span class="mono">123456789:AAH…</span>. Copy it.</li><li>Paste it below and press Save. Only the app keeps it — it is never shown again.</li></ol>') +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input class="inp" type="password" id="tgTok" autocomplete="off" placeholder="' + (A.ready ? 'Paste a new token to change the bot' : 'Bot token from @BotFather') + '" style="max-width:420px">' +
+    '<button class="btn btn-dark" data-act="tgSaveTok">Save</button>' + (A.ready ? '<button class="btn btn-ghost btn-sm" data-act="tgDropTok">Remove bot</button>' : '') + '</div></div>';
+  h += '<div class="card"><div class="card-h"><h3>Who is connected</h3><span class="sub">each person connects once from 🔔 Reminders</span></div><div class="tg-people">' +
+    A.people.map(function (p) { return '<span class="tg-p' + (p.linked ? ' on' : '') + '">' + (p.linked ? '✓ ' : '') + esc(p.n) + '</span>'; }).join('') + '</div></div>';
+  // date alerts
+  h += '<div class="card"><div class="card-h"><h3>Date alerts</h3><span class="sub">when a date is filled in, the people you pick get a Telegram message on that date</span></div>';
+  h += A.dateAlerts.map(function (r, i) {
+    var fl = S.flows[r.fid] ? r.fid : 'L2O', dfs = dateFields(fl), chip = function (v, on, t, act) { return '<button class="chip' + (on ? ' on' : '') + '" data-act="' + act + '" data-i="' + i + '" data-v="' + esc(v) + '">' + esc(t) + '</button>'; };
+    var to = r.to || [], show = r.show || [];
+    return '<div class="st-step"><div class="st-row"><span>Board</span><select class="inp" data-da="fid" data-i="' + i + '" style="max-width:220px">' + flowList().map(function (f) { return '<option value="' + f + '"' + (fl === f ? ' selected' : '') + '>' + esc(S.flows[f].title) + '</option>'; }).join('') + '</select>' +
+      '<label class="tg-on"><input type="checkbox" data-da="off" data-i="' + i + '"' + (r.off ? '' : ' checked') + '> On</label><button class="btn btn-bad btn-sm" data-act="daDel" data-i="' + i + '">Remove</button></div>' +
+      '<div class="st-row"><span>Date field</span><select class="inp" data-da="ref" data-i="' + i + '" style="max-width:360px"><option value="">— pick —</option>' + dfs.map(function (d) { return '<option value="' + esc(d.r) + '"' + (r.ref === d.r ? ' selected' : '') + '>' + esc(d.t) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="st-row"><span>When</span><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select class="inp" data-da="before" data-i="' + i + '" style="max-width:190px">' +
+        [[0, 'On that date'], [1, '1 day before'], [2, '2 days before'], [3, '3 days before'], [7, '1 week before']].map(function (o) { return '<option value="' + o[0] + '"' + (Number(r.before || 0) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+        '</select> at <input type="time" class="inp" data-da="at" data-i="' + i + '" value="' + esc(r.at || '10:00') + '" style="max-width:130px"></div></div>' +
+      '<div class="st-row"><span>Send to</span><div class="chips">' + chip('owner', to.indexOf('owner') > -1, 'Lead owner', 'daTo') +
+        stepsOf(fl).map(function (s) { return chip('step:' + s.key, to.indexOf('step:' + s.key) > -1, 'Who does “' + s.cfg.label + '”', 'daTo'); }).join('') +
+        people.map(function (u) { return chip('u:' + u.u.toLowerCase(), to.indexOf('u:' + u.u.toLowerCase()) > -1, u.n, 'daTo'); }).join('') + '</div></div>' +
+      '<div class="st-row"><span>Details in the message</span><div class="chips">' + showRefs(fl).map(function (d) { return chip(d.r, show.indexOf(d.r) > -1, d.t, 'daShow'); }).join('') + '</div></div>' +
+      '<div class="st-row"><span>Extra note</span><input class="inp" data-da="note" data-i="' + i + '" value="' + esc(r.note || '') + '" placeholder="e.g. Call the client and confirm the sample reached"></div></div>';
+  }).join('') + '<div class="act-foot"><button class="btn btn-ghost btn-sm" data-act="daAdd">+ Add date alert</button><button class="btn btn-dark" data-act="tgSaveRules">Save date alerts</button></div></div>';
+  // late alerts
+  h += '<div class="card"><div class="card-h"><h3>Late alerts</h3><span class="sub">tick a step: when a tile turns late there, the people who do that step get a message (plus anyone you add)</span></div>';
+  flowList().forEach(function (fid) {
+    h += '<h4 class="tg-flow">' + esc(S.flows[fid].title) + '</h4>' + stepsOf(fid).map(function (s) {
+      var c = (A.lateAlerts[fid] || {})[s.key] || { on: false, extra: [] };
+      return '<div class="tg-late"><label class="tg-on"><input type="checkbox" data-la="1" data-fid="' + fid + '" data-k="' + s.key + '"' + (c.on ? ' checked' : '') + '> <span class="col-num">' + esc(s.num) + '</span> ' + esc(s.cfg.label) + '</label>' +
+        (c.on ? '<div class="chips"><span class="hint">also tell:</span>' + people.map(function (u) { var v = u.u.toLowerCase(); return '<button class="chip' + ((c.extra || []).indexOf(v) > -1 ? ' on' : '') + '" data-act="laExtra" data-fid="' + fid + '" data-k="' + s.key + '" data-v="' + esc(v) + '">' + esc(u.n) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+    }).join('');
+  });
+  h += '<div class="tg-late" style="margin-top:12px"><label class="tg-on"><input type="checkbox" id="tgDigest"' + (A.digest.on ? ' checked' : '') + '> Daily summary: each person gets one message listing all their late tiles, on working days at</label> <input type="time" class="inp" id="tgDigestAt" value="' + esc(A.digest.at || '10:30') + '" style="max-width:130px"></div>' +
+    '<p class="hint" style="margin-top:8px">Late alerts are sent once per tile when it turns late (only for tiles that turn late after you switch the step on — old late tiles are in the daily summary).</p>' +
+    '<div class="act-foot"><span></span><button class="btn btn-dark" data-act="tgSaveRules">Save late alerts</button></div></div>';
+  return h;
+}
+function tgAct(a, el) {
+  var A = S.tgA;
+  switch (a) {
+    case 'tgConnect':
+      call('tgLinkStart').then(function (r) {
+        window.open(r.url, '_blank');
+        S.tgWaiting = Date.now(); drawRem(); toast('Press Start in Telegram, then come back.', 'ok');
+        var n = 0, t = setInterval(function () {
+          if (++n > 24 || S.view !== 'rem' || (S.rem && S.rem.tg.linked)) { clearInterval(t); return; }
+          if (document.visibilityState === 'visible') renderRem(true).then(function (r2) { if (r2 && r2.tg.linked) { clearInterval(t); S.tgWaiting = 0; toast('Telegram connected.', 'ok'); } });
+        }, 5000);
+      }).catch(fail);
+      return true;
+    case 'tgCheck': renderRem(true).then(function (r) { if (r && r.tg.linked) { S.tgWaiting = 0; toast('Telegram connected.', 'ok'); drawRem(); } else toast('Not yet — press Start in the bot, then try again.', 'err'); }); return true;
+    case 'tgTest': call('tgTest').then(function (r) { toast(r.msg, 'ok'); }).catch(fail); return true;
+    case 'remQuick': remQuick(el.dataset.q); return true;
+    case 'saveCall': saveCall(el); return true;
+    case 'remNoLead': var rl = $('remLead'); if (rl) rl.parentNode.remove(); S.remPre = null; return true;
+    case 'remSave':
+      var v = readRemForm(); el.disabled = true;
+      call('saveReminder', v).then(function (r) {
+        toast(r.msg, 'ok'); S.rem = S.rem || { tg: {} }; S.rem.list = r.list; S.remEdit = null; S.remPre = null;
+        if (el.dataset.modal) $('modal').classList.remove('on'); if (S.view === 'rem') drawRem();
+      }).catch(function (e) { el.disabled = false; fail(e); });
+      return true;
+    case 'remEdit': S.remEdit = S.rem.list.filter(function (x) { return x.id === el.dataset.id; })[0] || null; drawRem(); window.scrollTo(0, 0); return true;
+    case 'remCancel': S.remEdit = null; drawRem(); return true;
+    case 'remDel': call('deleteReminder', el.dataset.id).then(function (r) { S.rem.list = r.list; drawRem(); toast(r.msg, 'ok'); }).catch(fail); return true;
+    case 'remLead': remModal(el.dataset.fid, el.dataset.id); return true;
+    case 'tgSaveTok':
+      var tok = $('tgTok').value.trim(); if (!tok) { toast('Paste the token first.', 'err'); return true; }
+      el.disabled = true; call('tgSetToken', tok).then(function (d) { S.tgA = d; drawSettings(); toast('Bot connected: @' + d.bot, 'ok'); }).catch(function (e) { el.disabled = false; fail(e); });
+      return true;
+    case 'tgDropTok': if (!confirm('Remove the Telegram bot? Nobody gets reminders or alerts until a bot is added again.')) return true;
+      call('tgSetToken', '').then(function (d) { S.tgA = d; drawSettings(); toast('Bot removed.', 'ok'); }).catch(fail); return true;
+    case 'daAdd': readTgDom(); A.dateAlerts.push({ fid: S.fid || 'L2O', ref: '', to: ['owner'], at: '10:00', before: 0, show: [], note: '' }); drawSettings(); return true;
+    case 'daDel': readTgDom(); A.dateAlerts.splice(Number(el.dataset.i), 1); drawSettings(); return true;
+    case 'daTo': case 'daShow':
+      readTgDom(); var r0 = A.dateAlerts[Number(el.dataset.i)], list = a === 'daTo' ? (r0.to = r0.to || []) : (r0.show = r0.show || []), p = list.indexOf(el.dataset.v);
+      if (p > -1) list.splice(p, 1); else list.push(el.dataset.v); el.classList.toggle('on'); return true;
+    case 'laExtra':
+      readTgDom(); var c = A.lateAlerts[el.dataset.fid][el.dataset.k], q = (c.extra = c.extra || []).indexOf(el.dataset.v);
+      if (q > -1) c.extra.splice(q, 1); else c.extra.push(el.dataset.v); el.classList.toggle('on'); return true;
+    case 'tgSaveRules':
+      readTgDom();
+      if (A.dateAlerts.some(function (r) { return !r.ref; })) { toast('Pick the date field in every date alert (or remove it).', 'err'); return true; }
+      el.disabled = true;
+      call('tgSaveRules', { dateAlerts: A.dateAlerts, lateAlerts: A.lateAlerts, digest: A.digest }).then(function (d) { S.tgA = d; drawSettings(); toast('Telegram alerts saved.', 'ok'); })
+        .catch(function (e) { el.disabled = false; fail(e); });
+      return true;
+  }
+  return false;
+}
+
+/* ---------------------------------------------------------- settings (admin) */
+function renderSettings() {
+  $('view').innerHTML = '<div class="page"><div class="dr-load"><div class="spin"></div></div></div>';
+  call('settingsData').then(function (d) {
+    S.users = d.users || S.users;
+    S.set = { d: d, steps: {}, rules: JSON.parse(JSON.stringify(d.rules)), fieldRules: JSON.parse(JSON.stringify(d.fieldRules)) };
+    flowList().forEach(function (fid) {
+      S.set.steps[fid] = {};
+      stepsOf(fid).forEach(function (s) { S.set.steps[fid][s.key] = JSON.parse(JSON.stringify({ label: s.cfg.label, ownerActs: s.cfg.ownerActs, doers: s.cfg.doers, required: s.cfg.required, card: s.cfg.card, side: s.cfg.side, photo: s.cfg.photo })); });
+    });
+    drawSettings();
+  }).catch(function (e) { $('view').innerHTML = '<div class="page"><div class="empty">' + esc(errMsg(e)) + '</div></div>'; });
+}
+function allRefs(fid, k) {
+  var out = FL(fid).base.filter(function (b) { return b.k !== 'Order No' && b.k !== 'Timestamp'; }).map(function (b) { return 'base:' + b.k; }), keys = stepsOf(fid).map(function (s) { return s.key; });
+  stepsOf(fid).forEach(function (s, i) { if (i > keys.indexOf(k)) return; if (i < keys.indexOf(k)) out.push(s.key + ':@status'); s.fields.forEach(function (f) { out.push(s.key + ':' + f.k); }); });
+  return out;
+}
+function drawSettings() {
+  var T = S.setTab, fid = S.setFid, d = S.set.d;
+  var tabs = '<div class="ctrl"><div class="seg">' + [['people', 'People'], ['steps', 'Steps & people'], ['rules', 'Answer rules'], ['scores', 'Score points']].concat(S.flows.CYC ? [['cust', 'Customers']] : []).concat([['tg', 'Telegram'], ['general', 'General']]).map(function (x) {
+    return '<button class="' + (T === x[0] ? 'on' : '') + '" data-stab="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+    (T === 'steps' || T === 'rules' ? '<div class="seg">' + flowList().map(function (f) { return '<button class="' + (fid === f ? 'on' : '') + '" data-sfid="' + f + '">' + esc(S.flows[f].title) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+  var h = '';
+  if (T === 'people') {
+    h += '<div class="card"><div class="card-h"><h3>People with access</h3><span class="sub">who can open the app is set in GGM Portal (tick + role). Nobody types a doer name: each person is matched to the sheets by their portal name.</span></div>' +
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Person</th><th>Role</th><th>Name in the sheets</th><th>Board</th><th>Old spellings that are renamed to this username (comma separated)</th><th class="num">Open</th></tr></thead><tbody>' +
+      S.users.map(function (u) {
+        var open = 0;
+        ['L2O', 'O2D'].forEach(function (f) { leadsOf(f).forEach(function (l) { if (!l.closed && (u.names || []).some(function (n) { return namesMatch(n, l.owner); })) open++; }); });
+        return '<tr><td><b>' + esc(u.n) + '</b><div class="hint">' + esc(u.u) + '</div></td><td>' + esc(roleWord(u)) + '</td>' +
+          '<td class="mono" style="font-size:12px">' + esc(u.s ? (u.s.L2O === u.s.O2D ? u.s.L2O : u.s.L2O + ' / ' + u.s.O2D) : '') + '</td>' +
+          '<td>' + (u.r === 'exec' ? '<select class="inp" style="min-width:150px" data-scope="' + esc(u.u.toLowerCase()) + '">' +
+            [['all', 'All steps'], ['mine', 'Only their steps']].map(function (o) { return '<option value="' + o[0] + '"' + (((d.scope || {})[u.u.toLowerCase()] || 'all') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'
+            : '<span class="hint">All steps</span>') + '</td>' +
+          '<td><input class="inp" data-alias="' + esc(u.u.toLowerCase()) + '" value="' + esc(d.aliases[u.u.toLowerCase()] || '') + '" placeholder="e.g. NEERAJ KUMAR GOYAL"></td><td class="num">' + open + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<p class="hint" style="margin-top:10px"><b>Board</b> (Executives): <b>All steps</b> = the whole board, answering only their own steps. <b>Only their steps</b> = just the tiles waiting on them (steps they are ticked for in Steps &amp; people, and “Lead owner” steps of their own leads); nothing else is sent to their screen. Admins and Managers always see everything.</p>' +
+      '<p class="hint" style="margin-top:10px">Names in ATT. NAME / SALES PER. are always the Master App username. Old spellings (from the old FMS sheets) are renamed automatically every 10 minutes; add one here when a name is not recognised.</p>';
+    var unknown = {};
+    ['L2O', 'O2D'].forEach(function (f) { leadsOf(f).forEach(function (l) { if (!l.closed && l.owner && !userOfName(l.owner)) unknown[l.owner.toUpperCase()] = (unknown[l.owner.toUpperCase()] || 0) + 1; }); });
+    var uk = Object.keys(unknown);
+    if (uk.length) h += '<div class="outcome stay" style="margin-top:12px">Open leads under names nobody with access matches: ' + uk.map(function (k) { return esc(k) + ' (' + unknown[k] + ')'; }).join(', ') + '. Add the spelling to a person above (renamed within 10 minutes), or assign those leads from the lead itself.</div>';
+    h += '<div class="act-foot"><span></span><button class="btn btn-dark" data-act="saveAliases">Save</button></div></div>';
+  } else if (T === 'steps') {
+    h += '<p class="hint" style="margin-bottom:12px">Who may answer each step: the lead\'s owner (the name in ' + esc(FL(fid).owner) + '), and/or people you tick. Admins and Managers can answer any step. Card = what the tile shows at that step.</p>';
+    stepsOf(fid).forEach(function (s) {
+      var c = S.set.steps[fid][s.key];
+      var chip = function (attr, val, on, text) { return '<button class="chip' + (on ? ' on' : '') + '" data-' + attr + '="' + esc(val) + '" data-k="' + s.key + '">' + esc(text) + '</button>'; };
+      h += '<div class="st-step"><h4><span class="col-num">' + esc(s.num) + '</span>' + esc(s.title) + ' <span class="hint">· ' + esc(s.who) + ' · ' + s.tat + ' h</span></h4>' +
+        '<div class="st-row"><span>Name on the board</span><input class="inp" data-slabel="' + s.key + '" value="' + esc(c.label) + '"></div>' +
+        '<div class="st-row"><span>Who answers</span><div class="chips">' + chip('sown', '1', c.ownerActs, 'Lead owner') +
+        S.users.map(function (u) { return chip('sdoer', u.u, c.doers.map(function (x) { return x.toLowerCase(); }).indexOf(u.u.toLowerCase()) > -1, u.n); }).join('') + '</div></div>' +
+        '<div class="st-row"><span>Must be filled</span><div class="chips">' + s.fields.filter(function (f) { return !f.ro; }).map(function (f) { var r = s.key + ':' + f.k; return chip('sreq', r, c.required.indexOf(r) > -1, nice(f.k)); }).join('') + '</div></div>' +
+        '<div class="st-row"><span>Shown on the tile</span><div class="card-pick">' + cardPickHtml(fid, s.key, c) + '</div></div>' +
+        '<div class="st-row"><span>Beside the main line?</span><select class="inp" data-sside="' + s.key + '" style="max-width:360px"><option value="">No — a normal step</option>' +
+        allRefs(fid, s.key).filter(function (r) { return r.slice(0, r.indexOf(':')) !== s.key; }).map(function (r) { return '<option value="' + esc(r) + '"' + (c.side === r ? ' selected' : '') + '>Only when “' + esc(refLabel(fid, r)) + '” has a value</option>'; }).join('') + '</select></div>' +
+        '<div class="st-row"><span>Photos</span><div class="chips">' + chip('sphoto', '1', c.photo, 'Ask for photos at this step') + '</div></div></div>';
+    });
+    h += '<div class="act-foot"><span></span><button class="btn btn-dark" data-act="saveSteps">Save steps</button></div>';
+  } else if (T === 'rules') {
+    var keys = mainSteps(fid).map(function (s) { return s.key; });
+    h += '<p class="hint" style="margin-bottom:12px">What each answer does to the tile. Not set = it moves to the next step.</p>';
+    stepsOf(fid).forEach(function (s) {
+      var r = S.set.rules[fid][s.key] || {}, before = keys.slice(0, keys.indexOf(s.key) + 1);
+      if (s.cfg.side) before = keys;
+      h += '<div class="st-step"><h4><span class="col-num">' + esc(s.num) + '</span>' + esc(s.cfg.label) + '</h4>' + s.opts.map(function (o) {
+        var cur = r[o] || 'next', choices = [['next', isLastMain(fid, s.key) ? 'Finish (won / done)' : 'Next step'], ['stay', 'Stay here (follow-up)'], ['won', 'Close as won'], ['lost', 'Close as lost']]
+          .concat(before.map(function (k) { return ['back:' + k, k === s.key ? 'Start this step again (clock restarts)' : 'Back to “' + lab(fid, k) + '”']; }));
+        return '<div class="rule-row"><span class="o">' + esc(o) + '</span><select class="inp" style="max-width:280px" data-rule="' + esc(o) + '" data-k="' + s.key + '">' + choices.map(function (c) { return '<option value="' + c[0] + '"' + (cur === c[0] ? ' selected' : '') + '>' + esc(c[1]) + '</option>'; }).join('') + '</select></div>';
+      }).join('') + '</div>';
+    });
+    h += '<div class="card" style="margin-top:6px"><div class="card-h"><h3>Field rules</h3><span class="sub">a saved field value sends the lead back (also when edited later)</span></div>' +
+      S.set.fieldRules[fid].map(function (fr, i) {
+        var st = stepOf(fid, fr.step);
+        return '<div class="rule-row"><select class="inp" style="max-width:170px" data-fr="step" data-i="' + i + '">' + stepsOf(fid).map(function (s) { return '<option value="' + s.key + '"' + (s.key === fr.step ? ' selected' : '') + '>' + esc(s.cfg.label) + '</option>'; }).join('') + '</select>' +
+          '<select class="inp" style="max-width:170px" data-fr="field" data-i="' + i + '">' + (st ? st.fields : []).map(function (f) { return '<option' + (f.k === fr.field ? ' selected' : '') + '>' + esc(f.k) + '</option>'; }).join('') + '</select>' +
+          '<input class="inp" style="max-width:220px" data-fr="values" data-i="' + i + '" value="' + esc((fr.values || []).join(', ')) + '" placeholder="values, comma separated">' +
+          '<select class="inp" style="max-width:200px" data-fr="action" data-i="' + i + '">' + keys.map(function (k) { return '<option value="back:' + k + '"' + (fr.action === 'back:' + k ? ' selected' : '') + '>Back to “' + esc(lab(fid, k)) + '”</option>'; }).join('') + '</select>' +
+          '<button class="btn btn-bad btn-sm" data-act="frDel" data-i="' + i + '">Remove</button></div>';
+      }).join('') + '<div class="act-foot"><button class="btn btn-ghost btn-sm" data-act="frAdd">+ Add field rule</button><button class="btn btn-dark" data-act="saveRules">Save rules</button></div></div>';
+  } else if (T === 'scores') {
+    h += '<div class="card"><div class="card-h"><h3>Score points</h3><span class="sub">positive = good work, negative = things that went wrong</span></div><div class="tbl-wrap"><table class="tbl"><tbody>' +
+      Object.keys(d.scores).map(function (k) { return '<tr><td>' + esc(d.scores[k].label) + '</td><td style="width:110px"><input class="inp" type="number" data-score="' + k + '" value="' + d.scores[k].pts + '"></td></tr>'; }).join('') +
+      '</tbody></table></div><div class="act-foot"><span></span><button class="btn btn-dark" data-act="saveScores">Save points</button></div></div>';
+  } else if (T === 'tg') {
+    h += tgSettingsHtml();
+  } else if (T === 'cust') {
+    h += custHtml(d);
+  } else {
+    h += '<div class="card"><div class="card-h"><h3>Deadline colours</h3></div><div class="form-grid"><label class="fld"><span>Yellow when less than this % of the step\'s time is left</span><input class="inp" type="number" id="setWarn" value="' + d.warnPct + '" min="5" max="90"></label>' +
+      '<div class="hint" style="align-self:end">Working hours: ' + ['L2O', 'O2D'].map(function (f) { var c = S.flows[f].cal; return S.flows[f].short + ' ' + c.open + ':00–' + c.close + ':00, off: ' + 'MTWTFSS'.split('').filter(function (x, i) { return c.mask.charAt(i) === '1'; }).length + ' day(s) a week'; }).join(' · ') + ' (from the Holidays tab of the app sheet)</div></div></div>';
+    h += '<div class="card"><div class="card-h"><h3>Industries</h3><span class="sub">one per line</span></div><textarea class="inp" id="setInd" rows="8">' + esc(d.industries.join('\n')) + '</textarea></div>';
+    h += '<div class="act-foot"><span></span><button class="btn btn-dark" data-act="saveGeneral">Save</button></div>';
+  }
+  var old = document.querySelector('#view .page'), y = old ? old.scrollTop : 0;
+  $('view').innerHTML = '<div class="page">' + tabs + h + '</div>';
+  var pg = document.querySelector('#view .page'); if (pg && y) pg.scrollTop = y;   // a click never jumps the page to the top
+}
+/** Settings → Customers: which payment terms besides advance each party may use in a cycle. */
+function custKey(s) { return String(s || '').trim().toUpperCase().replace(/\s+/g, ' '); }
+function custHtml(d) {
+  var terms = S.set.cust || (S.set.cust = JSON.parse(JSON.stringify(d.custTerms || {}))), names = {}, q = String(S.custQ || '').toLowerCase();
+  leadsOf('O2D').forEach(function (l) { var p = String(pick(l.b, 'PARTY NAME') || '').trim(); if (p && !names[custKey(p)]) names[custKey(p)] = p; });
+  Object.keys(terms).forEach(function (k) { names[k] = names[k] || k; });
+  var keys = Object.keys(names).sort(function (a, b) { return names[a].localeCompare(names[b]); }).filter(function (k) { return !q || names[k].toLowerCase().indexOf(q) > -1; });
+  var opt = ['Credit', 'On Dispatch', 'On Delivery'];
+  return '<div class="card"><div class="card-h"><h3>Customers — payment terms for cycles</h3><span class="sub">Advance received is always allowed. Tick what else a customer may use; set once.</span></div>' +
+    '<input class="inp" id="custQ" placeholder="Find a customer…" value="' + esc(S.custQ || '') + '" style="max-width:320px;margin-bottom:10px">' +
+    '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Advance</th>' + opt.map(function (o) { return '<th>' + o + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    keys.map(function (k) { var on = terms[k] || []; return '<tr><td><b>' + esc(names[k]) + '</b></td><td class="hint">always</td>' +
+      opt.map(function (o) { return '<td><input type="checkbox" data-cterm="' + esc(k + '|' + o) + '"' + (on.indexOf(o) > -1 ? ' checked' : '') + '></td>'; }).join('') + '</tr>'; }).join('') +
+    '</tbody></table></div><div class="act-foot"><span class="hint">' + Object.keys(terms).filter(function (k) { return (terms[k] || []).length; }).length + ' customer(s) with other terms</span><button class="btn btn-dark" data-act="saveCust">Save customers</button></div></div>';
+}
+function saveSet(patch) {
+  call('saveSettings', patch).then(function (r) {
+    toast(r.msg, 'ok');
+    (r.flows || []).forEach(function (f) { wCal(f.cal); S.flows[f.fid] = f; });
+    S.scores = r.scores; S.warnPct = r.warnPct; S.industries = r.industries;
+    renderSettings();
+  }).catch(fail);
+}
+
+/* ---------------------------------------------------------- events */
+document.addEventListener('click', function (ev) {
+  var t = ev.target, el;
+  if (!$('pop').hidden && !t.closest('#pop') && !t.closest('[data-colf]') && !t.closest('[data-act="moreF"]') && !t.closest('[data-f="late"]')) closePop();
+  if (!t.closest('#searchBox')) $('sugg').hidden = true;
+  if ((el = t.closest('[data-nav]'))) { S.view = el.dataset.nav; ls('view', S.view); closeDrawer(); render(); return; }
+  if ((el = t.closest('[data-flow]'))) { S.fid = el.dataset.flow; ls('fid', S.fid); S.pin = null; render(); return; }
+  if ((el = t.closest('[data-find]'))) { $('q').value = ''; $('qx').hidden = true; findTile(el.dataset.fid, el.dataset.find); return; }
+  if ((el = t.closest('[data-newcycle]'))) { ev.stopPropagation(); startCycle(el.dataset.newcycle, el); return; }
+  if ((el = t.closest('[data-opencyc]'))) { ev.stopPropagation(); openLead('CYC', el.dataset.opencyc); return; }
+  if ((el = t.closest('[data-opencyc-order]'))) { openLead('O2D', el.dataset.opencycOrder); return; }
+  if ((el = t.closest('[data-rmtruck]'))) { var rp = S.panel; call('removeTruck', rp.id, Number(el.dataset.rmtruck)).then(truckDone).catch(fail); return; }
+  if ((el = t.closest('[data-logcall]'))) { ev.stopPropagation(); openLogCall(el.dataset.fid, el.dataset.logcall); return; }
+  if ((el = t.closest('[data-callo]'))) { pickCall(Number(el.dataset.callo)); return; }
+  if ((el = t.closest('[data-colf]'))) { ev.stopPropagation(); if (!$('pop').hidden && $('pop').dataset.k === el.dataset.colf) closePop(); else openColFilter(el.dataset.colf, el); return; }
+  if ((el = t.closest('[data-cfdue]'))) { var c = CF($('pop').dataset.k), v = el.dataset.cfdue, i = c.due.indexOf(v); if (i > -1) c.due.splice(i, 1); else c.due.push(v); el.classList.toggle('on'); renderBoard(true); return; }
+  if ((el = t.closest('[data-cffu]'))) { CF($('pop').dataset.k).fu = el.dataset.cffu; [].forEach.call($('pop').querySelectorAll('[data-cffu]'), function (b) { b.classList.toggle('on', b === el); }); renderBoard(true); return; }
+  if ((el = t.closest('[data-due]'))) { var f = F(); f.due = f.due === el.dataset.due ? '' : el.dataset.due; saveF(); renderBoard(true); return; }
+  if ((el = t.closest('[data-tog]'))) { var f2 = F(); f2[el.dataset.tog] = !f2[el.dataset.tog]; saveF(); renderBoard(true); return; }
+  if ((el = t.closest('[data-scroll]'))) { scrollBoard(Number(el.dataset.scroll)); return; }
+  if ((el = t.closest('[data-jump]'))) { jumpTo(el.dataset.jump); return; }
+  if ((el = t.closest('[data-expand]'))) { S.expand[S.fid + el.dataset.expand] = true; renderBoard(true); return; }
+  if ((el = t.closest('[data-collapse]'))) { delete S.expand[S.fid + el.dataset.collapse]; renderBoard(true); return; }
+  if ((el = t.closest('[data-more]'))) { var mk = S.fid + el.dataset.more; S.more[mk] = (S.more[mk] || (el.dataset.more === '_closed' ? 40 : 60)) + 100; renderBoard(true); return; }
+  if ((el = t.closest('[data-ctab]'))) { S.closedTab = el.dataset.ctab; renderBoard(true); return; }
+  if ((el = t.closest('[data-open]'))) { if (S.pin && S.pin.id !== el.dataset.open) S.pin = null; openLead(el.dataset.fid, el.dataset.open); return; }
+  if ((el = t.closest('[data-tab]'))) { var k0 = S.panel && Object.keys(S.panel.forms); (k0 || []).forEach(keepForm); S.panel.tab = el.dataset.tab; renderDrawer(); return; }
+  if ((el = t.closest('[data-ans]'))) { keepForm(el.dataset.k); S.panel.forms[el.dataset.k].status = el.dataset.ans; renderDrawer(); return; }
+  if ((el = t.closest('[data-rmph]'))) { keepForm(el.dataset.k); S.panel.forms[el.dataset.k].photos.splice(Number(el.dataset.rmph), 1); renderDrawer(); return; }
+  if ((el = t.closest('[data-photo]'))) { viewPhoto(el.dataset.photo); return; }
+  if (t.closest('#viewer')) { $('viewer').classList.remove('on'); return; }
+  if ((el = t.closest('[data-link]'))) { var lf = S.panel.fid === 'L2O' ? 'O2D' : 'L2O'; closeDrawer(); findTile(lf, el.dataset.link); if (findLead(lf, el.dataset.link)) openLead(lf, el.dataset.link); return; }
+  if ((el = t.closest('[data-prange]'))) { S.perf.range = el.dataset.prange; renderPerf(); return; }
+  if ((el = t.closest('[data-puser]'))) { S.perf.user = el.dataset.puser; renderPerf(); return; }
+  if ((el = t.closest('[data-plj]'))) { var pj = el.dataset.plj.split('|'); S.view = 'board'; ls('view', 'board'); S.fid = boardOf(pj[0]); ls('fid', S.fid); render(); setTimeout(function () { jumpTo(pj[1]); }, 30); return; }
+  if ((el = t.closest('[data-stab]'))) { S.setTab = el.dataset.stab; drawSettings(); return; }
+  if ((el = t.closest('[data-sfid]'))) { S.setFid = el.dataset.sfid; drawSettings(); return; }
+  if ((el = t.closest('[data-cmove]'))) {
+    var cc = S.set.steps[S.setFid][el.dataset.k].card, j = Number(el.dataset.j), j2 = j + Number(el.dataset.cmove);
+    if (j2 >= 0 && j2 < cc.length) { var tmp = cc[j]; cc[j] = cc[j2]; cc[j2] = tmp; readStepInputs(); drawSettings(); }
+    return;
+  }
+  if ((el = t.closest('[data-sown],[data-sdoer],[data-sreq],[data-scard],[data-sphoto]'))) { settingsChip(el); return; }
+  if ((el = t.closest('[data-act]'))) { act(el.dataset.act, el); }
+});
+/** Tile details of one step: the chosen ones in their order (move ‹ ›, remove ×), then the rest to add. */
+function refName(fid, r) { return (r.indexOf('base:') === 0 ? '' : lab(fid, r.slice(0, r.indexOf(':'))) + ' › ') + refLabel(fid, r); }
+function cardPickHtml(fid, k, c) {
+  var all = allRefs(fid, k), low = c.card.map(function (x) { return x.toLowerCase(); });
+  var chosen = c.card.length ? '<div class="chips card-ord">' + c.card.map(function (r, j) {
+    return '<span class="chip on ord"><b class="n">' + (j + 1) + '</b>' + esc(refName(fid, r)) +
+      '<button class="mv" data-cmove="-1" data-k="' + k + '" data-j="' + j + '"' + (j ? '' : ' disabled') + ' title="Earlier">‹</button>' +
+      '<button class="mv" data-cmove="1" data-k="' + k + '" data-j="' + j + '"' + (j < c.card.length - 1 ? '' : ' disabled') + ' title="Later">›</button>' +
+      '<button class="mv x" data-scard="' + esc(r) + '" data-k="' + k + '" title="Remove">&times;</button></span>';
+  }).join('') + '</div>' : '<div class="hint" style="margin-bottom:6px">Nothing chosen — the tile shows only the name, owner and deadline.</div>';
+  var rest = all.filter(function (r) { return low.indexOf(r.toLowerCase()) < 0; });
+  return chosen + '<div class="hint" style="margin:8px 0 6px">Add (shown in the order above, top first):</div><div class="chips">' +
+    rest.map(function (r) { return '<button class="chip" data-scard="' + esc(r) + '" data-k="' + k + '">+ ' + esc(refName(fid, r)) + '</button>'; }).join('') + '</div>';
+}
+/** Keeps what was typed in the step boxes before the Settings page is drawn again. */
+function readStepInputs() {
+  [].forEach.call(document.querySelectorAll('[data-slabel]'), function (i) { S.set.steps[S.setFid][i.dataset.slabel].label = i.value.trim(); });
+  [].forEach.call(document.querySelectorAll('[data-sside]'), function (i) { S.set.steps[S.setFid][i.dataset.sside].side = i.value; });
+}
+function settingsChip(el) {
+  var c = S.set.steps[S.setFid][el.dataset.k];
+  if ('sown' in el.dataset) c.ownerActs = !c.ownerActs;
+  else if ('sphoto' in el.dataset) c.photo = !c.photo;
+  else {
+    var list = 'sdoer' in el.dataset ? c.doers : 'sreq' in el.dataset ? c.required : c.card, v = el.dataset.sdoer || el.dataset.sreq || el.dataset.scard;
+    var i = list.map(function (x) { return x.toLowerCase(); }).indexOf(v.toLowerCase());
+    if (i > -1) list.splice(i, 1); else list.push(v);
+    if ('scard' in el.dataset) { readStepInputs(); drawSettings(); return; }   // the ordered list moves
+  }
+  el.classList.toggle('on');
+}
+function act(a, el) {
+  var p = S.panel;
+  if (tgAct(a, el)) return;
+  switch (a) {
+    case 'closeDrawer': closeDrawer(); break;
+    case 'closeModal': $('modal').classList.remove('on'); break;
+    case 'clearTop': S.f[S.fid] = {}; saveF(); renderBoard(true); break;
+    case 'moreF': if (!$('pop').hidden && $('pop').dataset.k === '__more') closePop(); else openMoreFilters(el); break;
+    case 'moreClear': var mf = F(); MORE_KEYS.forEach(function (k) { delete mf[k]; }); saveF(); closePop(); renderBoard(true); break;
+    case 'lateApply':
+      var la = Math.max(0, Number($('lateA').value) || 0), lb = $('lateB').value === '' ? '' : Math.max(la, Number($('lateB').value) || 0);
+      F().late = la + '-' + lb; saveF(); closePop(); renderBoard(true);
+      break;
+    case 'dense': S.dense = !S.dense; ls('dense', S.dense); renderBoard(true); break;
+    case 'openClosed': S.closedOpen = true; renderBoard(true); setTimeout(function () { jumpTo('_closed'); }, 30); break;
+    case 'foldClosed': S.closedOpen = false; renderBoard(true); break;
+    case 'closedAll': S.closedAll = !S.closedAll; renderBoard(true); break;
+    case 'cfClear': delete S.cf[S.fid + '|' + el.dataset.k]; closePop(); renderBoard(true); break;
+    case 'cfDone': closePop(); break;
+    case 'submit': submitStep(el.dataset.k); break;
+    case 'saveOnly': saveOnly(el.dataset.k); break;
+    case 'sendBack':
+      var why = $('backWhy').value.trim(), to = $('backTo').value;
+      if (why.length < 3) { toast('Write why it goes back.', 'err'); return; }
+      optimistic(function (lead) { goBack(p.fid, lead, to, lead.cur); }, function () { return call('sendBack', p.fid, p.id, to, why); },
+        p.id + ' went back to “' + lab(p.fid, to) + '”');
+      break;
+    case 'close':
+      var w = $('closeWhy').value.trim();
+      if (w.length < 3) { toast('Write a reason.', 'err'); return; }
+      var o = el.dataset.o;
+      optimistic(function (lead) { lead.closed = { o: o, at: Date.now(), step: lead.cur, why: w, by: S.me.name }; lead.cur = null; lead.side = []; },
+        function () { return call('closeLead', p.fid, p.id, o, w); }, p.id + ' closed as ' + o);
+      break;
+    case 'reopen': call('closeLead', p.fid, p.id, 'open', '').then(afterSave).catch(fail); break;
+    case 'makeOrder':
+      var l = p.d.lead, f1 = S.flows.L2O, pre = {};
+      pre.__ownerName = l.owner; pre['PARTY NAME'] = pick(l.b, 'Company Name') || pick(l.b, 'CONTACT PERSON');
+      pre['Mat. Gr.'] = pick(l.b, f1.material); pre['QTY.'] = pick(l.b, f1.qty); pre['REMARK'] = 'From lead ' + l.id;
+      newEntry('O2D', pre, l.id);
+      break;
+    case 'nearPick':
+      [].forEach.call($('newForm').querySelectorAll('[data-fld]'), function (x) { if (x.dataset.fld === el.dataset.k) { x.value = el.dataset.v; x.focus(); } });
+      $('nearBox').hidden = true;
+      break;
+    case 'nearNew':
+      var cb = el.closest('#modalBody, .gen-card').querySelector('[data-act="createEntry"]');
+      $('nearBox').hidden = true; cb.dataset.sure = el.dataset.v; act('createEntry', cb);
+      break;
+    case 'createEntry':
+      var fid = el.dataset.fid, from = el.dataset.from, vals = readFields($('newForm'));
+      var tk = FL(fid).titles[0], tv = String(vals[tk] || '').trim();
+      if (tv && el.dataset.sure !== tv) {
+        var near = nearNames(tv, suggestVals(fid, tk));
+        if (near.length) { showNear(fid, tk, tv, near); break; }
+      }
+      el.disabled = true; el.innerHTML = '<span class="spin sm"></span> Creating';
+      if (el.dataset.gen) {
+        call('createEntry', fid, vals, null).then(function (r) { toast(r.msg, 'ok'); renderGen({ id: r.id, owner: r.owner }); })
+          .catch(function (e) { el.disabled = false; el.textContent = 'Save'; fail(e); });
+        break;
+      }
+      call('createEntry', fid, vals, from || null).then(function (r) {
+        $('modal').classList.remove('on'); toast(r.msg, 'ok');
+        sync(true).then(function () { if (from) { closeDrawer(); } findTile(fid, r.id); openLead(fid, r.id); });
+      }).catch(function (e) { el.disabled = false; el.textContent = 'Create'; fail(e); });
+      break;
+    case 'lifeEdit': p.life[el.dataset.k] = !p.life[el.dataset.k]; renderDrawer(); break;
+    case 'lifeSave':
+      var box = document.querySelector('[data-edit="' + el.dataset.k + '"]');
+      el.disabled = true;
+      call('editFields', p.fid, p.id, el.dataset.k, readFields(box)).then(function (r) { p.life = {}; afterSave(r); }).catch(function (e) { el.disabled = false; fail(e); });
+      break;
+    case 'editBase': p.editBase = !p.editBase; renderDrawer(); break;
+    case 'saveBase':
+      el.disabled = true;
+      call('editFields', p.fid, p.id, 'base', readFields(document.querySelector('[data-edit="base"]'))).then(function (r) { p.editBase = false; afterSave(r); }).catch(function (e) { el.disabled = false; fail(e); });
+      break;
+    case 'saveInd':
+      var ind = $('indSel').value;
+      optimistic(function (lead) { lead.ind = ind; }, function () { return call('setIndustry', p.fid, p.id, ind); }, 'Industry saved');
+      break;
+    case 'assign':
+      var who = $('ownerSel').value;
+      if (!who) { toast('Pick a person.', 'err'); return; }
+      var wu = S.users.filter(function (u) { return u.u === who; })[0];
+      optimistic(function (lead) { lead.owner = who; }, function () { return call('assignOwner', p.fid, p.id, who); }, p.id + ' is now with ' + (wu ? wu.n : who));
+      break;
+    case 'addNote':
+      var txt = $('noteText').value.trim(), files = $('notePh').files, step = $('noteStep').value;
+      if (!txt && !files.length) { toast('Write a note or pick photos.', 'err'); return; }
+      $('noteText').value = '';
+      if (txt) optimistic(function (lead) { lead.nN = (lead.nN || 0) + 1; }, function () { return call('addNote', p.fid, p.id, step, txt); }, 'Note added',
+        function (d) { d.notes.push({ t: Date.now(), u: S.me.username, n: S.me.name, st: step, x: txt }); });
+      if (files.length) {
+        toast('Uploading ' + files.length + ' photo(s)…');
+        readPhotos(files).then(function (ph) { return call('addPhotos', p.fid, p.id, step, ph); }).then(function (r) { afterSave(r); }).catch(fail);
+      }
+      break;
+    case 'saveSteps':
+      readStepInputs();
+      var ps = {}; ps[S.setFid] = S.set.steps[S.setFid]; saveSet({ steps: ps });
+      break;
+    case 'saveRules':
+      readRules();
+      var pr = {}, pf = {}; pr[S.setFid] = S.set.rules[S.setFid]; pf[S.setFid] = S.set.fieldRules[S.setFid];
+      saveSet({ rules: pr, fieldRules: pf });
+      break;
+    case 'frAdd': readRules(); var s0 = stepsOf(S.setFid)[0]; S.set.fieldRules[S.setFid].push({ step: s0.key, field: (s0.fields[0] || {}).k || '', values: [], action: 'back:' + s0.key }); drawSettings(); break;
+    case 'frDel': readRules(); S.set.fieldRules[S.setFid].splice(Number(el.dataset.i), 1); drawSettings(); break;
+    case 'saveScores':
+      var sc = {}; [].forEach.call(document.querySelectorAll('[data-score]'), function (i) { sc[i.dataset.score] = Number(i.value) || 0; }); saveSet({ scores: sc });
+      break;
+    case 'saveGeneral':
+      saveSet({ warnPct: Number($('setWarn').value), industries: $('setInd').value.split('\n').map(function (x) { return x.trim(); }).filter(String) });
+      break;
+    case 'saveCust': saveSet({ custTerms: S.set.cust || {} }); break;
+    case 'addTruck':
+      var tv = { truck: $('trNo').value, wt: $('trWt').value, tpt: $('trTpt').value, mob: $('trMob').value };
+      el.disabled = true;
+      call('addTruck', S.panel.id, tv).then(function (r) { truckDone(r); }).catch(function (e) { el.disabled = false; fail(e); });
+      break;
+    case 'saveAliases':
+      var al = {}, scp = {}; [].forEach.call(document.querySelectorAll('[data-alias]'), function (i) { if (i.value.trim()) al[i.dataset.alias] = i.value.trim(); });
+      [].forEach.call(document.querySelectorAll('[data-scope]'), function (i) { if (i.value === 'mine') scp[i.dataset.scope] = 'mine'; });
+      saveSet({ aliases: al, scope: scp });
+      break;
+  }
+}
+function readRules() {
+  var fid = S.setFid;
+  [].forEach.call(document.querySelectorAll('[data-rule]'), function (s) {
+    var r = S.set.rules[fid][s.dataset.k] || (S.set.rules[fid][s.dataset.k] = {});
+    if (s.value === 'next') delete r[s.dataset.rule]; else r[s.dataset.rule] = s.value;
+  });
+  [].forEach.call(document.querySelectorAll('[data-fr]'), function (s) {
+    var fr = S.set.fieldRules[fid][Number(s.dataset.i)];
+    if (s.dataset.fr === 'values') fr.values = s.value.split(',').map(function (x) { return x.trim(); }).filter(String); else fr[s.dataset.fr] = s.value;
+  });
+}
+document.addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (t.dataset.f === 'late' && t.value === 'custom') { t.value = F().late || ''; setTimeout(function () { openLateCustom(t); }, 0); return; }
+  if (t.dataset.f) { var f = F(); f[t.dataset.f] = t.value; saveF(); renderBoard(true); return; }
+  if (t.dataset.cf) { CF($('pop').dataset.k)[t.dataset.cf] = t.value; renderBoard(true); return; }
+  if (t.dataset.cfv) {
+    var c = CF($('pop').dataset.k), list = c.vals[t.dataset.cfv] || (c.vals[t.dataset.cfv] = []), i = list.indexOf(t.value);
+    if (t.checked && i < 0) list.push(t.value); if (!t.checked && i > -1) list.splice(i, 1);
+    renderBoard(true); return;
+  }
+  if (t.id === 'perfUser') { S.perf.user = t.value; renderPerf(); return; }
+  if (t.dataset.addph) {
+    var k = t.dataset.addph; keepForm(k);
+    readPhotos(t.files).then(function (ph) { var fm = S.panel.forms[k]; fm.photos = fm.photos.concat(ph).slice(0, 8); renderDrawer(); }).catch(fail);
+    return;
+  }
+  if (t.dataset.fr === 'step') { readRules(); drawSettings(); }
+  if (t.dataset.da === 'fid') {
+    readTgDom(); var dr = S.tgA.dateAlerts[Number(t.dataset.i)];
+    dr.ref = ''; dr.show = []; dr.to = (dr.to || []).filter(function (x) { return x.indexOf('step:') !== 0; }); drawSettings();
+  }
+  if (t.dataset.la) { readTgDom(); drawSettings(); }
+  if (t.dataset.cterm) {
+    var cp = t.dataset.cterm.split('|'), cl = S.set.cust[cp[0]] || (S.set.cust[cp[0]] = []), ci = cl.indexOf(cp[1]);
+    if (t.checked && ci < 0) cl.push(cp[1]); if (!t.checked && ci > -1) cl.splice(ci, 1);
+  }
+});
+document.addEventListener('input', function (ev) {
+  var t = ev.target;
+  if (t.id === 'q') { $('qx').hidden = !t.value; suggest(t.value); return; }
+  if (t.id === 'custQ') { S.custQ = t.value; clearTimeout(t._t); t._t = setTimeout(function () { drawSettings(); var i = $('custQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 200); return; }
+  if (t.dataset.cf === 'q') { CF($('pop').dataset.k).q = t.value; clearTimeout(t._t); t._t = setTimeout(function () { renderBoard(true); }, 250); return; }
+  if (t.dataset.f === 'mat') { var f = F(); f.mat = t.value; saveF(); clearTimeout(t._t); t._t = setTimeout(function () { renderBoard(true); var i = document.querySelector('[data-f="mat"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); }
+});
+$('q').addEventListener('keydown', function (ev) {
+  var items = [].slice.call($('sugg').querySelectorAll('.sg')), cur = items.findIndex(function (x) { return x.classList.contains('on'); });
+  if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); if (!items.length) return; items[cur] && items[cur].classList.remove('on'); cur = (cur + (ev.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length; items[cur].classList.add('on'); }
+  if (ev.key === 'Enter' && items[cur]) { ev.preventDefault(); items[cur].click(); }
+  if (ev.key === 'Escape') { $('sugg').hidden = true; }
+});
+$('qx').addEventListener('click', function () { $('q').value = ''; $('qx').hidden = true; $('sugg').hidden = true; S.pin = null; renderBoard(true); });
+$('newBtn').addEventListener('click', function () { newEntry(S.fid); });
+$('scrim').addEventListener('click', closeDrawer);
+$('modal').addEventListener('click', function (ev) { if (ev.target === $('modal')) $('modal').classList.remove('on'); });
+document.addEventListener('keydown', function (ev) {
+  var a = document.activeElement, typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+  if (!typing && S.view === 'board' && !S.panel && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) { ev.preventDefault(); scrollBoard(ev.key === 'ArrowLeft' ? -1 : 1); }
+});
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { if ($('viewer').classList.contains('on')) $('viewer').classList.remove('on'); else if (!$('pop').hidden) closePop(); else if ($('modal').classList.contains('on')) $('modal').classList.remove('on'); else closeDrawer(); } });
+</script>

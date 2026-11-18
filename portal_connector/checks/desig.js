@@ -79,5 +79,16 @@ t('a ticked row without a link is not shown', !/No Link Yet/.test(R(`JSON.string
 t('openLink gives the link to a ticked person', R(`openLink('sita', 'sheet', 'diesel log').url`) === 'https://docs.google.com/spreadsheets/d/BBB/edit');
 t('openLink refuses someone not ticked', throws(() => R(`openLink('sita', 'sheet', 'Stock Register')`), /do not have access/));
 t('openLink refuses an unknown kind', throws(() => R(`openLink('sita', 'video', 'x')`), /Unknown item/));
+R(`LOGGED = []; log_ = function () { LOGGED.push([].slice.call(arguments).join('|')); }; PORTAL_CFG.LOG_OPENS = true; MEMO_ = {}`);
+R(`openLink('sita', 'sheet', 'Diesel Log'); openLink('sita', 'sheet', 'Diesel Log', 'copy')`);
+t('copying a link is logged as COPY LINK, opening as OPEN', R(`LOGGED.join(';')`) === 'sita|OPEN|SHEET|Diesel Log;sita|COPY LINK|SHEET|Diesel Log');
+R(`PORTAL_CFG.LOG_OPENS = false; log_ = () => {}`);
+t('copying refuses someone not ticked too', throws(() => R(`openLink('sita', 'sheet', 'Stock Register', 'copy')`), /do not have access/));
+const hubHtml = fs.readFileSync(path.join(__dirname, '..', '..', 'main hub app', 'Index.html'), 'utf8');
+t('forms show a Copy link button instead of the arrow; it asks the server for the link with "copy"',
+  /if \(v === 'forms'\)\{\s*go = document\.createElement\('button'\); go\.type = 'button'; go\.className = 'cpy'/.test(hubHtml) &&
+  /e\.stopPropagation\(\); copyLinkItem\('form', it, go\)/.test(hubHtml) && /run\('openLink', session, kind, it\.name, 'copy'\)/.test(hubHtml));
+t('copy constants are set before the first render can use them', hubHtml.indexOf('const COPY_SVG') < hubHtml.indexOf('function showView'));
+t('a list tile is not a <button> (no button inside a button)', !/createElement\('button'\); b\.type = 'button'; b\.className = 'litem'/.test(hubHtml));
 
 console.log(ok + ' passed, ' + bad + ' failed'); process.exit(bad ? 1 : 0);

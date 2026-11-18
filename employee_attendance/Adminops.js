@@ -96,10 +96,19 @@ function checkSupervisor_(ss, supervisor, site) {
   return { ok: true, value: match.username };
 }
 
-function addEmployee(token, id, name, site, supervisor, designation) {
+function addEmployee(token, id, name, site, supervisor, designation, secondary) {
   var user = requireRole_(token, ['HR', 'Admin']);
   resolveSite_(user, site);
-  return addEmployeeCore_(user, id, name, site, supervisor, designation);
+  return addEmployeeCore_(user, id, name, site, supervisor, designation, secondary);
+}
+
+/** The Secondary Site field: one of SITES other than the main site, or blank. */
+function checkSecondary_(secondary, site) {
+  var v = String(secondary || '').trim();
+  if (!v) return { ok: true, value: '' };
+  var s2 = secondarySite_(v, site);
+  if (!s2) return { ok: false, error: SITES.indexOf(v) > -1 ? 'The second site has to be different from the main site.' : 'Pick a second site from the list.' };
+  return { ok: true, value: s2 };
 }
 
 /**
@@ -109,7 +118,7 @@ function addEmployee(token, id, name, site, supervisor, designation) {
 function supervisorAddEmployee(token, id, name, designation) {
   var user = requireRole_(token, ['Supervisor']);
   var mine = listSupervisors_(ss_(), true).some(function (s) { return s.key === user.username.toLowerCase() && s.site === user.site; });
-  var res = addEmployeeCore_(user, id, name, user.site, mine ? user.username : '', designation);
+  var res = addEmployeeCore_(user, id, name, user.site, mine ? user.username : '', designation, '');
   if (!res.ok) return res;
   res.employee = {
     id: String(id).trim(), name: String(name).trim(), designation: designation || '',
@@ -118,7 +127,7 @@ function supervisorAddEmployee(token, id, name, designation) {
   return res;
 }
 
-function addEmployeeCore_(user, id, name, site, supervisor, designation) {
+function addEmployeeCore_(user, id, name, site, supervisor, designation, secondary) {
   id = String(id).trim();
   name = String(name || '').trim();
   if (!id || !name) return { ok: false, error: 'Employee ID and name are both needed.' };
@@ -127,6 +136,8 @@ function addEmployeeCore_(user, id, name, site, supervisor, designation) {
   var ss = ss_();
   var sup = checkSupervisor_(ss, supervisor, site);
   if (!sup.ok) return { ok: false, error: sup.error };
+  var sec = checkSecondary_(secondary, site);
+  if (!sec.ok) return { ok: false, error: sec.error };
 
   var lock = LockService.getScriptLock();
   try { lock.waitLock(20000); } catch (e) { return { ok: false, error: 'Server busy, try again.' }; }
@@ -142,7 +153,7 @@ function addEmployeeCore_(user, id, name, site, supervisor, designation) {
 
     var row = last + 1;
     sh.getRange(row, 1, 1, EMP_COL_COUNT)
-      .setValues([[id, name, site, sup.value, designation || '', true]]);
+      .setValues([[id, name, site, sup.value, designation || '', true, sec.value]]);
     sh.getRange(row, EMP_COL_ACTIVE).insertCheckboxes().setValue(true);
     dropEmployees_();
     refreshRosterNow_(ss, site);
@@ -152,25 +163,27 @@ function addEmployeeCore_(user, id, name, site, supervisor, designation) {
 
   logAudit_({
     site: site, employeeId: id, employeeName: name, action: 'EMPLOYEE_ADD',
-    value: sup.value ? 'supervisor ' + sup.value : 'unassigned',
+    value: (sup.value ? 'supervisor ' + sup.value : 'unassigned') + (sec.value ? ', second site ' + sec.value : ''),
     byUser: user.username, byRole: user.role
   });
   return { ok: true, nextId: nextEmployeeId_(site) };
 }
 
-function editEmployee(token, row, id, name, site, supervisor, designation, active) {
+function editEmployee(token, row, id, name, site, supervisor, designation, active, secondary) {
   var user = requireRole_(token, ['HR', 'Admin']);
   resolveSite_(user, site);
   var ss = ss_();
   var sup = checkSupervisor_(ss, supervisor, site);
   if (!sup.ok) return { ok: false, error: sup.error };
+  var sec = checkSecondary_(secondary, site);
+  if (!sec.ok) return { ok: false, error: sec.error };
 
   var sh = ss.getSheetByName(SHEET_EMPLOYEES);
   var before = sh.getRange(row, 1, 1, EMP_COL_SITE).getValues()[0];
   var oldSite = String(before[EMP_COL_SITE - 1]).trim();
 
   sh.getRange(row, 1, 1, EMP_COL_COUNT)
-    .setValues([[String(id).trim(), name, site, sup.value, designation || '', !!active]]);
+    .setValues([[String(id).trim(), name, site, sup.value, designation || '', !!active, sec.value]]);
   dropEmployees_();
 
   refreshRosterNow_(ss, site);
@@ -178,7 +191,7 @@ function editEmployee(token, row, id, name, site, supervisor, designation, activ
 
   logAudit_({
     site: site, employeeId: id, employeeName: name, action: 'EMPLOYEE_EDIT',
-    value: sup.value ? 'supervisor ' + sup.value : 'unassigned',
+    value: (sup.value ? 'supervisor ' + sup.value : 'unassigned') + (sec.value ? ', second site ' + sec.value : ''),
     byUser: user.username, byRole: user.role
   });
   return { ok: true };
@@ -249,12 +262,12 @@ function getSettings(token) {
   return Object.keys(all).filter(function (s) { return allowed.indexOf(s) !== -1; }).map(function (s) {
     var x = all[s];
     return { site: s, closingTime: x.closingTime, refreshSeconds: x.refreshSeconds, lockLogin: x.lockLogin, allowResubmit: x.allowResubmit,
-             fdHours: x.fdHours, hdHours: x.hdHours, row: x.row };
+             fdHours: x.fdHours, hdHours: x.hdHours, autoAbsent: x.autoAbsent !== false, row: x.row };
   });
 }
 
 /** fdHours / hdHours (optional): punch-report check, first-to-last punch hours for a Full / Half day. */
-function updateSettings(token, row, closingTime, refreshSeconds, lockLogin, allowResubmit, fdHours, hdHours) {
+function updateSettings(token, row, closingTime, refreshSeconds, lockLogin, allowResubmit, fdHours, hdHours, autoAbsent) {
   var user = requireRole_(token, ['HR', 'Admin']);
   var clean = normalizeTime_(closingTime);
   if (!clean) return { ok: false, error: 'Closing time must look like 15:00.' };
@@ -276,6 +289,10 @@ function updateSettings(token, row, closingTime, refreshSeconds, lockLogin, allo
   if (fdHours !== undefined) {
     if (!String(sh.getRange(1, 6).getValue()).trim()) sh.getRange(1, 6, 1, 2).setValues([['Full Day Hours (punch)', 'Half Day Hours (punch)']]).setFontWeight('bold');
     sh.getRange(row, 6, 1, 2).setValues([[fd, hd]]);
+  }
+  if (autoAbsent !== undefined) {
+    if (!String(sh.getRange(1, 8).getValue()).trim()) sh.getRange(1, 8).setValue('Auto Absent At Closing').setFontWeight('bold');
+    sh.getRange(row, 8).setValue(!!autoAbsent);
   }
   cacheDrop_('ATT_SETTINGS');
 

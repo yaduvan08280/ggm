@@ -1,7 +1,7 @@
 // Runs every portal self-check. Works from any folder:  node portal_connector/checks/all.js
 const { spawnSync } = require('child_process'), path = require('path');
 let failed = 0;
-for (const f of ['tokens', 'inject', 'checklists', 'sync', 'sync_twins', 'indent', 'hub', 'jaipur', 'v2', 'dup', 'import', 'dual', 'desig', 'indent_speed', 'assets', 'fuel_history', 'photos', 'bigupload', 'transfer', 'lang', 'site_checklists', 'renewals', 'attendance', 'fuel_months', 'newai_save', 'staff_newai', 'assets_received']) {
+for (const f of ['tokens', 'inject', 'checklists', 'sync', 'sync_twins', 'indent', 'hub', 'jaipur', 'v2', 'dup', 'import', 'dual', 'desig', 'indent_speed', 'assets', 'fuel_history', 'photos', 'bigupload', 'transfer', 'ea', 'lang', 'site_checklists', 'renewals', 'attendance', 'fuel_months', 'newai_save', 'staff_newai', 'assets_received', 'leads']) {
   const r = spawnSync(process.execPath, [path.join(__dirname, f + '.js')], { encoding: 'utf8' });
   const out = (r.stdout + r.stderr).trim();
   const bad = r.status !== 0 || /FAIL/.test(out);

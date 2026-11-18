@@ -1,0 +1,5 @@
+# only the app files go up
+**/**
+!*.js
+!*.html
+!appsscript.json

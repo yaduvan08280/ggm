@@ -132,6 +132,7 @@ function approvalFromColor_(hex) {
   var h = String(hex || '').trim().toLowerCase();
   if (h === CLR_APPROVED) return APPROVAL_APPROVED;
   if (h === CLR_SENTBACK) return APPROVAL_SENTBACK;
+  if (h === CLR_MISMATCH) return APPROVAL_MISMATCH;
   return APPROVAL_PENDING;   // red, white and grey all mean "not approved"
 }
 

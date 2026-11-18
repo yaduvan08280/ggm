@@ -37,6 +37,16 @@ var OWNERS_TAB = 'Asset Owners';
 // asset's removal are ignored, so a vehicle added again later is not moved by its past.
 var REMOVED_TAB = 'Removed Assets';
 
+// History tab: 18 columns from B. Indexes in each history row the page gets:
+//  0 sent on, 1 asset, 2 from, 3 to, 4 -, 5 received on, 6 asset, 7 received at, 8 -,
+//  9 sent by, 10 driver, 11 photos, 12 remarks, 13 received by, 14 driver, 15 photos, 16 remarks,
+//  17 cancelled ("when | who | reason")
+var HIST_COLS = 18;
+var HIST_DETAIL = ['Sent By', 'Driver (sent)', 'Photos (sent)', 'Remarks (sent)', 'Received By', 'Driver (received)', 'Photos (received)', 'Remarks (received)', 'Cancelled (when | who | reason)'];
+// Every cancelled transfer, with the reason (14 Nov 2026).
+var CANCELLED_TAB = 'Cancelled Transfers';
+var CANCELLED_HEAD = ['Cancelled At', 'Cancelled By', 'Asset', 'Category', 'From', 'To', 'Driver', 'Sent At', 'Sent By', 'Photos', 'Remarks', 'Reason'];
+
 var TRANSFER_CAT_COLS = { 'EXCAVATOR': 4, 'VAN & TANKER': 5, 'VAN & TANKERS': 5, 'TRACTORS': 6, 'JCB': 7, 'DUMPERS': 8, 'CRAWLER/ COMP.': 9, 'MISCELLANEUOS': 10, 'MISC.': 10 };
 
 /** A category as the forms spell it -> the sheet's heading (TRACTOR -> TRACTORS, DUMPER -> DUMPERS ...). */
@@ -527,8 +537,12 @@ function updateHistorySafe() {
   var receiveSheet = ss.getSheetByName('Asset Receiving Form');
   if (!histSheet || !transferSheet || !receiveSheet) return;
 
+  // B-I: sent on / asset / from / to | received on / asset / at. J blank.
+  // K-S (HIST_DETAIL): who sent, driver, photos, remarks | who received, driver, photos, remarks | cancelled.
+  if (histSheet.getMaxColumns && histSheet.getMaxColumns() < HIST_COLS + 1) histSheet.insertColumnsAfter(histSheet.getMaxColumns(), HIST_COLS + 1 - histSheet.getMaxColumns());
+  histSheet.getRange(5, 11, 1, HIST_DETAIL.length).setValues([HIST_DETAIL]);
   var maxRows = histSheet.getMaxRows();
-  if (maxRows >= 6) { histSheet.getRange(6, 1, maxRows - 5, 8).clearContent(); }
+  if (maxRows >= 6) { histSheet.getRange(6, 1, maxRows - 5, HIST_COLS + 1).clearContent(); }
 
   var tData = transferSheet.getDataRange().getValues();
   var transferList = [];
@@ -537,7 +551,8 @@ function updateHistorySafe() {
     var src = row[2] ? String(row[2]).trim() : 'Unknown'; var dst = row[12] ? String(row[12]).trim() : 'Unknown'; var name = '';
     for (var c = 4; c <= 11; c++) { if(row[c]) { name = String(row[c]).trim(); break; } }
     if (name && !IGNORE_WORDS.includes(name.toUpperCase())) {
-      transferList.push({ dateVal: new Date(ts).getTime(), dateStr: Utilities.formatDate(new Date(ts), ss.getSpreadsheetTimeZone(), 'dd-MMM-yyyy | hh:mm a'), asset: name, source: src, dest: dst });
+      transferList.push({ dateVal: new Date(ts).getTime(), dateStr: Utilities.formatDate(new Date(ts), ss.getSpreadsheetTimeZone(), 'dd-MMM-yyyy | hh:mm a'), asset: name, source: src, dest: dst,
+        by: String(row[1] || ''), driver: String(row[13] || ''), photos: String(row[14] || ''), remarks: String(row[15] || '') });
     }
   }
 
@@ -547,7 +562,8 @@ function updateHistorySafe() {
     var row = rData[j]; var ts = row[0]; if (!ts) continue;
     var dest = row[2] ? String(row[2]).trim() : 'Unknown'; var name = row[3] ? String(row[3]).trim() : '';
     if (name && !IGNORE_WORDS.includes(name.toUpperCase())) {
-      receiveList.push({ dateVal: new Date(ts).getTime(), dateStr: Utilities.formatDate(new Date(ts), ss.getSpreadsheetTimeZone(), 'dd-MMM-yyyy | hh:mm a'), asset: name, location: dest });
+      receiveList.push({ dateVal: new Date(ts).getTime(), dateStr: Utilities.formatDate(new Date(ts), ss.getSpreadsheetTimeZone(), 'dd-MMM-yyyy | hh:mm a'), asset: name, location: dest,
+        by: String(row[1] || ''), driver: String(row[4] || ''), photos: String(row[6] || ''), remarks: String(row[5] || '') });
     }
   }
 
@@ -570,13 +586,30 @@ function updateHistorySafe() {
         else pairedList.push({ sortTime: e.time, tRow: null, rRow: e.row });
       });
   });
+  // cancelled transfers (their row is gone from the transfer tab) stay in the log, marked cancelled
+  var cancelSheet = ss.getSheetByName(CANCELLED_TAB);
+  if (cancelSheet && cancelSheet.getLastRow() > 1) {
+    cancelSheet.getRange(2, 1, cancelSheet.getLastRow() - 1, CANCELLED_HEAD.length).getValues().forEach(function (c) {
+      if (!c[0] || !c[2]) return;
+      var sentAt = c[7] ? new Date(c[7]) : new Date(c[0]);
+      if (isNaN(sentAt.getTime())) sentAt = new Date(c[0]);
+      if (isNaN(sentAt.getTime())) return;
+      pairedList.push({ sortTime: sentAt.getTime(), rRow: null, tRow: {
+        dateStr: Utilities.formatDate(sentAt, ss.getSpreadsheetTimeZone(), 'dd-MMM-yyyy | hh:mm a'), asset: String(c[2]), source: String(c[4]), dest: String(c[5]),
+        by: String(c[8] || ''), driver: String(c[6] || ''), photos: String(c[9] || ''), remarks: String(c[10] || '') },
+        cancel: Utilities.formatDate(new Date(c[0]), ss.getSpreadsheetTimeZone(), 'dd-MMM-yyyy | hh:mm a') + ' | ' + String(c[1] || '') + ' | ' + String(c[11] || '') });
+    });
+  }
   pairedList.sort(function(a, b) { return b.sortTime - a.sortTime; });
   pairedList.forEach(function(pair) {
     var tr = pair.tRow || { dateStr: '-', asset: '-', source: '-', dest: '-' };
     var rr = pair.rRow || { dateStr: '-', asset: '-', location: '-' };
-    combinedData.push([tr.dateStr, tr.asset, tr.source, tr.dest, '', rr.dateStr, rr.asset, rr.location]);
+    combinedData.push([tr.dateStr, tr.asset, tr.source, tr.dest, '', rr.dateStr, rr.asset, rr.location, '',
+      tr.by || '', tr.driver || '', tr.photos || '', tr.remarks || '', rr.by || '', rr.driver || '', rr.photos || '', rr.remarks || '', pair.cancel || '']);
   });
-  if (combinedData.length > 0) histSheet.getRange(6, 2, combinedData.length, 8).setValues(combinedData);
+  if (histSheet.insertRowsAfter && histSheet.getMaxRows() < 5 + combinedData.length) histSheet.insertRowsAfter(histSheet.getMaxRows(), 5 + combinedData.length - histSheet.getMaxRows());   // the grid grows with the log
+  if (combinedData.length > 0) histSheet.getRange(6, 2, combinedData.length, HIST_COLS).setValues(combinedData);
+  try { CacheService.getScriptCache().remove('ASSET_PHOTO_IDS'); } catch (e) {}
 }
 
 function verifyUserLogin(username, password) {
@@ -626,8 +659,9 @@ function getMovementHistory_(maxRows) {
     var ss = SpreadsheetApp.openById(SHEET_ID); var histSheet = ss.getSheetByName('History');
     if (!histSheet || histSheet.getLastRow() < 6) return [];
     var rows = Math.min(maxRows || 50, histSheet.getLastRow() - 5);
-    var data = histSheet.getRange(6, 2, rows, 8).getDisplayValues();
-    var logs = []; for (var i = 0; i < data.length; i++) { if (data[i][0] || data[i][5]) logs.push(data[i]); }
+    var cols = Math.max(8, Math.min(HIST_COLS, histSheet.getLastColumn() - 1));   // older sheets: no detail columns yet
+    var data = histSheet.getRange(6, 2, rows, cols).getDisplayValues();
+    var logs = []; for (var i = 0; i < data.length; i++) { if (data[i][0] || data[i][5]) { while (data[i].length < HIST_COLS) data[i].push(''); logs.push(data[i]); } }
     return logs;
   } catch (e) { return []; }
 }
@@ -749,6 +783,54 @@ function getDashboardDataUI(token, siteNameIgnored) {
   } catch (err) { return JSON.stringify({ ok: false, error: String(err) }); }
 }
 
+/* ---------------- photos on the movement log (14 Nov 2026) ---------------- */
+
+/** Drive file ids in a photo cell ("https://drive.google.com/file/d/ID/view", "...open?id=ID", several per cell). */
+function photoIds_(text) {
+  var out = [];
+  String(text || '').replace(/(?:[?&]id=|\/d\/)([-\w]{20,})/g, function (m, id) { if (out.indexOf(id) === -1) out.push(id); });
+  return out;
+}
+
+/** Only photos attached to a movement can be fetched through the app. */
+function allowedPhotoIds_() {
+  var cache = CacheService.getScriptCache(), hit = cache.get('ASSET_PHOTO_IDS');
+  if (hit) return JSON.parse(hit);
+  var ok = {}, sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName('History');
+  if (sh && sh.getLastRow() >= 6 && sh.getLastColumn() >= 17) {
+    sh.getRange(6, 13, sh.getLastRow() - 5, 5).getValues().forEach(function (r) {   // M = photos sent, Q = photos received
+      photoIds_(r[0]).concat(photoIds_(r[4])).forEach(function (id) { ok[id] = 1; });
+    });
+  }
+  try { cache.put('ASSET_PHOTO_IDS', JSON.stringify(ok), 600); } catch (e) {}
+  return ok;
+}
+
+/**
+ * Photos for the movement log, as data URLs (the files sit in the owner's Drive, so nobody needs
+ * Drive access to see them). full=false: small thumbnails for up to 30 ids; full=true: one photo.
+ */
+function getAssetPhotos(token, ids, full) {
+  assetsSession_(token);
+  var allowed = allowedPhotoIds_(), cache = CacheService.getScriptCache(), out = {};
+  (ids || []).slice(0, full ? 1 : 30).forEach(function (id) {
+    id = String(id);
+    if (!allowed[id]) { out[id] = ''; return; }
+    var key = 'APT_' + id, hit = full ? null : cache.get(key);
+    if (hit) { out[id] = hit; return; }
+    try {
+      var f = DriveApp.getFileById(id), blob = null;
+      if (full) { if (f.getSize() <= 12 * 1024 * 1024) blob = f.getBlob(); }
+      else { blob = f.getThumbnail(); if (!blob && f.getSize() <= 300000) blob = f.getBlob(); }
+      if (!blob) { out[id] = ''; return; }
+      var url = 'data:' + (blob.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
+      if (!full && url.length < 95000) cache.put(key, url, 21600);
+      out[id] = url;
+    } catch (e) { out[id] = ''; }
+  });
+  return out;
+}
+
 function saveMultipleImagesToDrive_(fileObjs) {
   if (!fileObjs || fileObjs.length === 0) return '';
   try {
@@ -850,6 +932,7 @@ function processWebTransfer(token, assetName, category, sourceLoc, destLoc, driv
     if (here.status === 'IN_TRANSIT') return { success: false, message: assetName + ' is already on its way to ' + here.dest + '. It must be received (or the transfer cancelled) first.' };
     if (here.location.toUpperCase() !== String(sourceLoc || '').toUpperCase().trim()) return { success: false, message: assetName + ' is at ' + here.location + ', not ' + sourceLoc + '.' };
     if (String(destLoc || '').toUpperCase().trim() === here.location.toUpperCase()) return { success: false, message: 'Pick a different site to send it to.' };
+    if (!String(driverName || '').trim()) return { success: false, message: 'Enter the driver name / vehicle no.' };
     var photoUrl = saveMultipleImagesToDrive_(fileObjs);
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var sh = ss.getSheetByName('Asset Transfer Form');
@@ -865,7 +948,7 @@ function processWebTransfer(token, assetName, category, sourceLoc, destLoc, driv
     var colIdx = TRANSFER_CAT_COLS[normCat_(category)] || 11;
     row[colIdx] = assetName; 
     row[12] = destLoc; 
-    row[13] = driverName || ''; 
+    row[13] = String(driverName).trim();  
     row[14] = photoUrl; 
     row[15] = remarks || ''; 
     
@@ -903,15 +986,19 @@ function processWebReceive(token, assetName, destLoc, category, driverName, file
   } catch(e) { return {success: false, message: e.toString()}; }
 }
 
-function cancelAssetTransfer(token, assetName) {
+function cancelAssetTransfer(token, assetName, reason) {
   try {
     var sess = assetsSession_(token);
+    reason = String(reason || '').trim();
+    if (reason.length < 3) return { success: false, message: 'Write why this transfer is being cancelled.' };
+    var moving = getGlobalAssetStatus_()[String(assetName || '').trim()];
+    if (!moving || moving.status !== 'IN_TRANSIT') return { success: false, message: assetName + ' is not on its way anywhere, so there is no transfer to cancel.' };
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var transferSheet = ss.getSheetByName('Asset Transfer Form');
     if (!transferSheet) return { success: false, message: 'System sheets missing!' };
     
     var tData = transferSheet.getDataRange().getValues();
-    var rowIndexToDelete = -1; var sourceLoc = ''; var assetCat = '';
+    var rowIndexToDelete = -1; var sourceLoc = ''; var assetCat = ''; var cancelledRow = null;
     
     for (var i = tData.length - 1; i >= 1; i--) {
       var row = tData[i];
@@ -920,6 +1007,7 @@ function cancelAssetTransfer(token, assetName) {
           rowIndexToDelete = i + 1;
           sourceLoc = row[2] ? String(row[2]).trim().toUpperCase() : ''; 
           assetCat = row[3] ? String(row[3]).trim().toUpperCase() : '';
+          cancelledRow = row;
           break;
         }
       }
@@ -952,6 +1040,10 @@ function cancelAssetTransfer(token, assetName) {
       });
       SpreadsheetApp.flush();
       
+      var cs = ss.getSheetByName(CANCELLED_TAB);
+      if (!cs) { cs = ss.insertSheet(CANCELLED_TAB); cs.appendRow(CANCELLED_HEAD); cs.setFrozenRows(1); cs.getRange(1, 1, 1, CANCELLED_HEAD.length).setFontWeight('bold'); }
+      var cr = cancelledRow;
+      cs.appendRow([new Date(), sess.who, assetName, cr[3] || '', cr[2] || '', cr[12] || '', cr[13] || '', cr[0] || '', cr[1] || '', cr[14] || '', cr[15] || '', reason]);
       transferSheet.deleteRow(rowIndexToDelete);
       SpreadsheetApp.flush();
       runMasterSync(); 

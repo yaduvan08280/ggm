@@ -308,6 +308,12 @@ body.no-nav #toasts{bottom:calc(var(--safe-b) + 16px);}
 .ring .lbl b{font-size:18px; line-height:1; letter-spacing:-.03em;}
 .ring .lbl i{font-style:normal; font-size:9.5px; color:#9C988A; margin-top:2px; font-weight:600;}
 .dome-txt{flex:1; min-width:0;}
+.dome-add{flex:none; width:52px; height:52px; border-radius:50%; border:0; cursor:pointer; display:grid; place-items:center;
+  background:var(--amber); color:#232220; box-shadow:0 6px 18px rgba(242,193,78,.35); transition:transform .15s ease, box-shadow .15s ease;}
+.dome-add:hover{transform:scale(1.06); box-shadow:0 8px 22px rgba(242,193,78,.45);}
+.dome-add:active{transform:scale(.96);}
+.dome-add:focus-visible{outline:2px solid #F4F0E5; outline-offset:3px;}
+.dome-add .ic{width:24px; height:24px; stroke-width:2.4;}
 .dome-txt h2{font-size:18px; margin-bottom:2px;}
 .dome-txt p{margin:0; font-size:12px; color:#9C988A; font-weight:500;}
 .dome-txt .clock{display:inline-flex; align-items:center; gap:6px; margin-top:8px; background:rgba(255,255,255,.08); padding:5px 11px; border-radius:20px; font-size:11.5px; font-weight:700;}
@@ -338,6 +344,7 @@ body.no-nav #toasts{bottom:calc(var(--safe-b) + 16px);}
 .stamp{flex:none; padding:5px 11px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.01em; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;}
 .s-full,.s-correct{background:var(--ok-wash); color:var(--ok);}
 .s-half,.s-wait{background:var(--amber-wash); color:var(--half);}
+.s-mismatch{background:color-mix(in srgb, var(--violet) 16%, transparent); color:var(--violet);}
 .s-absent,.s-incorrect{background:var(--bad-wash); color:var(--bad);}
 .s-muted{background:var(--line-soft); color:var(--ink-soft);}
 .s-ink{background:var(--charcoal); color:var(--amber);}
@@ -436,6 +443,7 @@ section.has-q .when-q-hide{display:none !important;}
 .cal .d.future{opacity:.45;}
 .cal .d.today{box-shadow:0 0 0 2px var(--amber);}
 .cal .d.ok::after{content:''; position:absolute; top:4px; right:4px; width:5px; height:5px; border-radius:50%; background:var(--ok);}
+.cal .d.pm::after{content:''; position:absolute; top:4px; right:4px; width:5px; height:5px; border-radius:50%; background:var(--violet);}
 .cal .d.sb::after{content:''; position:absolute; top:4px; right:4px; width:5px; height:5px; border-radius:50%; background:var(--half);}
 .monthnav{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:14px;}
 .monthnav b{font-size:14px;}
@@ -618,6 +626,8 @@ section.has-q .when-q-hide{display:none !important;}
   .ring{width:62px; height:62px;}
   .ring .lbl b{font-size:15px;}
   .dome-txt h2{font-size:16px;}
+  .dome-add{width:44px; height:44px;}
+  .dome-add .ic{width:20px; height:20px;}
   .dome-txt p{font-size:11px;}
   .dome-txt .clock{font-size:10.5px; padding:4px 9px; margin-top:6px;}
 
@@ -669,4 +679,23 @@ section.has-q .when-q-hide{display:none !important;}
   .kpi-grid.four{grid-template-columns:repeat(2,1fr);}
   .kpi-grid.four .kpi .k-sub{display:block;}
 }
+
+/* ---------- Salary ---------- */
+.pagehead .sal-month{margin:0; width:150px;}
+.pagehead .sal-month input{padding:8px 10px;}
+.seg.two{grid-template-columns:repeat(2,1fr);}
+.btn-row{display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 12px;}
+.btn-row .btn{width:auto; flex:1 1 180px; margin:0;}
+a.btn{text-decoration:none;}
+.sal-row .rmain small{display:block;}
+.sal-amt{text-align:right; flex:none; padding-left:6px;}
+.sal-amt b{display:block; font-size:16px; font-weight:800; letter-spacing:-.01em; color:var(--ink); white-space:nowrap;}
+.sal-amt small{font-size:10.5px; color:var(--ink-faint); font-weight:700;}
+.tbl.sal-break td{padding:8px 12px; border-bottom:1px solid var(--line-soft);}
+.tbl.sal-break td.n{text-align:right; font-variant-numeric:tabular-nums; font-weight:600;}
+.tbl.sal-break tr.grp td{background:var(--amber-wash); color:var(--half); font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:6px 12px;}
+.tbl.sal-break tr.b td{font-weight:700;}
+.tbl.sal-break tr.tot td{font-weight:800; font-size:14.5px; background:var(--ok-wash); color:var(--ok);}
+.tbl.sal-sum td.n{text-align:right; font-variant-numeric:tabular-nums;}
+.tbl.sal-sum{min-width:420px;}
 </style>

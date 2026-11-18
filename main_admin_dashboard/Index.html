@@ -309,6 +309,10 @@
     [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection__rendered { color: #fff; }
     [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown { background-color: #2b2b2b; color: #fff; border-color: #444; }
     [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__option[aria-selected=true] { background-color: #444; }
+    /* EA role: Delegated Tasks only */
+    body.ea-mode .nav-item-btn:not([data-tab="delegated"]),
+    body.ea-mode .mobile-nav-btn:not([data-tab="delegated"]),
+    body.ea-mode .sidebar-nav .nav-label { display: none !important; }
   </style>
 </head>
 <body>
@@ -948,6 +952,7 @@ function animateValue(obj, start, end, duration) {
 }
 
 function switchTab(tabId) {
+  if (IS_EA && tabId !== 'delegated') tabId = 'delegated';   // EA: Delegated Tasks only
   document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
   document.querySelectorAll('.nav-item-btn, .mobile-nav-btn').forEach(btn => btn.classList.remove('active'));
 
@@ -1037,6 +1042,28 @@ let currentLeaveTab = 'Pending';
 let currentRenTab = 'all';
 
 let initialLoadComplete = false;
+let IS_EA = false;          // set from the server on every data load (GGM Portal role EA)
+let GIVERS = null;          // EA: who she can enter a task for
+
+function applyRole(me) {
+  const ea = !!(me && me.ea);
+  if (ea === IS_EA) return;
+  IS_EA = ea;
+  document.body.classList.toggle('ea-mode', ea);
+  if (ea) { lockGivenBy(); fetchDoers(); if (initialLoadComplete) switchTabDelegated('all'); }
+  else lockGivenBy();
+}
+
+/** EA: "Given By" is a choice of the admins (never herself). */
+function fillGivers() {
+  const sel = document.getElementById('newTaskGivenBy');
+  if (!sel || !IS_EA) return;
+  const keep = sel.value;
+  sel.innerHTML = '<option value="" disabled selected>Select who is giving the task...</option>' +
+    (GIVERS || []).map(g => `<option value="${String(g.u).replace(/"/g, '&quot;')}">${g.n}${g.n.toLowerCase() !== g.u.toLowerCase() ? ' (' + g.u + ')' : ''}</option>`).join('');
+  if (keep && (GIVERS || []).some(g => g.u === keep)) sel.value = keep;
+  sel.disabled = false;
+}
 let isFetchingData = false;
 
 let stagedFiles = [];
@@ -1073,6 +1100,7 @@ function adminSessionEnded() {
 /** Given By is the signed-in admin; nobody picks it any more. */
 function lockGivenBy() {
   if (!(PORTAL.info && PORTAL.info.enabled)) return;
+  if (IS_EA) { fillGivers(); return; }
   const sel = document.getElementById('newTaskGivenBy');
   if (!sel) return;
   const u = adminUser() || 'you';
@@ -1129,6 +1157,7 @@ function fetchDoers() {
               ['newTaskDoer', 'editTaskDoer'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '<option value="" disabled selected>Error loading</option>'; });
               return; 
           }
+          if (response && response.givers) { GIVERS = response.givers; fillGivers(); }
           if (response && response.doers && response.doers.length > 0) {
               allGlobalDoers = response.doers;
               let locs = new Set(['JPR', 'NEWAI', 'TONK', 'KCL', 'SAW', 'KHA']);
@@ -1198,6 +1227,7 @@ function fetchData(isForced) {
 
         if (res && res.sessionExpired) { adminSessionEnded(); return; }
         if (res) {
+            applyRole(res.me);
             if (res.master && res.master.rows) processRawData(res.master.rows);
             if (res.leaves && res.leaves.rows) leaveData = res.leaves.rows;
             if (res.renewals && res.renewals.rows) renewalData = res.renewals.rows;
@@ -1211,7 +1241,7 @@ function fetchData(isForced) {
             if (!initialLoadComplete) {
                 initialLoadComplete = true;
                 document.getElementById('view-loading').classList.remove('active');
-                switchTab('overview');
+                if (IS_EA) switchTabDelegated('all'); else switchTab('overview');
             } else {
                 renderAllViews();
             }
@@ -2220,6 +2250,7 @@ function removeStagedFile(idx) { stagedFiles.splice(idx, 1); renderStagedFiles()
 
 function openNewTaskModal() {
     document.getElementById('newTaskForm').reset();
+    if (IS_EA) fillGivers();
     stagedFiles = []; renderStagedFiles();
     new bootstrap.Modal(document.getElementById('newTaskModal')).show();
 }
@@ -2406,7 +2437,9 @@ window.openStaffModal = function(staffName, tab) {
 function openTaskModal(taskId) {
   const t = allData.find(x => x.id === taskId); if (!t) return;
   let actionButtons = '';
-  if (t.status === 'review') {
+  if (IS_EA) {
+    // EA only views tasks and adds new ones
+  } else if (t.status === 'review') {
     actionButtons = `<div class="mt-4 pt-3 border-top d-flex flex-column gap-2"><div class="d-flex justify-content-end gap-2"><button class="btn btn-success d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="markTaskDone('${t.id}')" id="btnDone-${t.id}"><i class="bi bi-check-circle-fill"></i> Approve (Finish)</button><button class="btn btn-danger d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="toggleRejectBox('${t.id}')"><i class="bi bi-x-circle-fill"></i> Reject</button></div><div id="rejectBox-${t.id}" class="d-none mt-3 p-3 bg-danger-subtle border border-danger-subtle rounded"><label class="form-label small fw-bold text-danger">Remark (Will be sent to staff):</label><textarea class="form-control form-control-sm mb-2" id="rejectRemark-${t.id}" rows="2" placeholder="Explain why this task is being rejected..."></textarea><div class="text-end"><button class="btn btn-sm btn-danger fw-bold" onclick="submitReject('${t.id}')">Confirm Rejection</button></div></div></div>`;
   } else if (t.status !== 'done') {
     actionButtons = `<div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2"><button class="btn btn-outline-warning d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="openEditModal('${t.id}')"><i class="bi bi-pencil-square"></i> Edit</button><button class="btn btn-outline-primary d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="openTransferModal('${t.id}')"><i class="bi bi-arrow-left-right"></i> Transfer</button><button class="btn btn-success d-flex align-items-center gap-2 shadow-sm fw-bold" onclick="markTaskDone('${t.id}')" id="btnDone-${t.id}"><i class="bi bi-check-circle-fill"></i> Direct Mark Done</button></div>`;

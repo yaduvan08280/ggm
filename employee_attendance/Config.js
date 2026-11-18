@@ -16,7 +16,7 @@ const SHEET_SETTINGS  = 'Settings';
 const SHEET_AUDIT     = 'AuditLog';
 
 /* ---------------- Employees tab columns ----------------
- * A: Employee ID | B: Name | C: Site | D: Supervisor | E: Designation | F: Active
+ * A: Employee ID | B: Name | C: Site | D: Supervisor | E: Designation | F: Active | G: Secondary Site
  * The Supervisor cell holds the supervisor's GGM Portal USERNAME: the dropdown is the
  * Supervisor rows of "Portal Users ATTENDANCE" and follows that tab by itself.
  * ------------------------------------------------------ */
@@ -26,7 +26,10 @@ const EMP_COL_SITE       = 3;
 const EMP_COL_SUPERVISOR = 4;
 const EMP_COL_DESIG      = 5;
 const EMP_COL_ACTIVE     = 6;
-const EMP_COL_COUNT      = 6;
+// G: a second site the person also works at (stays there for a week at a time). Every supervisor
+// there can mark them; the mark is kept on their main site's sheet, so it is counted once.
+const EMP_COL_SECONDARY  = 7;
+const EMP_COL_COUNT      = 7;
 
 // Blank Supervisor cell: true = every supervisor at that site sees the employee,
 // false = nobody sees them until one is named.
@@ -60,6 +63,7 @@ const STATUS_TO_CODE = { 'Full Day': CODE_FULL, 'Half Day': CODE_HALF, 'Absent':
  *   red    — the day has happened and HR has not approved it yet
  *   green  — HR approved
  *   yellow — HR sent it back for correction (supervisor may re-mark)
+ *   purple — the punch report does not fit the mark (Punch.gs); HR checks it one by one
  *   grey   — employee is switched off; nothing to mark
  *   white  — day has not happened yet
  * Sheets returns backgrounds lower-case, so keep these lower-case.
@@ -67,6 +71,7 @@ const STATUS_TO_CODE = { 'Full Day': CODE_FULL, 'Half Day': CODE_HALF, 'Absent':
 const CLR_PENDING  = '#f4c7c3';
 const CLR_APPROVED = '#b7e1cd';
 const CLR_SENTBACK = '#ffe599';
+const CLR_MISMATCH = '#b4a7d6';
 const CLR_INACTIVE = '#d9d9d9';
 const CLR_FUTURE   = '#ffffff';
 
@@ -74,6 +79,7 @@ const CLR_FUTURE   = '#ffffff';
 const APPROVAL_PENDING  = 'Pending';
 const APPROVAL_APPROVED = 'Approved';
 const APPROVAL_SENTBACK = 'SentBack';
+const APPROVAL_MISMATCH = 'Mismatch';   // purple: waiting for HR, never in "Approve all"
 
 // Header colours
 const CLR_HEADER_DARK  = '#1B1035';

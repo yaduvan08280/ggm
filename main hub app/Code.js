@@ -70,7 +70,7 @@ const FIELD_LABEL = { role: 'Role', site: 'Site', doer: 'Doer name' };
 const BADGE_WORDS = {
   INDENT: 'waiting on you', FUEL: 'due', ASSETS: 'to receive', STAFF: 'pending',
   MAINADMIN: 'to review', LEVANTO: 'need attention', NEWAI_TASKS: 'pending', TONK_TASKS: 'pending', JAIPUR_TASKS: 'pending',
-  DELEGATION: 'to follow up', ATTENDANCE: 'to mark or check',
+  DELEGATION: 'to follow up', ATTENDANCE: 'to mark or check', LEADS: 'need attention',
   // the App IDs used in the live Apps tab
   PURCHASE: 'waiting on you', 'STAFF DASHBOARD': 'pending', 'MAIN ADMIN': 'to review',
   'JAIPUR CHECKLIST': 'pending', 'NEWAI CHECKLIST': 'pending', 'TONK CHECKLIST': 'pending'
@@ -90,6 +90,7 @@ const DEFAULT_APPS = [
   ['JAIPUR_TASKS', 'Jaipur Checklist', '📝', '#0F766E', '', true, 8, 'Doer name', 'folder jaipur_checklist · Role USER (needs doer) or ADMIN', 'CONNECTED', 'role,doer', true, ''],
   ['DELEGATION', 'Task Delegation', '📌', '#1D4ED8', '', true, 12, 'Username', 'folder task delegation · v2 login (Portal Users tab in the Delegated sheet)', 'CONNECTED', '', true, '1tEUckPww1GiD-PgP7yxMxt70W1Q-ueoUGXdI8_-Aq8A'],
   ['ATTENDANCE', 'Attendance', 'users', '#65A30D', 'https://script.google.com/macros/s/AKfycbwwDXQ9YSe28Hx9hpuiEG-StKcczsHdnSjwmigfdXpMRQqlM6CTrNgElQQYGXjvzJZL8w/exec', true, 13, 'Username', 'folder employee_attendance · v2 login (Portal Users tab in the Employee Attendance sheet) · Role Supervisor needs a Site; HR/Admin blank site = all sites', 'CONNECTED', 'role,site', true, '1Msf0vgketMqVUvd_f_CXOI_YejatEro8iM9BrhGtJVs'],
+  ['LEADS', 'Leads & Orders', 'chart', '#B7791F', 'https://script.google.com/macros/s/AKfycby_i8FyBg7koPXFPoE-9y81Heyv-zHH6LZJLBJZOacIXCsUCTl4Qz6gCcwuOARs3Rde1A/exec', true, 14, 'Username', 'folder leads_orders · v2 login (Portal Users tab in the Leads & Orders App sheet) · Role Admin / Manager / Executive only: no doer name, people are matched by their portal name and assigned inside the app', 'CONNECTED', 'role', true, '1sQ_3GJ5NuMqqMSKFJrezxFG2cyk35tmLq6_WXzj4FpI'],
   ['MINES', 'Mines Dashboard', 'mine', '#57534E', 'https://script.google.com/macros/s/AKfycbwFb2igRK_NkLwrWbjohB8mCFZGwTM2g1BE7k3uTYwkQ5UWR6e034M2AYCLsEECFLiegg/exec', true, 9, 'Username', 'public link', 'LINK', '', false, ''],
   ['COLLECTION', 'Collection Dashboard', 'wallet', '#9A3412', 'https://script.google.com/macros/s/AKfycbxo81rUG8fcE8IhD_iYFTc2haI1y37QIKCulwYlIfy62yIx_tz34VOaCYWg8X8NdnXu/exec', true, 10, 'Username', 'public link', 'LINK', '', false, ''],
   ['LEVANTO', 'Levanto Production', 'factory', '#1F2937', 'https://script.google.com/macros/s/AKfycbw2Gu-OCMbkCj3oDa5prBNQc_9UR3kFfK8c0aRnA2Hbdvh0hjC7nnDz03WbVe-jSZQ/exec', true, 11, 'Username', 'public link · badge read from its sheet', 'LINK', '', true, '']
@@ -1717,15 +1718,15 @@ function linkItemsFor_(kind, username) {
     .map(function (k) { return { name: m[k].name, site: m[k].site, desig: m[k].desig }; });
 }
 
-/** Tapped in the portal: checks the tick again, then hands back the link. */
-function openLink(session, kind, name) {
+/** Tapped in the portal (open, or "Copy link" on a form): checks the tick again, then hands back the link. */
+function openLink(session, kind, name, how) {
   const user = requireSession_(session);
   if (!LINK_KINDS[kind]) throw new Error('Unknown item.');
   forgetTabs_();
   const it = linkMap_(kind)[String(name || '').trim().toLowerCase()];
   if (!it || !it.link || !it.users[user.username.toLowerCase()]) throw new Error('You do not have access to this ' + kind + '.');
   if (!/^https:\/\//i.test(it.link)) throw new Error('This ' + kind + ' has no valid link yet. Ask the IT admin.');
-  if (PORTAL_CFG.LOG_OPENS) log_(user.username, 'OPEN', kind.toUpperCase(), it.name);
+  if (PORTAL_CFG.LOG_OPENS) log_(user.username, how === 'copy' ? 'COPY LINK' : 'OPEN', kind.toUpperCase(), it.name);
   return { url: it.link };
 }
 

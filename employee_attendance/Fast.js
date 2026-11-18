@@ -56,7 +56,7 @@ function settingsAll_() {
   var out = {};
   var sh = ss_().getSheetByName(SHEET_SETTINGS);
   if (sh && sh.getLastRow() >= 2) {
-    sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues().forEach(function (r, i) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, 8).getValues().forEach(function (r, i) {
       var site = String(r[0]).trim();
       if (!site || out[site]) return;
       out[site] = {
@@ -66,6 +66,7 @@ function settingsAll_() {
         allowResubmit: isTruthy_(r[4]),
         fdHours: Number(r[5]) > 0 ? Number(r[5]) : DEFAULT_FD_HOURS,
         hdHours: Number(r[6]) > 0 ? Number(r[6]) : DEFAULT_HD_HOURS,
+        autoAbsent: r[7] === '' || r[7] === null || isTruthy_(r[7]),   // H, blank = on
         row: i + 2
       };
     });
@@ -93,12 +94,25 @@ function employeesAll_() {
         supervisor: String(r[EMP_COL_SUPERVISOR - 1] || '').trim(),
         designation: String(r[EMP_COL_DESIG - 1] || ''),
         active: isTruthy_(r[EMP_COL_ACTIVE - 1]),
+        secondary: secondarySite_(r[EMP_COL_SECONDARY - 1], r[EMP_COL_SITE - 1]),
         row: i + 2
       });
     });
   }
   cachePutJson_('ATT_EMP', out, CACHE_EMP_SEC);
   return out;
+}
+
+/** A Secondary Site cell as one of SITES: '' when blank, not a site, or the main site itself. */
+function secondarySite_(value, site) {
+  var v = String(value || '').trim().toLowerCase();
+  var hit = SITES.filter(function (x) { return x.toLowerCase() === v; })[0] || '';
+  return hit === String(site || '').trim() ? '' : hit;
+}
+
+/** Active people whose secondary site is this one (their main site's sheet holds their marks). */
+function visitorsAt_(site) {
+  return employeesAll_().filter(function (e) { return e.active && e.secondary === site && SITES.indexOf(e.site) > -1; });
 }
 
 function dropEmployees_() {
